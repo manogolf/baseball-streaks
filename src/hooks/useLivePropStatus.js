@@ -1,25 +1,25 @@
-import { useEffect } from 'react';
-import { supabase } from '../utils/supabaseClient.js';
+import { useEffect } from "react";
+import { supabase } from "../lib/supabaseClient.js";
 
-const MLB_BASE_URL = 'https://statsapi.mlb.com/api/v1';
+const MLB_BASE_URL = "https://statsapi.mlb.com/api/v1";
 
 const useLivePropStatus = () => {
   useEffect(() => {
     const interval = setInterval(checkLiveProps, 90 * 1000); // every 90 seconds
 
     async function checkLiveProps() {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split("T")[0];
 
       // 1. Get today's player props (filtering for live or pending "Hits" props)
       const { data: props, error } = await supabase
-        .from('player_props')
-        .select('*')
-        .eq('game_date', today)
-        .eq('prop_type', 'Hits')
-        .in('status', ['Pending', 'Live']);
+        .from("player_props")
+        .select("*")
+        .eq("game_date", today)
+        .eq("prop_type", "Hits")
+        .in("status", ["Pending", "Live"]);
 
       if (error) {
-        console.error('Error fetching props:', error);
+        console.error("Error fetching props:", error);
         return;
       }
 
@@ -49,22 +49,25 @@ const useLivePropStatus = () => {
           const hits = playerStats?.hits ?? 0;
 
           // 5. Determine the new status based on the player's live performance
-          let newStatus = 'Live';
+          let newStatus = "Live";
           if (hits >= propValue) {
-            newStatus = 'Won';
-          } else if (json.gameData.status.abstractGameState === 'Final') {
-            newStatus = 'Missed';
+            newStatus = "Won";
+          } else if (json.gameData.status.abstractGameState === "Final") {
+            newStatus = "Missed";
           }
 
           // 6. Update the player's prop status in the database
           if (newStatus !== prop.status) {
             const { error: updateError } = await supabase
-              .from('player_props')
+              .from("player_props")
               .update({ status: newStatus })
-              .eq('id', prop.id);
+              .eq("id", prop.id);
 
             if (updateError) {
-              console.error(`Error updating prop ID ${prop.id}:`, updateError.message);
+              console.error(
+                `Error updating prop ID ${prop.id}:`,
+                updateError.message
+              );
             }
           }
         } catch (err) {

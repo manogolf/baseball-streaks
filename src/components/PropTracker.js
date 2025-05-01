@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { format, isValid } from "date-fns";
 import { supabase } from "../lib/supabaseClient.js";
-import Calendar from "../components/ui/calendar.jsx";
+import Calendar from "./ui/calendar.jsx";
 
 export default function PropTracker() {
   const [selectedDate, setSelectedDate] = useState(new Date());
