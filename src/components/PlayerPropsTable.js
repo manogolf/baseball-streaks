@@ -17,37 +17,35 @@ const PlayerPropsTable = () => {
     pending: "bg-gray-100 text-gray-600",
   };
 
+  const fetchProps = async () => {
+    const today = getEasternDateString();
+    const { data, error } = await supabase
+      .from("player_props")
+      .select("*")
+      .eq("game_date", today)
+      .neq("status", "expired");
+
+    if (!error) {
+      setProps(data);
+      console.log("📊 Fetched props:", data);
+    } else {
+      console.error("Error fetching props:", error.message);
+    }
+  };
+
   useEffect(() => {
-    const fetchProps = async () => {
-      const today = getEasternDateString();
-      const { data, error } = await supabase
-        .from("player_props")
-        .select("*")
-        .eq("game_date", today)
-        .neq("status", "expired");
+    fetchProps();
 
-      if (!error) {
-        setProps(data);
-        console.log("📊 Fetched props:", data);
-      } else {
-        console.error("Error fetching props:", error.message);
-      }
-    };
-
-    fetchProps(); // Don't forget to actually call it too!
-
-    // 🧠 Setup Realtime subscription
     const subscription = supabase
-      .channel("public:player_props") // listen on the table
+      .channel("public:player_props")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "player_props" },
         (payload) => {
           console.log("🔔 New prop inserted!", payload.new);
           setProps((prev) => [payload.new, ...prev]);
-          setRecentProps((prev) => [...prev, payload.new.id]); // track new prop ID
+          setRecentProps((prev) => [...prev, payload.new.id]);
 
-          // 🕒 Remove highlight after 5 seconds
           setTimeout(() => {
             setRecentProps((prev) =>
               prev.filter((id) => id !== payload.new.id)
@@ -55,14 +53,12 @@ const PlayerPropsTable = () => {
           }, 5000);
         }
       )
-
       .subscribe();
 
-    // ✅ Cleanup when component unmounts
     return () => {
       supabase.removeChannel(subscription);
     };
-  }, []); // Don't forget the dependency array (empty!)
+  }, []);
 
   const sortedProps = [...props].sort((a, b) => {
     const aVal = a[sortConfig.key];
@@ -131,12 +127,12 @@ const PlayerPropsTable = () => {
             </th>
           </tr>
         </thead>
-        <tbody className="bg-red-200">
+        <tbody>
           {sortedProps.map((p) => (
             <tr
               key={p.id}
               className={`border-t transition-all duration-500 hover:bg-gray-50 ${
-                recentProps.includes(p.id) ? "bg-yellow-100" : ""
+                recentProps.includes(p.id) ? "bg-blue-100" : ""
               }`}
             >
               <td className="px-3 py-2">

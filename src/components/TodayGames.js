@@ -203,7 +203,7 @@ const TodayGames = ({ games }) => {
                 </div>
 
                 {/* Home Team */}
-                <div className="flex flex-col items-end gap-2 text-right max-w-[140px]">
+                <div className="flex flex-col items-end gap-2 text-right ml-auto">
                   <div className="flex items-center gap-2 justify-end">
                     <span className="text-sm font-medium text-gray-800 break-words">
                       {homeTeam.name}
