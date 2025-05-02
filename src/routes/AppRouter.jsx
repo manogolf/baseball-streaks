@@ -1,11 +1,45 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Home from "../pages/Home";
-import PropsDashboard from "../pages/PropsDashboard";
-import LoginPage from "../pages/LoginPage";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Link,
+  useLocation,
+} from "react-router-dom";
+import Header from "../components/Header";
+import Home from "../Pages/Home";
+import PropsDashboard from "../Pages/PropsDashboard";
+import LoginPage from "../Pages/LoginPage";
 
 export default function AppRouter() {
   return (
     <BrowserRouter>
+      <Header />
+
+      {/* ✅ This nav bar is global, shown on every page */}
+      <nav className="bg-gray-100 border-b border-gray-300 py-2 mb-0">
+        <div className="max-w-4xl mx-auto flex justify-right gap-6">
+          <Link
+            to="/"
+            className="text-sm text-gray-700 hover:text-indigo-700 font-medium"
+          >
+            Home
+          </Link>
+          <Link
+            to="/props"
+            className="text-sm text-gray-700 hover:text-indigo-700 font-medium"
+          >
+            Props
+          </Link>
+          <Link
+            to="/login"
+            className="text-sm text-gray-700 hover:text-indigo-700 font-medium"
+          >
+            Login
+          </Link>
+        </div>
+      </nav>
+
+      {/* Render route-based pages */}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/props" element={<PropsDashboard />} />

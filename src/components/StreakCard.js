@@ -75,9 +75,10 @@ const StreaksCard = () => {
 
   return (
     <div className="bg-white p-6 rounded-xl shadow space-y-6">
-      <h2 className="text-xl font-bold text-center mb-4">
-        🔥 Streaks Dashboard
-      </h2>
+      <div className="flex items-center justify-center gap-4 text-4xl font-semibold text-gray-800 mb-4">
+        <span className="flex items-center gap-2">🔥 Streaks Dashboard</span>
+        <span className="text-4xl">❄️</span>
+      </div>
 
       {loading ? (
         <div className="text-center text-gray-400">Loading streaks...</div>
@@ -92,15 +93,17 @@ const StreaksCard = () => {
               {hotStreaks.map((player) => (
                 <li
                   key={`${player.player_name}-${player.prop_type}`}
-                  className="p-3 rounded bg-green-50 border border-green-200"
+                  className="p-3 rounded bg-green-50 border border-green-200 grid grid-cols-[1fr_auto] items-center"
                 >
-                  <div className="font-medium">
-                    {player.player_name} ({player.team})
+                  <div>
+                    <div className="font-medium truncate">
+                      {player.player_name} ({player.team})
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {player.prop_type}
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-600">
-                    {player.prop_type}
-                  </div>
-                  <div className="text-green-600 font-bold">
+                  <div className="text-green-600 font-bold pl-4">
                     W{player.streak}
                   </div>
                 </li>
@@ -117,15 +120,17 @@ const StreaksCard = () => {
               {coldStreaks.map((player) => (
                 <li
                   key={`${player.player_name}-${player.prop_type}`}
-                  className="p-3 rounded bg-blue-50 border border-blue-200"
+                  className="p-3 rounded bg-blue-50 border border-blue-200 grid grid-cols-[1fr_auto] items-center"
                 >
-                  <div className="font-medium">
-                    {player.player_name} ({player.team})
+                  <div>
+                    <div className="font-medium truncate">
+                      {player.player_name} ({player.team})
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {player.prop_type}
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-600">
-                    {player.prop_type}
-                  </div>
-                  <div className="text-blue-600 font-bold">
+                  <div className="text-blue-600 font-bold pl-4">
                     L{player.streak}
                   </div>
                 </li>

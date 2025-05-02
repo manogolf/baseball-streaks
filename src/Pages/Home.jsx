@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import TodayGames from "../components/GameCardTest";
+import TodayGames from "../components/TodayGames";
 import StreakCard from "../components/StreakCard";
 
 export default function Home() {
+  console.log("✅ API URL:", process.env.REACT_APP_API_URL);
   const [games, setGames] = useState([]);
 
   useEffect(() => {
@@ -10,7 +11,7 @@ export default function Home() {
       try {
         const today = new Date().toISOString().split("T")[0];
         const response = await fetch(
-          `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${today}&hydrate=team,linescore,probablePitcher,decisions,game(content(summary),live)`
+          `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${today}&hydrate=team,linescore,probablePitcher,decisions,game(content(summary),live),boxscore`
         );
         const data = await response.json();
         const gameList = data.dates?.[0]?.games || [];
@@ -25,7 +26,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-100 px-4 py-6">
-      <div className="max-w-4xl mx-auto bg-white rounded-xl shadow p-6 space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         <TodayGames games={games} />
         <StreakCard />
       </div>

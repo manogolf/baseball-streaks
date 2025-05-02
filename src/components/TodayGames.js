@@ -1,3 +1,4 @@
+// src/components/TodayGames.js
 import { DateTime } from "luxon";
 import React, { useState, useEffect } from "react";
 
@@ -90,8 +91,6 @@ const TodayGames = ({ games }) => {
     if (actualPitcherId) {
       const player =
         game.boxscore.teams[teamKey].players?.[`ID${actualPitcherId}`];
-      console.log("🔍 Checking actual pitcher:", player); // <-- log the actual player
-
       const fullName =
         player?.person?.fullName || scheduledPitcher?.fullName || "TBD";
       const wins = player?.stats?.pitching?.wins;
@@ -103,8 +102,6 @@ const TodayGames = ({ games }) => {
     }
 
     if (scheduledPitcher) {
-      console.log("🔍 Checking scheduled pitcher:", scheduledPitcher); // <-- scheduled probable pitcher
-
       const fullName = scheduledPitcher.fullName;
       const wins = scheduledPitcher.stats?.pitching?.wins;
       const losses = scheduledPitcher.stats?.pitching?.losses;
@@ -145,9 +142,6 @@ const TodayGames = ({ games }) => {
       ) : (
         <ul className="space-y-4">
           {sortedGames.map((game) => {
-            console.log("🔍 Away team record:", game.teams.away.record);
-            console.log("🔍 Home team record:", game.teams.home.record);
-
             const awayTeam = game.teams.away.team;
             const homeTeam = game.teams.home.team;
             const matchupKey = `${awayTeam.name}@${homeTeam.name}`;
@@ -166,12 +160,10 @@ const TodayGames = ({ games }) => {
             const statusText = getStatusDisplay(game);
             const statusColor = getStatusColor(status);
 
-            const { etTime } = formatGameTime(game.gameDate);
-
             return (
               <li
                 key={game.gamePk}
-                className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 p-4 rounded-lg border shadow-sm bg-white max-w-5xl mx-auto"
+                className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 p-4 rounded-lg border border border-blue-200 bg-blue-50 max-w-5xl mx-auto"
               >
                 {/* Away Team */}
                 <div className="flex flex-col items-start gap-2 max-w-[140px]">

@@ -5,17 +5,18 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 👇 wrap it inside an async function
     const getCurrentSession = async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
+      setLoading(false);
     };
 
-    getCurrentSession(); // 👈 call it right away
+    getCurrentSession();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
@@ -28,11 +29,24 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
+  const signIn = async ({ email, password }) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
   return (
-    <AuthContext.Provider value={{ user }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, signIn, signOut }}>
+      {!loading && children}
+    </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
+export const useAuth = () => useContext(AuthContext);
