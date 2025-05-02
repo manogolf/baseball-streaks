@@ -51,3 +51,5 @@ if (isGitHubAction) {
     console.log("✅ Cron job complete.\n");
   });
 }
+// 👇 Add this at the bottom
+export { updatePropStatuses };
