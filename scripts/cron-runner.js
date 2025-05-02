@@ -1,22 +1,12 @@
-import "dotenv/config";
-import { updatePropStatuses } from "./updatePropResults.js";
-import { syncTrainingData } from "./syncTrainingData.js";
+require("dotenv/config");
+const { updatePropStatuses } = require("./updatePropResults.js");
+const { syncTrainingData } = require("./syncTrainingData.js");
 
-console.log("⏳ Starting cron-runner.js...");
-
-async function run() {
-  try {
-    console.log("🔄 Updating prop statuses...");
-    await updatePropStatuses();
-
-    console.log("📚 Syncing training data...");
-    await syncTrainingData();
-
-    console.log("✅ Cron tasks completed successfully.");
-  } catch (err) {
-    console.error("❌ Cron runner error:", err);
-    process.exit(1);
-  }
+async function runCronTasks() {
+  console.log("🔁 Starting cron tasks...");
+  await updatePropStatuses();
+  await syncTrainingData();
+  console.log("✅ All tasks complete.");
 }
 
-run();
+runCronTasks();
