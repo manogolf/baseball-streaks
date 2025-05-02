@@ -2,7 +2,7 @@
 
 import "dotenv/config";
 import cron from "node-cron";
-import { updatePropStatuses } from "../utils/updatePropResults.js";
+import { updatePropStatuses } from "./updatePropResults.js";
 import { syncTrainingData } from "./syncTrainingData.js";
 
 export const updateAndSyncProps = async () => {
