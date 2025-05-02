@@ -1,4 +1,7 @@
-import { updatePropStatuses } from "../utils/updatePropResults.js"; // or correct path
+// update-and _sync_props
+
+import cron from "node-cron";
+import { updatePropStatuses } from "./updatePropResults.js"; // or correct path
 import { syncTrainingData } from "./syncTrainingData.js"; // adjust to your path
 
 export const updateAndSyncProps = async () => {

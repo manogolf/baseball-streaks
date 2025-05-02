@@ -1,13 +1,13 @@
-require("dotenv/config");
-const { createClient } = require("@supabase/supabase-js");
-const fetch = require("node-fetch");
-const { getStatFromLiveFeed } = require("./getStatFromLiveFeed.js");
+import "dotenv/config";
+import { createClient } from "@supabase/supabase-js";
 
+// ✅ Supabase Client Setup
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function syncTrainingData() {
+// ✅ Main Sync Function
+export async function syncTrainingData() {
   const { data: resolvedProps, error } = await supabase
     .from("player_props")
     .select("*")
@@ -54,4 +54,7 @@ async function syncTrainingData() {
   }
 }
 
-syncTrainingData();
+// ✅ Optional: Run directly via CLI / cron
+if (import.meta.url === `file://${process.argv[1]}`) {
+  syncTrainingData();
+}
