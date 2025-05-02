@@ -164,7 +164,7 @@ async function getPendingProps() {
   return data;
 }
 
-export async function updatePropStatuses() {
+async function updatePropStatuses() {
   const props = await getPendingProps();
   console.log(`🔎 Found ${props.length} pending props to update.`);
 
@@ -187,3 +187,4 @@ export async function updatePropStatuses() {
   console.log(`⏭️ Skipped: ${skipped}`);
   console.log(`❌ Errors: ${errors}`);
 }
+module.exports = { updatePropStatuses };
