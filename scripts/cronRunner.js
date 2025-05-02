@@ -1,5 +1,3 @@
-// cron-runner.js
-
 import "dotenv/config";
 import cron from "node-cron";
 import { updatePropStatuses } from "./updatePropResults.js";
