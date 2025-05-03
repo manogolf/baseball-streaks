@@ -23,4 +23,4 @@ jobs:
       - name: 🌿 Run fetchHotStreaks script
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node src/scripts/fetchHotStreaks.js
+        run: node scripts/fetchHotStreaks.js

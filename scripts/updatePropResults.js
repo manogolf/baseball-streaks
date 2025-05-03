@@ -2,10 +2,14 @@ import "dotenv/config";
 import { createClient } from "@supabase/supabase-js";
 import fetch from "node-fetch";
 import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
+import { DateTime } from "luxon";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
+const nowET = DateTime.now().setZone("America/New_York");
+const today = nowET.toISODate(); // '2025-05-03'
+const currentTime = nowET.toFormat("HH:mm"); // '16:25' for example
 
 const MLB_API_BASE = "https://statsapi.mlb.com/api/v1";
 
@@ -145,7 +149,14 @@ export async function updatePropStatus(prop) {
   );
   const { error } = await supabase
     .from("player_props")
-    .update({ result: actualValue, outcome, status: "resolved" })
+    .update({
+      result: actualValue,
+      outcome,
+      status: "resolved",
+      was_correct: prop.predicted_outcome
+        ? outcome === prop.predicted_outcome
+        : null,
+    })
     .eq("id", prop.id);
 
   if (error) {
@@ -164,7 +175,9 @@ async function getPendingProps() {
     .from("player_props")
     .select("*")
     .eq("status", "pending")
-    .lte("game_date", new Date().toISOString().split("T")[0]);
+    .or(
+      `game_date.lt.${today},and(game_date.eq.${today},game_time.lte.${currentTime},not(game_time.is.null))`
+    );
 
   if (error) throw error;
   return data;

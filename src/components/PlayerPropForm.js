@@ -169,6 +169,9 @@ const PlayerPropForm = () => {
       game_id,
       status: "pending",
       created_et: nowET,
+      predicted_outcome: prediction?.prediction || null,
+      confidence_score: prediction?.confidence || null,
+      prediction_timestamp: prediction ? nowET : null,
     };
 
     const { error: insertError } = await supabase
