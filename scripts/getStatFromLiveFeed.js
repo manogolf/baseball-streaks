@@ -7,7 +7,12 @@ export async function getStatFromLiveFeed(gameId, playerId, propType) {
     const res = await fetch(url);
     const json = await res.json();
     const allPlays = json?.liveData?.plays?.allPlays || [];
-    const normalizedType = propType.toLowerCase().replace(/[_\s]/g, "");
+    const normalizedType = (propType || "")
+      .toLowerCase()
+      .replace(/[\s+_]/g, "")
+      .trim();
+
+    console.log("🔍 Normalized propType:", `"${normalizedType}"`);
 
     let stat = 0;
 

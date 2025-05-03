@@ -1,9 +1,9 @@
 // src/scripts/fetchHotStreaks.js
 
-import { createClient } from '@supabase/supabase-js';
-import fetch from 'node-fetch';
+import { createClient } from "@supabase/supabase-js";
+import fetch from "node-fetch";
 
-const supabaseUrl = 'https://cnwwhhmpashijqbspvhf.supabase.co';
+const supabaseUrl = "https://cnwwhhmpashijqbspvhf.supabase.co";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Use env var, do not hardcode
 const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -11,14 +11,14 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const LOOKBACK_GAMES = 25; // Look back further
 
 const trackedStreaks = [
-  { category: 'hits', group: 'hitting', minGames: 2 }, // 2 hits games in a row
-  { category: 'strikeouts', group: 'pitching', minGames: 2 }, // 2 strikeout games
-  { category: 'homeRuns', group: 'hitting', minGames: 1 }, // just 1 game with a homer!
-  { category: 'walks', group: 'hitting', minGames: 2 }, // 2 walks games
+  { category: "hits", group: "hitting", minGames: 2 }, // 2 hits games in a row
+  { category: "strikeouts", group: "pitching", minGames: 2 }, // 2 strikeout games
+  { category: "homeRuns", group: "hitting", minGames: 1 }, // just 1 game with a homer!
+  { category: "walks", group: "hitting", minGames: 2 }, // 2 walks games
 ];
 
 export async function fetchHotStreaks() {
-  console.log('🚀 Fetching MLB Streaks...');
+  console.log("🚀 Fetching MLB Streaks...");
 
   try {
     const streakResults = [];
@@ -36,7 +36,7 @@ export async function fetchHotStreaks() {
       for (const player of leaders) {
         const playerId = player.person.id;
         const playerName = player.person.fullName;
-        const teamName = player.team?.name || 'Unknown';
+        const teamName = player.team?.name || "Unknown";
 
         const gameLogRes = await fetch(
           `https://statsapi.mlb.com/api/v1/people/${playerId}/stats?stats=gameLog&season=2025&group=${group}`
@@ -51,8 +51,8 @@ export async function fetchHotStreaks() {
 
           const value = stat[category] ?? 0;
           if (
-            (category === 'strikeouts' && value >= 5) ||
-            (category !== 'strikeouts' && value > 0)
+            (category === "strikeouts" && value >= 5) ||
+            (category !== "strikeouts" && value > 0)
           ) {
             streak++;
           } else {
@@ -74,12 +74,12 @@ export async function fetchHotStreaks() {
 
     // Pull all previously active streaks
     const { data: existingStreaks, error: fetchError } = await supabase
-      .from('mlb_live_streaks')
-      .select('*')
-      .eq('is_active', true);
+      .from("mlb_live_streaks")
+      .select("*")
+      .eq("is_active", true);
 
     if (fetchError) {
-      console.error('❌ Error fetching existing streaks:', fetchError.message);
+      console.error("❌ Error fetching existing streaks:", fetchError.message);
       return;
     }
 
@@ -87,7 +87,10 @@ export async function fetchHotStreaks() {
     const activeStreaksMap = new Map();
     if (existingStreaks) {
       for (const streak of existingStreaks) {
-        activeStreaksMap.set(`${streak.player_name}_${streak.prop_type}`, streak);
+        activeStreaksMap.set(
+          `${streak.player_name}_${streak.prop_type}`,
+          streak
+        );
       }
     }
 
@@ -127,20 +130,20 @@ export async function fetchHotStreaks() {
 
     // 🚀 Batch upsert
     const { error: upsertError } = await supabase
-      .from('mlb_live_streaks')
-      .upsert(updates, { onConflict: ['player_name', 'prop_type'] });
+      .from("mlb_live_streaks")
+      .upsert(updates, { onConflict: ["player_name", "prop_type"] });
 
     if (upsertError) {
-      console.error('❌ Error saving updated streaks:', upsertError.message);
+      console.error("❌ Error saving updated streaks:", upsertError.message);
     } else {
       console.log(
-        `✅ Streaks updated successfully. Active: ${streakResults.length}, Broken: ${
-          updates.length - streakResults.length
-        }`
+        `✅ Streaks updated successfully. Active: ${
+          streakResults.length
+        }, Broken: ${updates.length - streakResults.length}`
       );
     }
   } catch (error) {
-    console.error('❌ Error fetching hot streaks:', error.message);
+    console.error("❌ Error fetching hot streaks:", error.message);
   }
 }
 
@@ -149,4 +152,4 @@ function capitalizeFirstLetter(str) {
 }
 
 // 🔥 Auto-run if direct called (optional)
-// fetchHotStreaks();
+fetchHotStreaks();
