@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+import fetch from "node-fetch";
 
 // Extracts stat from live feed JSON based on prop type
 export async function getStatFromLiveFeed(gameId, playerId, propType) {
@@ -7,6 +7,7 @@ export async function getStatFromLiveFeed(gameId, playerId, propType) {
     const res = await fetch(url);
     const json = await res.json();
     const allPlays = json?.liveData?.plays?.allPlays || [];
+    const normalizedType = propType.toLowerCase().replace(/[_\s]/g, "");
 
     let stat = 0;
 
@@ -22,44 +23,46 @@ export async function getStatFromLiveFeed(gameId, playerId, propType) {
 
       if (!isBatter && !isPitcher) continue;
 
-      switch (propType) {
-        case 'Hits':
-          if (isBatter && result.eventType === 'hit') stat++;
+      switch (normalizedType) {
+        case "hits":
+          if (isBatter && result.eventType === "hit") stat++;
           break;
-        case 'Walks':
-          if (isBatter && result.eventType === 'walk') stat++;
+        case "walks":
+          if (isBatter && result.eventType === "walk") stat++;
           break;
-        case 'Singles':
-          if (isBatter && result.event === 'Single') stat++;
+        case "singles":
+          if (isBatter && result.event === "Single") stat++;
           break;
-        case 'RBIs':
+        case "rbis":
           if (isBatter) stat += result.rbi ?? 0;
           break;
-        case 'Runs Scored':
+        case "runsscored":
           if (
             runners.some(
-              (r) => r.movement?.end === 'score' && r.details?.runner?.id === Number(playerId)
+              (r) =>
+                r.movement?.end === "score" &&
+                r.details?.runner?.id === Number(playerId)
             )
           ) {
             stat++;
           }
           break;
-        case 'Stolen Bases':
+        case "stolenbases":
           if (
-            play.eventType === 'stolen_base' &&
+            play.eventType === "stolen_base" &&
             runners.some((r) => r.details?.runner?.id === Number(playerId))
           ) {
             stat++;
           }
           break;
-        case 'Strikeouts (Pitching)':
-          if (isPitcher && result.event === 'Strikeout') stat++;
+        case "strikeoutspitching":
+          if (isPitcher && result.event === "Strikeout") stat++;
           break;
-        case 'Strikeouts (Batting)':
-          if (isBatter && result.event === 'Strikeout') stat++;
+        case "strikeoutsbatting":
+          if (isBatter && result.event === "Strikeout") stat++;
           break;
-        case 'Hits Allowed':
-          if (isPitcher && result.eventType === 'hit') stat++;
+        case "hitsallowed":
+          if (isPitcher && result.eventType === "hit") stat++;
           break;
         default:
           console.warn(`⚠️ Unknown propType: ${propType}`);
@@ -69,7 +72,10 @@ export async function getStatFromLiveFeed(gameId, playerId, propType) {
 
     return stat;
   } catch (err) {
-    console.error(`❌ Failed to fetch live feed for game ${gameId}:`, err.message);
+    console.error(
+      `❌ Failed to fetch live feed for game ${gameId}:`,
+      err.message
+    );
     return null;
   }
 }

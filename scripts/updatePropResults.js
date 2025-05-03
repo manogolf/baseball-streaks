@@ -37,6 +37,8 @@ function determineStatus(actual, line, overUnder) {
 }
 
 function getStatFromBoxscore(boxscore, playerId, propType) {
+  // Normalize propType casing/format
+  const normalizedType = propType.toLowerCase().replace(/[_\s]/g, "");
   const stats = boxscore?.players?.[`ID${playerId}`]?.stats;
   if (!stats) {
     console.warn(`⚠️ No stats found for player ID: ${playerId}`);
@@ -54,7 +56,7 @@ function getStatFromBoxscore(boxscore, playerId, propType) {
     ? Math.floor(parseFloat(pitching.inningsPitched) * 3)
     : 0;
 
-  switch (propType) {
+  switch (normalizedType) {
     case "hits":
       return batting.hits ?? 0;
     case "strikeouts":
