@@ -24,6 +24,12 @@ export async function getStatFromLiveFeed(gameId, playerId, propType) {
       if (!isBatter && !isPitcher) continue;
 
       switch (normalizedType) {
+        case "walksallowed":
+          if (isPitcher && result.eventType === "walk") stat++;
+          break;
+        case "outsrecorded":
+          if (isPitcher && result.outsOnPlay) stat += result.outsOnPlay;
+          break;
         case "hits":
           if (isBatter && result.eventType === "hit") stat++;
           break;
@@ -64,6 +70,52 @@ export async function getStatFromLiveFeed(gameId, playerId, propType) {
         case "hitsallowed":
           if (isPitcher && result.eventType === "hit") stat++;
           break;
+        case "earnedruns":
+          if (isPitcher && result.event === "Home Run") stat += result.rbi ?? 0;
+          break;
+        case "totalbases":
+          if (isBatter) {
+            const baseMap = {
+              Single: 1,
+              Double: 2,
+              Triple: 3,
+              HomeRun: 4,
+            };
+            const bases = baseMap[result.event] || 0;
+            stat += bases;
+          }
+          break;
+        case "hitsrunsrbis":
+          if (isBatter) {
+            stat += result.rbi ?? 0;
+            if (result.eventType === "hit") stat++; // count hit
+            if (
+              runners.some(
+                (r) =>
+                  r.movement?.end === "score" &&
+                  r.details?.runner?.id === Number(playerId)
+              )
+            ) {
+              stat++; // count run scored
+            }
+          }
+          break;
+
+        case "runsrbis":
+          if (isBatter) {
+            stat += result.rbi ?? 0;
+            if (
+              runners.some(
+                (r) =>
+                  r.movement?.end === "score" &&
+                  r.details?.runner?.id === Number(playerId)
+              )
+            ) {
+              stat++;
+            }
+          }
+          break;
+
         default:
           console.warn(`⚠️ Unknown propType: ${propType}`);
           return null;

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import PropTracker from "../components/PropTracker"; // 📅 Calendar
 import PlayerPropsTable from "../components/PlayerPropsTable"; // 📊 Table
 import PlayerPropForm from "../components/PlayerPropForm"; // 📝 Form
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext.jsx";
 
 export default function PropsDashboard() {
   const { user } = useAuth();

@@ -93,6 +93,10 @@ function getStatFromBoxscore(boxscore, playerId, propType) {
       return batting.strikeOuts ?? 0;
     case "Outs Recorded":
       return outsRecorded;
+    case "hitsrunsrbis":
+      return (batting.hits ?? 0) + (batting.runs ?? 0) + (batting.rbi ?? 0);
+    case "runsrbis":
+      return (batting.runs ?? 0) + (batting.rbi ?? 0);
     case "Runs + RBIs":
       return (batting.runs ?? 0) + (batting.rbi ?? 0);
     default:
@@ -101,7 +105,7 @@ function getStatFromBoxscore(boxscore, playerId, propType) {
   }
 }
 
-async function updatePropStatus(prop) {
+export async function updatePropStatus(prop) {
   const url = `${MLB_API_BASE}/game/${prop.game_id}/boxscore`;
   const res = await fetch(url);
   const json = await res.json();
