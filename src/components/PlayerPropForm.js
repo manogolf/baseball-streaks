@@ -135,21 +135,24 @@ const PlayerPropForm = () => {
     setSubmitting(true);
 
     const { player_name, team, prop_type, prop_value, game_date } = formData;
-    if (!prop_type || !prop_value || !player_name || !team || !game_date) {
+
+    if (!player_name || !team || !prop_type || !prop_value || !game_date) {
       setError("All fields are required for prediction.");
       setSubmitting(false);
       return;
     }
 
     try {
-      const apiUrl = `${process.env.REACT_APP_API_URL}/predict`;
+      const apiUrl = `${
+        process.env.REACT_APP_API_URL || "http://localhost:8001"
+      }/predict`;
 
-      const features = await buildFeatureVector(
-        formData.player_name,
-        formData.team,
-        formData.prop_type,
-        formData.game_date
-      );
+      const features = await buildFeatureVector({
+        player_name,
+        team,
+        prop_type,
+        game_date,
+      });
 
       if (!features) {
         setError("Could not generate features for prediction.");
@@ -157,12 +160,20 @@ const PlayerPropForm = () => {
         return;
       }
 
+      console.log("📤 Sending prediction request to:", apiUrl);
+      console.log("🧠 Features payload:", {
+        prop_type,
+        prop_value: parseFloat(prop_value),
+        ...features,
+      });
+
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prop_type,
           prop_value: parseFloat(prop_value),
+          ...features,
         }),
       });
 
@@ -179,6 +190,7 @@ const PlayerPropForm = () => {
       setSuccessToast(true);
       setTimeout(() => setSuccessToast(false), 4000);
     } catch (err) {
+      console.error("❌ Prediction error:", err);
       setError("Prediction failed or timed out.");
       setTimeout(() => setError(""), 4000);
     } finally {

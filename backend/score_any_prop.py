@@ -5,7 +5,7 @@ import pandas as pd
 import joblib
 import os
 
-MODEL_DIR = "models"
+MODEL_DIR = "../models"
 
 # Central function to score any prop
 def predict_prop(prop_type: str, input_data: dict) -> dict:
@@ -16,7 +16,10 @@ def predict_prop(prop_type: str, input_data: dict) -> dict:
         'prop_value', 'rolling_result_avg_7', 'hit_streak', 'win_streak',
         'is_home', 'opponent_avg_win_rate' (optional)
     """
-    model_path = os.path.join(MODEL_DIR, f"{prop_type}_model.pkl")
+    normalized_type = prop_type.strip()
+    model_path = os.path.join(MODEL_DIR, f"{normalized_type}_model.pkl")
+    print(f"📂 Looking for model file: {model_path}")
+
     if not os.path.exists(model_path):
         return {"error": f"Model not found for prop type: {prop_type}"}
     
