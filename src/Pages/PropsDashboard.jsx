@@ -11,17 +11,6 @@ export default function PropsDashboard() {
   return (
     <div className="max-w-5xl mx-auto space-y-6 px-4 pb-10">
       <div className="bg-white p-4 rounded-xl shadow">
-        <PropTracker
-          selectedDate={selectedDate}
-          setSelectedDate={setSelectedDate}
-        />
-      </div>
-
-      <div className="bg-white p-4 rounded-xl shadow">
-        <PlayerPropsTable selectedDate={selectedDate} />
-      </div>
-
-      <div className="bg-white p-4 rounded-xl shadow">
         {user ? (
           <PlayerPropForm />
         ) : (
@@ -33,6 +22,17 @@ export default function PropsDashboard() {
             to add props.
           </div>
         )}
+      </div>
+
+      <div className="bg-white p-4 rounded-xl shadow">
+        <PlayerPropsTable selectedDate={selectedDate} />
+      </div>
+
+      <div className="bg-white p-4 rounded-xl shadow">
+        <PropTracker
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+        />
       </div>
     </div>
   );

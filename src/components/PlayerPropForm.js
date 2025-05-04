@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabaseClient.js";
 import { getGamePkForTeamOnDate } from "../utils/fetchGameID.js";
 import { DateTime } from "luxon";
 import { useAuth } from "../context/AuthContext.jsx";
+import { buildFeatureVector } from "../utils/buildFeatureVector.js";
 
 const teams = [
   "ATL",
@@ -36,6 +37,53 @@ const teams = [
   "TOR",
   "WSH",
 ];
+
+const handlePredict = async () => {
+  setError("");
+  setPrediction(null);
+  setSubmitting(true);
+
+  const { player_name, team, prop_type, prop_value, game_date } = formData;
+
+  try {
+    const features = await buildFeatureVector(
+      player_name,
+      team,
+      prop_type,
+      game_date
+    );
+    if (!features) throw new Error("Failed to build feature vector");
+
+    const apiUrl = `${process.env.REACT_APP_API_URL}/predict`;
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prop_type,
+        prop_value: parseFloat(prop_value),
+        ...features,
+      }),
+    });
+
+    if (!response.ok) throw new Error("Prediction API returned error");
+
+    const result = await response.json();
+    setPrediction({
+      prediction: result.prediction,
+      confidence: result.probability,
+    });
+
+    const randomIndex = Math.floor(Math.random() * successMessages.length);
+    setSuccessMessage(successMessages[randomIndex]);
+    setSuccessToast(true);
+    setTimeout(() => setSuccessToast(false), 4000);
+  } catch (err) {
+    setError("Prediction failed or timed out.");
+    setTimeout(() => setError(""), 4000);
+  } finally {
+    setSubmitting(false);
+  }
+};
 
 const PlayerPropForm = () => {
   const todayET = DateTime.now().setZone("America/New_York").toISODate();
@@ -86,26 +134,35 @@ const PlayerPropForm = () => {
     setPrediction(null);
     setSubmitting(true);
 
-    const { prop_type, prop_value } = formData;
-    if (!prop_type || !prop_value) {
-      setError("Prop type and value are required to predict.");
+    const { player_name, team, prop_type, prop_value, game_date } = formData;
+    if (!prop_type || !prop_value || !player_name || !team || !game_date) {
+      setError("All fields are required for prediction.");
       setSubmitting(false);
       return;
     }
 
     try {
       const apiUrl = `${process.env.REACT_APP_API_URL}/predict`;
+
+      const features = await buildFeatureVector(
+        formData.player_name,
+        formData.team,
+        formData.prop_type,
+        formData.game_date
+      );
+
+      if (!features) {
+        setError("Could not generate features for prediction.");
+        setSubmitting(false);
+        return;
+      }
+
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prop_type,
           prop_value: parseFloat(prop_value),
-          rolling_result_avg_7: 1.3,
-          hit_streak: 3,
-          win_streak: 2,
-          is_home: 1,
-          opponent_avg_win_rate: 0.53,
         }),
       });
 
@@ -190,7 +247,11 @@ const PlayerPropForm = () => {
         over_under: "",
         game_date: todayET,
       });
+
       setPrediction(null);
+      setSuccessMessage("✅ Prop added successfully. Good luck!");
+      setSuccessToast(true);
+      setTimeout(() => setSuccessToast(false), 4000);
     }
 
     setSubmitting(false);
@@ -274,8 +335,12 @@ const PlayerPropForm = () => {
         </button>
         <button
           type="submit"
-          disabled={submitting}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          disabled={submitting || !prediction}
+          className={`px-4 py-2 rounded text-white ${
+            submitting || !prediction
+              ? "bg-blue-300 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700"
+          }`}
         >
           Add Prop
         </button>
@@ -297,6 +362,12 @@ const PlayerPropForm = () => {
       {successToast && (
         <div className="fixed bottom-4 right-4 bg-green-100 text-green-800 px-4 py-2 rounded shadow-lg z-50">
           {successMessage}
+        </div>
+      )}
+
+      {!prediction && (
+        <div className="col-span-2 text-yellow-600 text-sm mt-1">
+          ⚠️ You must run a prediction before submitting a prop.
         </div>
       )}
     </form>
