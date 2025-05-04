@@ -1,8 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import sys
-sys.path.append("src/scripts")
 from score_any_prop import predict_prop
 
 
