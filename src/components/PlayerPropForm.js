@@ -161,9 +161,15 @@ const PlayerPropForm = () => {
       }
 
       console.log("📤 Sending prediction request to:", apiUrl);
-      console.log("🧠 Features payload:", {
+
+      // 🔍 Diagnostic logs
+      console.log("🔎 Raw formData.over_under:", formData.over_under);
+      console.log("🔽 Lowercased value:", formData.over_under.toLowerCase());
+
+      console.log("🧠 Full prediction payload:", {
         prop_type,
         prop_value: parseFloat(prop_value),
+        over_under: formData.over_under.toLowerCase(), // ✅ log what you’re actually sending
         ...features,
       });
 
@@ -173,6 +179,7 @@ const PlayerPropForm = () => {
         body: JSON.stringify({
           prop_type,
           prop_value: parseFloat(prop_value),
+          over_under: formData.over_under.toLowerCase(), // ✅ final payload
           ...features,
         }),
       });
@@ -233,7 +240,6 @@ const PlayerPropForm = () => {
       team,
       prop_type,
       prop_value: parseFloat(prop_value),
-      over_under,
       game_date,
       game_id,
       status: "pending",
@@ -241,6 +247,7 @@ const PlayerPropForm = () => {
       predicted_outcome: prediction?.prediction || null,
       confidence_score: prediction?.confidence || null,
       prediction_timestamp: prediction ? nowET : null,
+      over_under: formData.over_under,
     };
 
     const { error: insertError } = await supabase

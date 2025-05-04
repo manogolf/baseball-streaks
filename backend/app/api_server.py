@@ -1,7 +1,8 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from app.score_any_prop import predict_prop
+from backend.app.score_any_prop import predict_prop
+
 
 
 
@@ -24,6 +25,7 @@ class PropInput(BaseModel):
     win_streak: int
     is_home: int
     opponent_avg_win_rate: float | None = 0
+    over_under: str
 
 @app.post("/predict")
 def predict(input: PropInput):
