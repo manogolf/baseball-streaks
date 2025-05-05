@@ -1,0 +1,22 @@
+name: Token Test Push
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Create test file
+        run: echo "Test at $(date)" > token_test.txt
+
+      - name: Commit and push
+        run: |
+          git config --global user.name "token-tester"
+          git config --global user.email "token@test.com"
+          git add token_test.txt
+          git commit -m "Test token push" || echo "Nothing to commit"
+          git push https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git main
