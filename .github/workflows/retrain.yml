@@ -27,10 +27,11 @@ jobs:
 
       - name: Commit updated models
         env:
-          GH_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global user.name "auto-trainer"
           git config --global user.email "auto@trainer.bot"
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
           git add models/*.pkl
           git commit -m "🤖 Auto-retrained models" || echo "No changes to commit"
-          git push https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git main
+          git push origin main
