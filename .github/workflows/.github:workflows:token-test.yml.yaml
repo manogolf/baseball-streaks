@@ -1,22 +1,36 @@
-name: Token Test Push
+name: Retrain Models
 
 on:
+  schedule:
+    - cron: "0 12 * * *" # Daily at 4 AM UTC
   workflow_dispatch:
 
 jobs:
-  test:
+  retrain:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Create test file
-        run: echo "Test at $(date)" > token_test.txt
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
 
-      - name: Commit and push
+      - name: Install dependencies
         run: |
-          git config --global user.name "token-tester"
-          git config --global user.email "token@test.com"
-          git add token_test.txt
-          git commit -m "Test token push" || echo "Nothing to commit"
-          git push https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git main
+          pip install -r requirements.txt
+
+      - name: Run retraining script
+        run: python backend/scripts/retrain_all_models.py
+
+      - name: Commit updated models
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          git config --global user.name "auto-trainer"
+          git config --global user.email "auto@trainer.bot"
+          git add models/*.pkl
+          git commit -m "🤖 Auto-retrained models" || echo "No changes to commit"
+          git push https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git main
