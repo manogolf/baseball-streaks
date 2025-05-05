@@ -23,9 +23,9 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run retraining script
-        run: python backend/scripts/retrain_all_models.py
+        run: python backend/scripts/retrain_all_models
 
-       - name: Commit updated models
+      - name: Commit updated models
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
         run: |
@@ -34,4 +34,3 @@ jobs:
           git add models/*.pkl
           git commit -m "🤖 Auto-retrained models" || echo "No changes to commit"
           git push https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git main
-      
