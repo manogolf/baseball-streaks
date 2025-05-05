@@ -19,11 +19,12 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
+
         run: |
           pip install -r requirements.txt
 
       - name: Run retraining script
-        run: python backend/scripts/retrain_all_models
+        run: python backend/scripts/retrain_all_models.py
 
       - name: Commit updated models
         env:

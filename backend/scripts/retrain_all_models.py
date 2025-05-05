@@ -1,4 +1,4 @@
-# backend/scripts/retrain_all_models.py
+# backend/scripts/retrain_all_models.py and do it daily
 
 from pathlib import Path
 from train_generic_model import train_and_save_model
@@ -26,3 +26,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
