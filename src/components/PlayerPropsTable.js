@@ -143,13 +143,13 @@ const PlayerPropsTable = () => {
         </thead>
         <tbody>
           {sortedProps.map((p) => {
-            let statusKey = (p.status || "pending").toLowerCase();
-            let label = statusKey.charAt(0).toUpperCase() + statusKey.slice(1);
-
-            if (statusKey === "resolved" && p.outcome) {
-              statusKey = p.outcome.toLowerCase();
-              label = statusKey.charAt(0).toUpperCase() + statusKey.slice(1);
-            }
+            const statusKey = (
+              p.outcome ??
+              p.status ??
+              "pending"
+            ).toLowerCase();
+            const label =
+              statusKey.charAt(0).toUpperCase() + statusKey.slice(1);
 
             return (
               <tr
