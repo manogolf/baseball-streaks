@@ -25,10 +25,13 @@ jobs:
       - name: Run retraining script
         run: python backend/scripts/retrain_all_models.py
 
-      - name: Commit updated models
+       - name: Commit updated models
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@users.noreply.github.com"
+          git config --global user.name "auto-trainer"
+          git config --global user.email "auto@trainer.bot"
           git add models/*.pkl
           git commit -m "🤖 Auto-retrained models" || echo "No changes to commit"
-          git push origin main
+          git push https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git main
+      
