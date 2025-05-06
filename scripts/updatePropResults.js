@@ -199,19 +199,18 @@ async function getPendingProps() {
   const { data, error } = await supabase
     .from("player_props")
     .select("*")
-    .in("status", ["win", "loss", "push"])
-    .gte("game_date", "2025-03-01"); // Adjust for your full season range
+    .eq("status", "pending")
+    .or(
+      `game_date.lt.${today},and(game_date.eq.${today},game_time.lte.${currentTimeEncoded})`
+    )
+    .not("game_time", "is", null)
+    .order("game_date", { ascending: false })
+    .order("game_time", { ascending: false });
 
-  if (error) {
-    console.error("❌ Supabase error:", error.message);
-    throw error;
-  }
+  if (error) throw error;
 
-  if (!data || data.length === 0) {
-    console.warn("⚠️ No matching resolved props found.");
-  } else {
-    console.log(`📊 Found ${data.length} resolved props for review`);
-  }
+  console.log(`📅 Today ET: ${today} @ ${currentTime}`);
+  console.log("📊 First pending prop:", data?.[0]);
 
   return data;
 }
