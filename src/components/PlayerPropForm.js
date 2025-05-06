@@ -65,13 +65,13 @@ const handlePredict = async () => {
       }),
     });
 
+    // ✅ THIS WAS MISSING:
+    const prediction = await response.json();
+
     if (!response.ok) throw new Error("Prediction API returned error");
     console.log("📩 Prediction API response:", prediction);
     console.log("🎯 predicted_outcome:", prediction.predicted_outcome);
     console.log("📈 confidence_score:", prediction.confidence_score);
-
-    // ✅ THIS WAS MISSING:
-    const prediction = await response.json();
 
     const result = await response.json();
     setPrediction({
