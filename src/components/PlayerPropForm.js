@@ -46,14 +46,6 @@ const handlePredict = async () => {
   const { player_name, team, prop_type, prop_value, game_date } = formData;
 
   try {
-    const features = await buildFeatureVector(
-      player_name,
-      team,
-      prop_type,
-      game_date
-    );
-    if (!features) throw new Error("Failed to build feature vector");
-
     const apiUrl = `${process.env.REACT_APP_API_URL}/predict`;
     const response = await fetch(apiUrl, {
       method: "POST",
@@ -65,29 +57,29 @@ const handlePredict = async () => {
       }),
     });
 
-    // ✅ THIS WAS MISSING:
     const prediction = await response.json();
 
-    if (!response.ok) throw new Error("Prediction API returned error");
     console.log("📩 Prediction API response:", prediction);
     console.log("🎯 predicted_outcome:", prediction.predicted_outcome);
     console.log("📈 confidence_score:", prediction.confidence_score);
 
-    const result = await response.json();
-    setPrediction({
-      prediction: result.prediction,
-      confidence: result.probability,
-    });
+    // You should see this in Supabase if this step succeeds
+    const { error } = await supabase
+      .from("player_props")
+      .update({
+        predicted_outcome: prediction.predicted_outcome,
+        confidence_score: prediction.confidence_score,
+        prediction_timestamp: new Date().toISOString(),
+      })
+      .eq("id", insertedPropId); // Make sure insertedPropId is defined correctly
 
-    const randomIndex = Math.floor(Math.random() * successMessages.length);
-    setSuccessMessage(successMessages[randomIndex]);
-    setSuccessToast(true);
-    setTimeout(() => setSuccessToast(false), 4000);
+    if (error) {
+      console.error("❌ Supabase update failed:", error.message);
+    } else {
+      console.log("✅ Prediction saved to Supabase");
+    }
   } catch (err) {
-    setError("Prediction failed or timed out.");
-    setTimeout(() => setError(""), 4000);
-  } finally {
-    setSubmitting(false);
+    console.error("🔥 Prediction handling failed:", err);
   }
 };
 
