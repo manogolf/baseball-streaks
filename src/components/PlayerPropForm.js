@@ -67,6 +67,13 @@ const handlePredict = async () => {
 
     if (!response.ok) throw new Error("Prediction API returned error");
 
+    // ✅ THIS WAS MISSING:
+    const prediction = await response.json();
+
+    console.log("📩 Prediction API response:", prediction);
+    console.log("🎯 predicted_outcome:", prediction.predicted_outcome);
+    console.log("📈 confidence_score:", prediction.confidence_score);
+
     const result = await response.json();
     setPrediction({
       prediction: result.prediction,
