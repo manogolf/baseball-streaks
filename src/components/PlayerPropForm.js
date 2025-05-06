@@ -159,9 +159,17 @@ const PlayerPropForm = () => {
     setPrediction(null);
     setSubmitting(true);
 
-    const { player_name, team, prop_type, prop_value, game_date } = formData;
+    const { player_name, team, prop_type, prop_value, game_date, over_under } =
+      formData;
 
-    if (!player_name || !team || !prop_type || !prop_value || !game_date) {
+    if (
+      !player_name ||
+      !team ||
+      !prop_type ||
+      !prop_value ||
+      !game_date ||
+      !over_under
+    ) {
       setError("All fields are required for prediction.");
       setSubmitting(false);
       return;
@@ -185,37 +193,28 @@ const PlayerPropForm = () => {
         return;
       }
 
-      console.log("📤 Sending prediction request to:", apiUrl);
-
-      // 🔍 Diagnostic logs
-      console.log("🔎 Raw formData.over_under:", formData.over_under);
-      console.log("🔽 Lowercased value:", formData.over_under.toLowerCase());
-
-      console.log("🧠 Full prediction payload:", {
+      const predictionPayload = {
         prop_type,
         prop_value: parseFloat(prop_value),
-        over_under: formData.over_under.toLowerCase(), // ✅ log what you’re actually sending
+        over_under: over_under.toLowerCase(),
         ...features,
-      });
+      };
+
+      console.log("📤 Sending prediction request to:", apiUrl);
+      console.log("🧠 Full prediction payload:", predictionPayload);
 
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prop_type,
-          prop_value: parseFloat(prop_value),
-          over_under: formData.over_under.toLowerCase(), // ✅ final payload
-          ...features,
-        }),
+        body: JSON.stringify(predictionPayload),
       });
 
       if (!response.ok) throw new Error("Prediction API returned error");
 
       const result = await response.json();
-      setPrediction({
-        prediction: result.prediction,
-        confidence: result.probability,
-      });
+      console.log("📩 Prediction API response:", result);
+
+      setPrediction(result);
 
       const randomIndex = Math.floor(Math.random() * successMessages.length);
       setSuccessMessage(successMessages[randomIndex]);
@@ -269,8 +268,8 @@ const PlayerPropForm = () => {
       game_id,
       status: "pending",
       created_et: nowET,
-      predicted_outcome: prediction?.prediction || null,
-      confidence_score: prediction?.confidence || null,
+      predicted_outcome: prediction?.predicted_outcome || null, // ✅ match key from handlePredict
+      confidence_score: prediction?.confidence_score || null, // ✅ match key from handlePredict
       prediction_timestamp: prediction ? nowET : null,
       over_under: formData.over_under,
     };
@@ -393,18 +392,18 @@ const PlayerPropForm = () => {
       {prediction && (
         <div className="col-span-2 mt-4 p-4 border rounded bg-gray-50">
           <p>
-            <strong>Prediction:</strong> {prediction.prediction}
+            <strong>Prediction:</strong> {prediction.predicted_outcome}
           </p>
           <p>
             <strong>Confidence:</strong>{" "}
-            {(prediction.confidence * 100).toFixed(1)}%
+            {(prediction.confidence_score * 100).toFixed(1)}%
           </p>
         </div>
       )}
 
       {error && <div className="col-span-2 text-red-600">{error}</div>}
       {successToast && (
-        <div className="fixed bottom-4 right-4 bg-green-100 text-green-800 px-4 py-2 rounded shadow-lg z-50">
+        <div className="fixed top-16 right-4 bg-green-100 text-green-800 px-4 py-2 rounded shadow-lg z-50">
           {successMessage}
         </div>
       )}

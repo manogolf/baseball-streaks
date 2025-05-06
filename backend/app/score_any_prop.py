@@ -12,17 +12,26 @@ MODEL_DIR = PROJECT_ROOT / "models"
 # Canonical mapping for all accepted prop types
 PROP_MODEL_MAP = {
     "hits": "Hits",
-    "home runs": "Home Runs",
+    "home runs": "Home_Runs",
     "rbis": "RBIs",
-    "strikeouts (pitching)": "Strikeouts (Pitching)",
-    "strikeouts (batting)": "Strikeouts (Batting)",
-    "runs scored": "Runs Scored",
+    "strikeouts (pitching)": "Strikeouts_(Pitching)",
+    "strikeouts (batting)": "Strikeouts_(Batting)",
+    "runs scored": "Runs_Scored",
     "walks": "Walks",
     "doubles": "Doubles",
     "triples": "Triples",
-    "outs recorded": "Outs Recorded",
-    "earned runs": "Earned Runs"
+    "outs recorded": "Outs_Recorded",
+    "earned runs": "Earned_Runs",
+    "hits allowed": "Hits_Allowed",
+    "walks allowed": "Walks_Allowed",
+    "stolen bases": "Stolen_Bases",
+    "total bases": "Total_Bases",
+    "runs": "Runs",
+    "hits + runs + rbis": "Hits_+_Runs_+_RBIs",
+    "runs + rbis": "Runs_+_RBIs",
+    "singles": "Singles"
 }
+
 
 def predict_prop(prop_type: str, input_data: dict) -> dict:
     over_under = input_data.get("over_under", "under")  # default to under
