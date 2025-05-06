@@ -1,6 +1,7 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+dotenv.config(); // 👈 Explicitly load the .env file
+console.log("🧪 Loaded URL:", process.env.SUPABASE_URL);
 import { createClient } from "@supabase/supabase-js";
-import fetch from "node-fetch";
 import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
 import { DateTime } from "luxon";
 
@@ -10,6 +11,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const nowET = DateTime.now().setZone("America/New_York");
 const today = nowET.toISODate(); // '2025-05-03'
 const currentTime = nowET.toFormat("HH:mm"); // '16:25' for example
+const currentTimeEncoded = currentTime.replace(":", "%3A");
 
 const MLB_API_BASE = "https://statsapi.mlb.com/api/v1";
 
@@ -25,24 +27,30 @@ function findPlayerId(boxscore, targetName) {
 
   for (const [id, info] of Object.entries(allPlayers)) {
     const name = normalizeName(info?.person?.fullName || "");
-    if (name.includes(normalizedTarget)) {
+    console.log("🔍 Trying match:", name, "vs", normalizedTarget);
+
+    if (name === normalizedTarget) {
+      console.log("✅ Exact match found:", name);
       return id.replace("ID", "");
     }
   }
+
+  console.warn(`❌ No exact match for ${targetName}`);
   return null;
 }
 
 function determineStatus(actual, line, overUnder) {
+  const direction = overUnder?.toLowerCase(); // normalize casing
   if (actual === line) return "push";
-  return (actual > line && overUnder === "over") ||
-    (actual < line && overUnder === "under")
+  return (actual > line && direction === "over") ||
+    (actual < line && direction === "under")
     ? "win"
     : "loss";
 }
 
 function getStatFromBoxscore(boxscore, playerId, propType) {
   // Normalize propType casing/format
-  const normalizedType = propType.toLowerCase().replace(/[_\s]/g, "");
+  const normalizedType = propType.toLowerCase().replace(/[\s_()]/g, "");
   const stats = boxscore?.players?.[`ID${playerId}`]?.stats;
   if (!stats) {
     console.warn(`⚠️ No stats found for player ID: ${playerId}`);
@@ -59,62 +67,74 @@ function getStatFromBoxscore(boxscore, playerId, propType) {
   const outsRecorded = pitching?.inningsPitched
     ? Math.floor(parseFloat(pitching.inningsPitched) * 3)
     : 0;
+  console.log("🔍 Normalized propType:", normalizedType);
 
   switch (normalizedType) {
     case "hits":
       return batting.hits ?? 0;
     case "strikeouts":
-    case "Strikeouts (Pitching)":
+    case "strikeouts(pitching)":
       return pitching.strikeOuts ?? 0;
-    case "homeRuns":
+    case "homeruns":
       return batting.homeRuns ?? 0;
     case "walks":
       return batting.baseOnBalls ?? 0;
-    case "Total Bases":
+    case "totalbases":
       return (
         singles * 1 +
         (batting.doubles ?? 0) * 2 +
         (batting.triples ?? 0) * 3 +
         (batting.homeRuns ?? 0) * 4
       );
-    case "Hits + Runs + RBIs":
-      return (batting.hits ?? 0) + (batting.runs ?? 0) + (batting.rbi ?? 0);
-    case "Runs Scored":
-      return batting.runs ?? 0;
-    case "Doubles":
-      return batting.doubles ?? 0;
-    case "Singles":
-      return singles;
-    case "RBIs":
-      return batting.rbi ?? 0;
-    case "Stolen Bases":
-      return batting.stolenBases ?? 0;
-    case "Hits Allowed":
-      return pitching.hits ?? 0;
-    case "Walks Allowed":
-      return pitching.baseOnBalls ?? 0;
-    case "Strikeouts (Batting)":
-      return batting.strikeOuts ?? 0;
-    case "Outs Recorded":
-      return outsRecorded;
+    case "hits+runs+rbi":
     case "hitsrunsrbis":
       return (batting.hits ?? 0) + (batting.runs ?? 0) + (batting.rbi ?? 0);
+    case "runsscored":
+      return batting.runs ?? 0;
+    case "doubles":
+      return batting.doubles ?? 0;
+    case "singles":
+      return singles;
+    case "rbis":
+      return batting.rbi ?? 0;
+    case "stolenbases":
+      return batting.stolenBases ?? 0;
+    case "hitsallowed":
+      return pitching.hits ?? 0;
+    case "walksallowed":
+      return pitching.baseOnBalls ?? 0;
+    case "strikeouts(batting)":
+      return batting.strikeOuts ?? 0;
+    case "outsrecorded":
+      return outsRecorded;
     case "runsrbis":
+    case "runs+rbi":
       return (batting.runs ?? 0) + (batting.rbi ?? 0);
-    case "Runs + RBIs":
-      return (batting.runs ?? 0) + (batting.rbi ?? 0);
+    case "triples":
+      return batting.triples ?? 0;
     default:
-      console.warn(`⚠️ Unknown propType: ${propType}`);
+      console.warn(`⚠️ Unknown propType: ${propType} → ${normalizedType}`);
       return null;
   }
 }
 
 export async function updatePropStatus(prop) {
+  console.log(`📡 Fetching boxscore for game ${prop.game_id}`);
+
   const url = `${MLB_API_BASE}/game/${prop.game_id}/boxscore`;
+  console.log("🌐 Fetching URL:", url);
+
   const res = await fetch(url);
   const json = await res.json();
 
   const playerId = findPlayerId(json, prop.player_name);
+  console.log(`🆔 Found player ID for ${prop.player_name}:`, playerId);
+  const matchedName =
+    json.teams.home.players?.[`ID${playerId}`]?.person?.fullName ||
+    json.teams.away.players?.[`ID${playerId}`]?.person?.fullName;
+
+  console.log(`🧾 Matched boxscore name for ID ${playerId}:`, matchedName);
+
   if (!playerId) {
     console.warn(
       `⚠️ Player not found: ${prop.player_name} (likely didn't play)`
@@ -123,16 +143,18 @@ export async function updatePropStatus(prop) {
   }
 
   let actualValue = getStatFromBoxscore(json, playerId, prop.prop_type);
+  console.log(`📊 Boxscore value for ${prop.prop_type}:`, actualValue);
 
   if (actualValue === null) {
     console.warn(
-      `⚠️ No stat found for ${prop.prop_type} on ${prop.player_name}, trying live feed...`
+      `⚠️ No stat found in boxscore for ${prop.prop_type} on ${prop.player_name}, trying live feed...`
     );
     actualValue = await getStatFromLiveFeed(
       prop.game_id,
       playerId,
       prop.prop_type
     );
+    console.log(`📊 Live feed value for ${prop.prop_type}:`, actualValue);
   }
 
   if (actualValue === null) {
@@ -147,12 +169,16 @@ export async function updatePropStatus(prop) {
     prop.prop_value,
     prop.over_under
   );
+  console.log(
+    `🎯 Outcome determined: ${actualValue} vs line ${prop.prop_value} (${prop.over_under}) → ${outcome}`
+  );
+
   const { error } = await supabase
     .from("player_props")
     .update({
       result: actualValue,
       outcome,
-      status: "resolved",
+      status: outcome, // ✅ Set final status as "win", "loss", or "push"
       was_correct: prop.predicted_outcome
         ? outcome === prop.predicted_outcome
         : null,
@@ -169,17 +195,24 @@ export async function updatePropStatus(prop) {
     return true;
   }
 }
-
 async function getPendingProps() {
   const { data, error } = await supabase
     .from("player_props")
     .select("*")
-    .eq("status", "pending")
-    .or(
-      `game_date.lt.${today},and(game_date.eq.${today},game_time.lte.${currentTime},not(game_time.is.null))`
-    );
+    .in("status", ["win", "loss", "push"])
+    .gte("game_date", "2025-03-01"); // Adjust for your full season range
 
-  if (error) throw error;
+  if (error) {
+    console.error("❌ Supabase error:", error.message);
+    throw error;
+  }
+
+  if (!data || data.length === 0) {
+    console.warn("⚠️ No matching resolved props found.");
+  } else {
+    console.log(`📊 Found ${data.length} resolved props for review`);
+  }
+
   return data;
 }
 
@@ -206,3 +239,5 @@ export async function updatePropStatuses() {
   console.log(`⏭️ Skipped: ${skipped}`);
   console.log(`❌ Errors: ${errors}`);
 }
+
+updatePropStatuses();

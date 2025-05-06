@@ -11,9 +11,9 @@ async function backfillWasCorrect() {
 
   const { data, error } = await supabase
     .from("player_props")
-    .select("id, predicted_outcome, outcome")
+    .select("id, predicted_outcome, outcome, status")
     .is("was_correct", null)
-    .eq("status", "resolved")
+    .in("status", ["win", "loss"])
     .not("predicted_outcome", "is", null);
 
   if (error) {
@@ -25,7 +25,8 @@ async function backfillWasCorrect() {
 
   const updates = data.map((row) => ({
     id: row.id,
-    was_correct: row.predicted_outcome === row.outcome,
+    was_correct:
+      row.outcome === "push" ? null : row.predicted_outcome === row.outcome,
   }));
 
   for (const row of updates) {

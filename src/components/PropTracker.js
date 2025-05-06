@@ -1,7 +1,84 @@
 import { useEffect, useState } from "react";
 import { format, isValid } from "date-fns";
+import { DateTime } from "luxon";
 import { supabase } from "../lib/supabaseClient.js";
 import Calendar from "./ui/calendar.jsx";
+
+function AccuracyByPropType({ selectedDate }) {
+  const [accuracyData, setAccuracyData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!selectedDate) return;
+
+    const fetchAccuracy = async () => {
+      setLoading(true);
+      const { data, error } = await supabase.rpc("get_daily_prop_accuracy", {
+        target_date: DateTime.fromJSDate(selectedDate).toISODate(),
+      });
+
+      if (error) {
+        console.error("❌ Failed to fetch accuracy data:", error.message);
+        setAccuracyData([]);
+      } else {
+        setAccuracyData(data);
+      }
+      setLoading(false);
+    };
+
+    fetchAccuracy();
+  }, [selectedDate]);
+
+  return (
+    <div className="mt-12 border rounded-md p-3 shadow-sm bg-white w-full max-w-sm">
+      <h3 className="text-lg font-semibold mb-2">Prediction Accuracy</h3>
+      {loading ? (
+        <p className="text-sm text-gray-500">Loading...</p>
+      ) : accuracyData.length === 0 ? (
+        <p className="text-sm text-gray-500">No predictions for this day.</p>
+      ) : (
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="border-b">
+              <th className="text-left py-1">Prop Type</th>
+              <th className="text-right py-1">Total</th>
+              <th className="text-right py-1">Correct</th>
+              <th className="text-right py-1">Accuracy (%)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {accuracyData.map((row) => (
+              <tr key={row.prop_type} className="border-b">
+                <td className="py-1">{row.prop_type}</td>
+                <td className="text-right py-1">{row.total}</td>
+                <td className="text-right py-1">{row.correct}</td>
+                <td className="text-right py-1">{row.accuracy_pct}</td>
+              </tr>
+            ))}
+            {accuracyData.length > 1 && (
+              <tr className="border-t font-semibold">
+                <td className="py-1">Total</td>
+                <td className="text-right py-1">
+                  {accuracyData.reduce((sum, row) => sum + row.total, 0)}
+                </td>
+                <td className="text-right py-1">
+                  {accuracyData.reduce((sum, row) => sum + row.correct, 0)}
+                </td>
+                <td className="text-right py-1">
+                  {(
+                    (accuracyData.reduce((sum, row) => sum + row.correct, 0) /
+                      accuracyData.reduce((sum, row) => sum + row.total, 0)) *
+                    100
+                  ).toFixed(1)}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
 
 export default function PropTracker() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -75,20 +152,24 @@ export default function PropTracker() {
                 <td className="px-4 py-2">{prop.prop_value}</td>
                 <td className="px-4 py-2">
                   <span
-                    className={`px-2 py-1 rounded-full text-xs font-semibold
-      ${
-        prop.status === "win"
-          ? "bg-green-100 text-green-700"
-          : prop.status === "loss"
-          ? "bg-red-100 text-red-700"
-          : prop.status === "push"
-          ? "bg-yellow-100 text-yellow-700"
-          : prop.status === "expired"
-          ? "bg-gray-200 text-gray-500 italic"
-          : "bg-gray-100 text-gray-600"
-      }`}
+                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      prop.outcome === "win"
+                        ? "bg-green-100 text-green-700"
+                        : prop.outcome === "loss"
+                        ? "bg-red-100 text-red-700"
+                        : prop.outcome === "push"
+                        ? "bg-blue-100 text-blue-700"
+                        : prop.status === "expired"
+                        ? "bg-gray-200 text-gray-500 italic"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
                   >
-                    {prop.status || "Pending"}
+                    {prop.outcome
+                      ? prop.outcome.charAt(0).toUpperCase() +
+                        prop.outcome.slice(1)
+                      : prop.status === "expired"
+                      ? "Expired"
+                      : "Pending"}
                   </span>
                 </td>
 
@@ -122,6 +203,7 @@ export default function PropTracker() {
             onSelect={setSelectedDate}
             className="rounded-md border"
           />
+          <AccuracyByPropType selectedDate={selectedDateObj} />
         </div>
         <div className="flex-1">
           <h2 className="text-lg font-semibold mb-2">
