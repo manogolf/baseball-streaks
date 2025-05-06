@@ -45,41 +45,68 @@ const handlePredict = async () => {
 
   const { player_name, team, prop_type, prop_value, game_date } = formData;
 
+  if (!player_name || !team || !prop_type || !prop_value || !game_date) {
+    setError("All fields are required for prediction.");
+    setSubmitting(false);
+    return;
+  }
+
   try {
-    const apiUrl = `${process.env.REACT_APP_API_URL}/predict`;
+    const apiUrl = `${
+      process.env.REACT_APP_API_URL || "http://localhost:8001"
+    }/predict`;
+
+    const features = await buildFeatureVector({
+      player_name,
+      team,
+      prop_type,
+      game_date,
+    });
+
+    if (!features) {
+      setError("Could not generate features for prediction.");
+      setSubmitting(false);
+      return;
+    }
+
+    console.log("📤 Sending prediction request to:", apiUrl);
+    console.log("🔎 Raw formData.over_under:", formData.over_under);
+    console.log("🔽 Lowercased value:", formData.over_under.toLowerCase());
+    console.log("🧠 Full prediction payload:", {
+      prop_type,
+      prop_value: parseFloat(prop_value),
+      over_under: formData.over_under.toLowerCase(),
+      ...features,
+    });
+
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         prop_type,
         prop_value: parseFloat(prop_value),
+        over_under: formData.over_under.toLowerCase(),
         ...features,
       }),
     });
 
-    const prediction = await response.json();
+    if (!response.ok) throw new Error("Prediction API returned error");
 
-    console.log("📩 Prediction API response:", prediction);
-    console.log("🎯 predicted_outcome:", prediction.predicted_outcome);
-    console.log("📈 confidence_score:", prediction.confidence_score);
+    const result = await response.json();
+    console.log("📩 Prediction API response:", result);
 
-    // You should see this in Supabase if this step succeeds
-    const { error } = await supabase
-      .from("player_props")
-      .update({
-        predicted_outcome: prediction.predicted_outcome,
-        confidence_score: prediction.confidence_score,
-        prediction_timestamp: new Date().toISOString(),
-      })
-      .eq("id", insertedPropId); // Make sure insertedPropId is defined correctly
+    setPrediction(result); // 👈 sets { predicted_outcome, confidence_score }
 
-    if (error) {
-      console.error("❌ Supabase update failed:", error.message);
-    } else {
-      console.log("✅ Prediction saved to Supabase");
-    }
+    const randomIndex = Math.floor(Math.random() * successMessages.length);
+    setSuccessMessage(successMessages[randomIndex]);
+    setSuccessToast(true);
+    setTimeout(() => setSuccessToast(false), 4000);
   } catch (err) {
-    console.error("🔥 Prediction handling failed:", err);
+    console.error("❌ Prediction error:", err);
+    setError("Prediction failed or timed out.");
+    setTimeout(() => setError(""), 4000);
+  } finally {
+    setSubmitting(false);
   }
 };
 
