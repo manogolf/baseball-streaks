@@ -11,7 +11,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const nowET = DateTime.now().setZone("America/New_York");
 const today = nowET.toISODate(); // '2025-05-03'
 const currentTime = nowET.toFormat("HH:mm"); // '16:25' for example
-const currentTimeEncoded = currentTime.replace(":", "%3A");
+const currentTimeFormatted = currentTime; // or just use currentTime directly
 
 const MLB_API_BASE = "https://statsapi.mlb.com/api/v1";
 
@@ -200,19 +200,24 @@ async function getPendingProps() {
     .from("player_props")
     .select("*")
     .eq("status", "pending")
-    .or(
-      `game_date.lt.${today},and(game_date.eq.${today},game_time.lte.${currentTimeEncoded})`
-    )
     .not("game_time", "is", null)
+    .lte("game_date", today) // includes both today and earlier
     .order("game_date", { ascending: false })
     .order("game_time", { ascending: false });
 
   if (error) throw error;
 
-  console.log(`📅 Today ET: ${today} @ ${currentTime}`);
-  console.log("📊 First pending prop:", data?.[0]);
+  const filtered = data.filter((prop) => {
+    return (
+      prop.game_date < today ||
+      (prop.game_date === today && prop.game_time <= currentTime)
+    );
+  });
 
-  return data;
+  console.log(`📅 Today ET: ${today} @ ${currentTime}`);
+  console.log("📊 First pending prop after filtering:", filtered?.[0]);
+
+  return filtered;
 }
 
 export async function updatePropStatuses() {
@@ -239,4 +244,11 @@ export async function updatePropStatuses() {
   console.log(`❌ Errors: ${errors}`);
 }
 
-updatePropStatuses();
+(async () => {
+  try {
+    await updatePropStatuses();
+    console.log("✅ Finished running updatePropStatuses");
+  } catch (err) {
+    console.error("🔥 Top-level error caught in updatePropResults.js:", err);
+  }
+})();

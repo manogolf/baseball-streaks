@@ -55,7 +55,15 @@ export async function syncTrainingData() {
   }
 }
 
-// ✅ Optional: Run directly via CLI / cron
+// ✅ Safe top-level execution block
 if (import.meta.url === `file://${process.argv[1]}`) {
-  syncTrainingData();
+  (async () => {
+    try {
+      await syncTrainingData();
+      console.log("✅ Finished running syncTrainingData");
+    } catch (err) {
+      console.error("🔥 Top-level error caught in syncTrainingData.js:", err);
+      process.exit(1); // important for CI
+    }
+  })();
 }
