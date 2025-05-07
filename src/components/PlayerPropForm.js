@@ -4,6 +4,7 @@ import { getGamePkForTeamOnDate } from "../utils/fetchGameID.js";
 import { DateTime } from "luxon";
 import { useAuth } from "../context/AuthContext.jsx";
 import { buildFeatureVector } from "../utils/buildFeatureVector.js";
+import { getPlayerID } from "../utils/fetchPlayerID.js";
 
 const teams = [
   "ATL",
@@ -256,6 +257,7 @@ const PlayerPropForm = () => {
     } catch (err) {
       console.error("Failed to fetch game ID:", err);
     }
+    const player_id = await getPlayerID(player_name, game_id);
 
     const nowET = DateTime.now().setZone("America/New_York").toISO();
 
@@ -266,6 +268,7 @@ const PlayerPropForm = () => {
       prop_value: parseFloat(prop_value),
       game_date,
       game_id,
+      player_id, // ✅ new
       status: "pending",
       created_et: nowET,
       predicted_outcome: prediction?.predicted_outcome || null, // ✅ match key from handlePredict

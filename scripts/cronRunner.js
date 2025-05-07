@@ -12,6 +12,7 @@ export const updateAndSyncProps = async () => {
     console.log("✅ Update + Sync complete");
   } catch (err) {
     console.error("🔥 Error during update/sync:", err.message);
+    throw err; // rethrow so outer wrapper catches it
   }
 };
 
@@ -31,23 +32,27 @@ console.log(
 
 const isGitHubAction = process.env.GITHUB_ACTIONS === "true";
 
+const safelyRun = async (label) => {
+  try {
+    console.log(`🚀 ${label}: running updateAndSyncProps...`);
+    await updateAndSyncProps();
+    console.log(`✅ ${label}: job complete. Exiting...`);
+    if (isGitHubAction) process.exit(0);
+  } catch (err) {
+    console.error(`❌ ${label}: failed with error:`, err);
+    if (isGitHubAction) process.exit(1);
+  }
+};
+
 if (isGitHubAction) {
-  (async () => {
-    console.log("🚀 GitHub Action: running updateAndSyncProps...");
-    await updateAndSyncProps();
-    console.log("✅ GitHub Action: job complete. Exiting...");
-    process.exit(0);
-  })();
+  safelyRun("GitHub Action");
 } else {
-  (async () => {
-    console.log("🚀 Local run: updateAndSyncProps...");
-    await updateAndSyncProps();
-  })();
+  safelyRun("Local run");
 
   cron.schedule(cronExpression, async () => {
     const now = new Date().toISOString();
     console.log(`🕒 Cron triggered at ${now}`);
-    await updateAndSyncProps();
+    await safelyRun("Cron job");
     console.log("✅ Cron job complete.\n");
   });
 }

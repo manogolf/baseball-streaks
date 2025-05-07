@@ -37,6 +37,7 @@ export async function syncTrainingData() {
       opponent: prop.opponent,
       home_away: prop.home_away,
       game_time: prop.game_time,
+      player_id: prop.player_id,
     };
 
     const { error: upsertError } = await supabase
