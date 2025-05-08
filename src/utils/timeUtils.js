@@ -12,6 +12,8 @@ export const getEasternDateFromISO = (isoString) =>
     .setZone("America/New_York")
     .toISODate();
 
+export const toISODate = (jsDate) => DateTime.fromJSDate(jsDate).toISODate();
+
 // Format game start time in both ET and local time
 export const formatGameTime = (utcDateStr) => {
   const et = DateTime.fromISO(utcDateStr, { zone: "utc" }).setZone(
