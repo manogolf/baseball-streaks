@@ -72,7 +72,6 @@ const handlePredict = async () => {
       return;
     }
 
-    // ✅ Normalize and merge features
     const normalized = normalizeFeatureKeys(rawFeatures);
     const fullFeatures = {
       ...requiredFeatures,
@@ -86,14 +85,10 @@ const handlePredict = async () => {
       ...fullFeatures,
     };
 
-    console.log("🧠 Normalized features:", normalized);
-    console.log("📤 Final prediction payload:", predictionPayload);
-
-    console.log("📤 Sending prediction request to:", apiUrl);
-    console.log("🧠 Full prediction payload:", predictionPayload);
-
     console.log("✅ Merged fullFeatures:", fullFeatures);
     console.log("👀 player_id:", fullFeatures.player_id);
+    console.log("📤 Sending prediction request to:", apiUrl);
+    console.log("📤 Final prediction payload:", predictionPayload);
 
     const response = await fetch(apiUrl, {
       method: "POST",
@@ -105,8 +100,8 @@ const handlePredict = async () => {
 
     const result = await response.json();
     console.log("📩 Prediction API response:", result);
-
     setPrediction(result);
+
     const randomIndex = Math.floor(Math.random() * successMessages.length);
     setSuccessMessage(successMessages[randomIndex]);
     setSuccessToast(true);
