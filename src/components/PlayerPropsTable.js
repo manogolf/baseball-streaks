@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient.js";
-
-import { todayET, currentTimeET } from "../utils/timeUtils.js";
+import { nowET, todayET, currentTimeET } from "../utils/timeUtils.js";
 
 const statusColor = {
   win: "bg-green-100 text-green-700",
@@ -23,12 +22,12 @@ const PlayerPropsTable = () => {
   useEffect(() => {
     const fetchProps = async () => {
       const today = getEasternDateString();
-      console.log("📆 Fetching props for:", today);
+      console.log("📆 Fetching props for:", todayET);
 
       const { data, error } = await supabase
         .from("player_props")
         .select("*")
-        .eq("game_date", today)
+        .eq("game_date", todayET)
         .neq("status", "expired");
 
       if (error) {
