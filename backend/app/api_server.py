@@ -26,6 +26,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def normalize_input(raw: dict) -> dict:
+    """Ensures prediction input has all required fields with correct names and defaults."""
+    return {
+        "prop_type": raw.get("prop_type"),
+        "prop_value": float(raw.get("prop_value", 0)),
+        "rolling_result_avg_7": float(raw.get("rolling_result_avg_7", 0)),
+        "hit_streak": int(raw.get("hit_streak", 0)),
+        "win_streak": int(raw.get("win_streak", 0)),
+        "is_home": int(raw.get("is_home", 0)),
+        "opponent_avg_win_rate": float(
+            raw.get("opponent_avg_win_rate") or raw.get("opponent_win_rate") or 0
+        ),
+        "over_under": raw.get("over_under", "").lower(),
+        "player_id": raw.get("player_id", "unknown-player"),
+    }
+
+
 # ✅ Prediction Input Model
 class PropInput(BaseModel):
     prop_type: str
@@ -40,28 +57,33 @@ class PropInput(BaseModel):
 
 # ✅ Prediction Endpoint
 @app.post("/predict")
-def predict(input: PropInput):
-    print("📥 API received:", input.model_dump())
+def predict(raw_input: dict):  # ⬅️ Accept raw dict, not Pydantic model
+    print("📥 Raw input received:", raw_input)
 
-    # 🔄 Fetch streak data
+    normalized = normalize_input(raw_input)
+    print("🧼 Normalized input:", normalized)
+
+    # Fetch streaks
     streak_resp = supabase.table("player_streak_profiles") \
         .select("streak_count, streak_type") \
-        .eq("player_id", input.player_id) \
-        .eq("prop_type", input.prop_type) \
+        .eq("player_id", normalized["player_id"]) \
+        .eq("prop_type", normalized["prop_type"]) \
         .maybe_single()
 
     streak_count = streak_resp.get("streak_count", 0)
     streak_type = streak_resp.get("streak_type", "neutral")
     print(f"🔥 Streak: {streak_type} ({streak_count})")
 
-    enriched_input = input.model_dump()
-    enriched_input["streak_count"] = streak_count
-    enriched_input["streak_type"] = streak_type
+    enriched_input = {
+        **normalized,
+        "streak_count": streak_count,
+        "streak_type": streak_type,
+    }
 
-    # 🔮 Predict
-    result = predict_prop(input.prop_type, enriched_input)
+    result = predict_prop(normalized["prop_type"], enriched_input)
     print("🔮 Model response:", result)
     return result
+
 
 # ✅ Root Test Route
 @app.get("/")
