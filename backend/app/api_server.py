@@ -19,7 +19,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",         
-        "https://www.proppadia.com",     
+        "https://www.proppadia.com",
+        "https://proppadia.com",     
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -65,13 +66,17 @@ def predict(raw_input: dict):  # ⬅️ Accept raw dict, not Pydantic model
 
     # Fetch streaks
     streak_resp = supabase.table("player_streak_profiles") \
-        .select("streak_count, streak_type") \
-        .eq("player_id", normalized["player_id"]) \
-        .eq("prop_type", normalized["prop_type"]) \
-        .maybe_single()
+    .select("streak_count, streak_type") \
+    .eq("player_id", normalized["player_id"]) \
+    .eq("prop_type", normalized["prop_type"]) \
+    .maybe_single() \
+    .execute()  # ✅ runs the query
 
-    streak_count = streak_resp.get("streak_count", 0)
-    streak_type = streak_resp.get("streak_type", "neutral")
+    data = streak_resp.data or {}
+
+    streak_count = data.get("streak_count", 0)
+    streak_type = data.get("streak_type", "neutral")
+
     print(f"🔥 Streak: {streak_type} ({streak_count})")
 
     enriched_input = {
