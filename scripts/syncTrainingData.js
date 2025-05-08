@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { createClient } from "@supabase/supabase-js";
-import { todayET, currentTimeET } from "../utils/timeUtils.js";
+import { todayET, currentTimeET } from "../src/utils/timeUtils.js";
 
 // ✅ Supabase Client Setup
 const supabaseUrl = process.env.SUPABASE_URL;

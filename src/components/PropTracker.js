@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { format, isValid } from "date-fns";
-import { DateTime } from "luxon";
+import { todayET, currentTimeET } from "../utils/timeUtils.js";
 import { supabase } from "../lib/supabaseClient.js";
 import Calendar from "./ui/calendar.jsx";
 

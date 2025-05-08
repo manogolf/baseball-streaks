@@ -5,7 +5,7 @@ import {
   todayET,
   formatGameTime,
   getEasternDateFromISO,
-} from "../utils/timeUtils.js";
+} from "../src/utils/timeUtils.js";
 
 const TodayGames = ({ games }) => {
   const [standings, setStandings] = useState([]);

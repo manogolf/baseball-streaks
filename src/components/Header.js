@@ -15,12 +15,12 @@ export default function Header() {
     <header className="bg-blue-50 border-b border-blue-50 shadow-sm py-6 px-4 mb-4">
       <div className="max-w-4xl mx-auto py-6 flex items-center justify-between">
         {/* LEFT: Logo */}
-        <Link to="/" className="flex items-baseline space-x-1">
+        <Link to="/" className="flex items-baseline">
           <h1 className="text-6xl font-bold text-indigo-900 flex items-start">
             <span>P</span>
-            <span className="text-[25px] align-super ml-1">3</span>
+            <span className="text-[25px] align-super">3</span>
           </h1>
-          <span className="text-4xl font-bold text-indigo-900 mt-1">
+          <span className="text-4xl font-bold text-indigo-900 mt-1 -ml-[10px]">
             roppadia
           </span>
         </Link>
