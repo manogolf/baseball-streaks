@@ -1,0 +1,25 @@
+name: Player Profile Test
+
+on:
+  schedule:
+    - cron: "15 10 * * *" # Daily at 10:15 UTC
+  workflow_dispatch:
+
+jobs:
+  test-player-profile:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📦 Checkout repo
+        uses: actions/checkout@v3
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: 📥 Install requests
+        run: pip install requests
+
+      - name: 🧪 Run player profile test
+        run: python scripts/test_player_profile.py
