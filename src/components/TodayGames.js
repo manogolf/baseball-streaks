@@ -1,5 +1,6 @@
 // src/components/TodayGames.js
-import { todayET, currentTimeET } from "../utils/timeUtils.js";
+import { formatGameTime } from "../utils/timeUtils.js";
+
 import React, { useState, useEffect } from "react";
 
 const TodayGames = ({ games }) => {
@@ -37,17 +38,6 @@ const TodayGames = ({ games }) => {
       return `🗒 Record: ${team.wins}-${team.losses}`;
     }
     return "🗒 Record: N/A";
-  };
-
-  const formatGameTime = (utcDateStr) => {
-    const et = DateTime.fromISO(utcDateStr, { zone: "utc" }).setZone(
-      "America/New_York"
-    );
-    const local = et.setZone(localZone);
-    return {
-      etTime: et.toFormat("hh:mm a"),
-      localTime: local.toFormat("hh:mm a"),
-    };
   };
 
   const getStatusDisplay = (game) => {
