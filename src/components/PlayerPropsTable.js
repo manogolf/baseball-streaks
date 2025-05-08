@@ -27,7 +27,7 @@ const PlayerPropsTable = () => {
       const { data, error } = await supabase
         .from("player_props")
         .select("*")
-        .eq("game_date", todayET)
+        .eq("game_date", todayET())
         .neq("status", "expired");
 
       if (error) {
