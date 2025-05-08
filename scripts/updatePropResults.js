@@ -5,6 +5,29 @@ import { createClient } from "@supabase/supabase-js";
 import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
 import { DateTime } from "luxon";
 
+// Cleanup function: expire stale pending props (older than 2 days)
+async function expireOldPendingProps() {
+  const twoDaysAgo = DateTime.now()
+    .setZone("America/New_York")
+    .minus({ days: 2 })
+    .toISODate();
+
+  const { data, error } = await supabase
+    .from("player_props")
+    .delete()
+    .eq("status", "pending")
+    .lt("game_date", twoDaysAgo);
+
+  if (error) {
+    console.error("⚠️ Failed to delete old pending props:", error.message);
+  } else {
+    const deletedCount = data?.length || 0;
+    console.log(
+      `🧹 Deleted ${deletedCount} stale pending props (older than ${twoDaysAgo})`
+    );
+  }
+}
+
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -200,8 +223,9 @@ async function getPendingProps() {
     .from("player_props")
     .select("*")
     .eq("status", "pending")
-    .not("game_time", "is", null)
-    .lte("game_date", today) // includes both today and earlier
+    .or(
+      `game_date.lt.${today},and(game_date.eq.${today},game_time.lte.${currentTime}),and(game_date.eq.${today},game_time.is.null)`
+    )
     .order("game_date", { ascending: false })
     .order("game_time", { ascending: false });
 
@@ -237,6 +261,8 @@ export async function updatePropStatuses() {
       errors++;
     }
   }
+
+  await expireOldPendingProps();
 
   console.log("🏁 Finished processing pending props:");
   console.log(`✅ Updated: ${updated}`);

@@ -36,9 +36,29 @@ class PropInput(BaseModel):
 @app.post("/predict")
 def predict(input: PropInput):
     print("📥 API received:", input.model_dump())
-    result = predict_prop(input.prop_type, input.model_dump())
+
+    # 🔄 Fetch streak data from Supabase
+    streak_resp = supabase.table("player_streak_profiles") \
+        .select("streak_count, streak_type") \
+        .eq("player_id", input.player_id) \
+        .eq("prop_type", input.prop_type) \
+        .maybe_single()
+
+    streak_count = streak_resp.get("streak_count", 0)
+    streak_type = streak_resp.get("streak_type", "neutral")
+
+    print(f"🔥 Streak: {streak_type} ({streak_count})")
+
+    # 🧠 Inject streak features into input dict
+    enriched_input = input.model_dump()
+    enriched_input["streak_count"] = streak_count
+    enriched_input["streak_type"] = streak_type
+
+    # 🔮 Run model prediction
+    result = predict_prop(input.prop_type, enriched_input)
     print("🔮 Model response:", result)
     return result
+
 
 @app.get("/")
 def root():

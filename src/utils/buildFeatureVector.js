@@ -10,7 +10,7 @@ export async function buildFeatureVector({
 }) {
   const dateISO = DateTime.fromISO(game_date).toISODate();
 
-  // 1. Get player's recent prop outcomes
+  // 1. Recent player outcomes
   const { data: recentProps, error: propError } = await supabase
     .from("player_props")
     .select("outcome")
@@ -22,11 +22,10 @@ export async function buildFeatureVector({
 
   const recentOutcomes = recentProps || [];
   const wins = recentOutcomes.filter((p) => p.outcome === "win").length;
-  const losses = recentOutcomes.filter((p) => p.outcome === "loss").length;
   const avgWinRate =
     recentOutcomes.length > 0 ? wins / recentOutcomes.length : 0.5;
 
-  // 2. Hit/win streaks
+  // 2. Streaks
   let hitStreak = 0;
   let winStreak = 0;
   for (const prop of recentOutcomes) {
@@ -38,13 +37,14 @@ export async function buildFeatureVector({
     }
   }
 
-  // 3. Check if home game
+  // 3. Home game check
   const gameRes = await fetch(
     `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${game_date}`
   );
   const gameJson = await gameRes.json();
   let isHome = null;
   let opponent = null;
+
   for (const date of gameJson.dates || []) {
     for (const game of date.games || []) {
       if (game.teams.away.team.abbreviation === team) {
@@ -57,8 +57,27 @@ export async function buildFeatureVector({
     }
   }
 
-  // 4. Opponent win rate stub (placeholder for now)
-  const opponentAvgWinRate = 0.5; // Replace with real value later if needed
+  // 4. Generic placeholder
+  const opponentAvgWinRate = 0.5;
+
+  // 5. Opponent-level trends
+  let opponentWinRate = null;
+  if (opponent) {
+    const { data: opponentGames, error: oppError } = await supabase
+      .from("player_props")
+      .select("outcome")
+      .eq("player_name", player_name)
+      .eq("prop_type", prop_type)
+      .eq("opponent", opponent)
+      .lt("game_date", dateISO)
+      .order("game_date", { ascending: false })
+      .limit(5);
+
+    const oppOutcomes = opponentGames || [];
+    const oppWins = oppOutcomes.filter((p) => p.outcome === "win").length;
+    opponentWinRate =
+      oppOutcomes.length > 0 ? oppWins / oppOutcomes.length : null;
+  }
 
   return {
     rolling_result_avg_7: avgWinRate,
@@ -66,5 +85,6 @@ export async function buildFeatureVector({
     win_streak: winStreak,
     is_home: isHome === true ? 1 : 0,
     opponent_avg_win_rate: opponentAvgWinRate,
+    opponent_win_rate: opponentWinRate, // ✅ new
   };
 }

@@ -2,6 +2,7 @@ import "dotenv/config";
 import cron from "node-cron";
 import { updatePropStatuses } from "./updatePropResults.js";
 import { syncTrainingData } from "./syncTrainingData.js";
+import { syncStreakProfiles } from "./syncStreakProfiles.js";
 
 export const updateAndSyncProps = async () => {
   console.log("🔄 Running update and sync logic...");
@@ -9,6 +10,7 @@ export const updateAndSyncProps = async () => {
   try {
     await updatePropStatuses();
     await syncTrainingData();
+    await syncStreakProfiles();
     console.log("✅ Update + Sync complete");
   } catch (err) {
     console.error("🔥 Error during update/sync:", err.message);
