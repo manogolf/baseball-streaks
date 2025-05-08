@@ -7,10 +7,7 @@ import { nowET, todayET, currentTimeET } from "../src/utils/timeUtils.js";
 
 // Cleanup function: expire stale pending props (older than 2 days)
 async function expireOldPendingProps() {
-  const twoDaysAgo = DateTime.now()
-    .setZone("America/New_York")
-    .minus({ days: 2 })
-    .toISODate();
+  const twoDaysAgo = nowET().minus({ days: 2 }).toISODate();
 
   const { data, error } = await supabase
     .from("player_props")
