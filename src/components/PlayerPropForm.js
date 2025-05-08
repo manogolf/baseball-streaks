@@ -125,6 +125,12 @@ const PlayerPropForm = () => {
         return;
       }
 
+      const normalized = normalizeFeatureKeys(features);
+      const fullFeatures = {
+        ...requiredFeatures,
+        ...normalized,
+      };
+
       const predictionPayload = {
         prop_type,
         prop_value: parseFloat(prop_value),
