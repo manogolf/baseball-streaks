@@ -7,6 +7,7 @@ import Calendar from "./ui/calendar.jsx";
 function AccuracyByPropType({ selectedDate }) {
   const [accuracyData, setAccuracyData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const target_date = toISODate(selectedDate); // ✅
 
   useEffect(() => {
     if (!selectedDate) return;
