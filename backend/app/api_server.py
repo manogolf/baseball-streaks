@@ -69,13 +69,16 @@ def predict(raw_input: dict):  # ⬅️ Accept raw dict, not Pydantic model
     .select("streak_count, streak_type") \
     .eq("player_id", normalized["player_id"]) \
     .eq("prop_type", normalized["prop_type"]) \
-    .maybe_single() \
-    .execute()  # ✅ runs the query
+    .maybe_single()
 
-    data = streak_resp.data or {}
+    if not streak_resp:
+     streak_data = {}
+    else:
+     streak_data = streak_resp
 
-    streak_count = data.get("streak_count", 0)
-    streak_type = data.get("streak_type", "neutral")
+    streak_count = streak_data.get("streak_count", 0)
+    streak_type = streak_data.get("streak_type", "neutral")
+
 
     print(f"🔥 Streak: {streak_type} ({streak_count})")
 
