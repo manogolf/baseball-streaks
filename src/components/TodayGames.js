@@ -1,7 +1,11 @@
 // src/components/TodayGames.js
-import { formatGameTime } from "../utils/timeUtils.js";
-
 import React, { useState, useEffect } from "react";
+import { DateTime } from "luxon"; // Needed for formatGameTime inside timeUtils
+import {
+  todayET,
+  formatGameTime,
+  getEasternDateFromISO,
+} from "../utils/timeUtils.js";
 
 const TodayGames = ({ games }) => {
   const [standings, setStandings] = useState([]);
@@ -29,8 +33,6 @@ const TodayGames = ({ games }) => {
 
     fetchStandings();
   }, []);
-
-  const localZone = DateTime.local().zoneName;
 
   const getTeamRecordFromStandings = (teamName) => {
     const team = standings.find((t) => t.name === teamName);
@@ -104,7 +106,14 @@ const TodayGames = ({ games }) => {
     return "TBD";
   };
 
-  const sortedGames = [...(games || [])].sort(
+  // ✅ Filter games to only those scheduled for today (Eastern Time)
+  const today = todayET();
+  const todaysGames = (games || []).filter((game) => {
+    const gameDateET = getEasternDateFromISO(game.gameDate);
+    return gameDateET === today;
+  });
+
+  const sortedGames = [...todaysGames].sort(
     (a, b) => new Date(a.gameDate) - new Date(b.gameDate)
   );
 
