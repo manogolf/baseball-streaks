@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { format, isValid } from "date-fns";
-import { todayET, currentTimeET } from "../utils/timeUtils.js";
+import { todayET, currentTimeET, toISODate } from "../utils/timeUtils.js";
 import { supabase } from "../lib/supabaseClient.js";
 import Calendar from "./ui/calendar.jsx";
 
@@ -14,7 +14,7 @@ function AccuracyByPropType({ selectedDate }) {
     const fetchAccuracy = async () => {
       setLoading(true);
       const { data, error } = await supabase.rpc("get_daily_prop_accuracy", {
-        target_date: DateTime.fromJSDate(selectedDate).toISODate(),
+        target_date: toISODate(selectedDate),
       });
 
       if (error) {
