@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { createClient } from "@supabase/supabase-js";
 import { updatePropStatus } from "../../scripts/updatePropResults.js";
-import { DateTime } from "luxon";
+import { nowET } from "../utils/timeUtils.js";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -32,7 +32,7 @@ async function updateStaleProps() {
 
 // Mark stale props older than 24 hours as unresolved
 async function expireOldProps() {
-  const yesterday = DateTime.now().minus({ hours: 24 }).toISODate();
+  const yesterday = nowET().minus({ hours: 24 }).toISODate();
 
   const { data, error } = await supabase
     .from("player_props")

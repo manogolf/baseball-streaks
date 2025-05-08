@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient.js";
-import { getEasternDateString } from "../utils/getEasternDateString.js";
+
+import { todayET, currentTimeET } from "../utils/timeUtils.js";
 
 const statusColor = {
   win: "bg-green-100 text-green-700",

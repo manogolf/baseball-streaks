@@ -3,7 +3,7 @@ dotenv.config(); // 👈 Explicitly load the .env file
 console.log("🧪 Loaded URL:", process.env.SUPABASE_URL);
 import { createClient } from "@supabase/supabase-js";
 import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
-import { DateTime } from "luxon";
+import { todayET, currentTimeET } from "../utils/timeUtils.js";
 
 // Cleanup function: expire stale pending props (older than 2 days)
 async function expireOldPendingProps() {

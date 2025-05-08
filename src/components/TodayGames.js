@@ -1,5 +1,5 @@
 // src/components/TodayGames.js
-import { DateTime } from "luxon";
+import { todayET, currentTimeET } from "../utils/timeUtils.js";
 import React, { useState, useEffect } from "react";
 
 const TodayGames = ({ games }) => {
