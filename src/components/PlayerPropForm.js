@@ -87,6 +87,9 @@ const handlePredict = async () => {
     console.log("📤 Sending prediction request to:", apiUrl);
     console.log("🧠 Full prediction payload:", predictionPayload);
 
+    console.log("✅ Merged fullFeatures:", fullFeatures);
+    console.log("👀 player_id:", fullFeatures.player_id);
+
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
