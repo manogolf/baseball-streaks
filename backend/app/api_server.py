@@ -9,19 +9,21 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-
-
-
 app = FastAPI()
 
-# Allow frontend to access this
+from fastapi.middleware.cors import CORSMiddleware
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # or specify http://localhost:3000 for your React dev server
+    allow_origins=[
+        "http://localhost:3000",         # ✅ for local development
+        "https://www.proppadia.com",     # ✅ for production use
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 class PropInput(BaseModel):
     prop_type: str
