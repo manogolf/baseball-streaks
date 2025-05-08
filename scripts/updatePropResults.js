@@ -3,7 +3,7 @@ dotenv.config(); // 👈 Explicitly load the .env file
 console.log("🧪 Loaded URL:", process.env.SUPABASE_URL);
 import { createClient } from "@supabase/supabase-js";
 import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
-import { todayET, currentTimeET } from "../src/utils/timeUtils.js";
+import { nowET, todayET, currentTimeET } from "../src/utils/timeUtils.js";
 
 // Cleanup function: expire stale pending props (older than 2 days)
 async function expireOldPendingProps() {
@@ -31,10 +31,9 @@ async function expireOldPendingProps() {
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
-const nowET = DateTime.now().setZone("America/New_York");
-const today = nowET.toISODate(); // '2025-05-03'
-const currentTime = nowET.toFormat("HH:mm"); // '16:25' for example
-const currentTimeFormatted = currentTime; // or just use currentTime directly
+const now = nowET();
+const today = todayET();
+const currentTime = currentTimeET();
 
 const MLB_API_BASE = "https://statsapi.mlb.com/api/v1";
 
