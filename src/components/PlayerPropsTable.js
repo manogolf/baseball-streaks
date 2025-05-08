@@ -21,7 +21,7 @@ const PlayerPropsTable = () => {
 
   useEffect(() => {
     const fetchProps = async () => {
-      const today = getEasternDateString();
+      const today = todayET();
       console.log("📆 Fetching props for:", todayET);
 
       const { data, error } = await supabase
