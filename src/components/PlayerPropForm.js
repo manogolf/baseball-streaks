@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { buildFeatureVector } from "../utils/buildFeatureVector.js";
 import { getPlayerID } from "../utils/fetchPlayerID.js";
 import { requiredFeatures } from "../config/predictionSchema.js";
+import { normalizeFeatureKeys } from "../utils/normalizeFeatureKeys.js";
 
 const teams = [
   "ATL",
@@ -58,23 +59,24 @@ const handlePredict = async () => {
       process.env.REACT_APP_API_URL || "http://localhost:8001"
     }/predict`;
 
-    const features = await buildFeatureVector({
+    const rawFeatures = await buildFeatureVector({
       player_name,
       team,
       prop_type,
       game_date,
     });
 
-    if (!features) {
+    if (!rawFeatures) {
       setError("Could not generate features for prediction.");
       setSubmitting(false);
       return;
     }
 
-    // ✅ Merge features with required default fields
+    // ✅ Normalize and merge features
+    const normalized = normalizeFeatureKeys(rawFeatures);
     const fullFeatures = {
       ...requiredFeatures,
-      ...features,
+      ...normalized,
     };
 
     const predictionPayload = {
@@ -83,6 +85,9 @@ const handlePredict = async () => {
       over_under: formData.over_under.toLowerCase(),
       ...fullFeatures,
     };
+
+    console.log("🧠 Normalized features:", normalized);
+    console.log("📤 Final prediction payload:", predictionPayload);
 
     console.log("📤 Sending prediction request to:", apiUrl);
     console.log("🧠 Full prediction payload:", predictionPayload);
