@@ -122,7 +122,7 @@ const PlayerPropForm = () => {
     prop_type: "",
     prop_value: "",
     over_under: "",
-    game_date: todayET,
+    game_date: todayET(),
   });
 
   const [propTypes, setPropTypes] = useState([]);
@@ -131,6 +131,7 @@ const PlayerPropForm = () => {
   const [prediction, setPrediction] = useState(null);
   const [successToast, setSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [gameDate, setGameDate] = useState(todayET());
 
   const successMessages = [
     "🎯 Prediction ready — make your move!",
@@ -291,7 +292,7 @@ const PlayerPropForm = () => {
         prop_type: "",
         prop_value: "",
         over_under: "",
-        game_date: todayET,
+        game_date: todayET(),
       });
 
       setPrediction(null);
