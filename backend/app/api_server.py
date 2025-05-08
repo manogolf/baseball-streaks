@@ -70,6 +70,7 @@ def predict(raw_input: dict):  # ⬅️ Accept raw dict, not Pydantic model
     .eq("player_id", normalized["player_id"]) \
     .eq("prop_type", normalized["prop_type"]) \
     .maybe_single()
+    .execute()
 
     if not streak_resp:
      streak_data = {}
