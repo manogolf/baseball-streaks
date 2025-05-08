@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient.js";
-import { todayET, currentTimeET } from "../utils/timeUtils.js";
+import { nowET, todayET, currentTimeET } from "../utils/timeUtils.js";
 
 const StreaksCard = () => {
   const [hotStreaks, setHotStreaks] = useState([]);
@@ -10,7 +10,7 @@ const StreaksCard = () => {
   useEffect(() => {
     const fetchStreaks = async () => {
       try {
-        const today = nowET().toISODate();
+        const today = todayET();
         const sevenDaysAgo = nowET().minus({ days: 7 }).toISODate();
 
         const { data, error } = await supabase

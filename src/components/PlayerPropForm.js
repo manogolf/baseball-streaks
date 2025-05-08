@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient.js";
 import { getGamePkForTeamOnDate } from "../utils/fetchGameID.js";
-import { todayET, currentTimeET } from "../utils/timeUtils.js";
+import { nowET, todayET, currentTimeET } from "../utils/timeUtils.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { buildFeatureVector } from "../utils/buildFeatureVector.js";
 import { getPlayerID } from "../utils/fetchPlayerID.js";
@@ -112,7 +112,7 @@ const handlePredict = async () => {
 };
 
 const PlayerPropForm = () => {
-  const todayET = DateTime.now().setZone("America/New_York").toISODate();
+  const today = todayET();
   const auth = useAuth();
   const user = auth?.user || { id: "test-user" };
 
@@ -259,7 +259,7 @@ const PlayerPropForm = () => {
     }
     const player_id = await getPlayerID(player_name, game_id);
 
-    const nowET = DateTime.now().setZone("America/New_York").toISO();
+    const now = nowET();
 
     const payload = {
       player_name,
