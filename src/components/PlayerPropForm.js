@@ -5,6 +5,7 @@ import { nowET, todayET, currentTimeET } from "../utils/timeUtils.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { buildFeatureVector } from "../utils/buildFeatureVector.js";
 import { getPlayerID } from "../utils/fetchPlayerID.js";
+import { requiredFeatures } from "../config/predictionSchema.js";
 
 const teams = [
   "ATL",
@@ -70,25 +71,26 @@ const handlePredict = async () => {
       return;
     }
 
-    console.log("📤 Sending prediction request to:", apiUrl);
-    console.log("🔎 Raw formData.over_under:", formData.over_under);
-    console.log("🔽 Lowercased value:", formData.over_under.toLowerCase());
-    console.log("🧠 Full prediction payload:", {
+    // ✅ Merge features with required default fields
+    const fullFeatures = {
+      ...requiredFeatures,
+      ...features,
+    };
+
+    const predictionPayload = {
       prop_type,
       prop_value: parseFloat(prop_value),
       over_under: formData.over_under.toLowerCase(),
-      ...features,
-    });
+      ...fullFeatures,
+    };
+
+    console.log("📤 Sending prediction request to:", apiUrl);
+    console.log("🧠 Full prediction payload:", predictionPayload);
 
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prop_type,
-        prop_value: parseFloat(prop_value),
-        over_under: formData.over_under.toLowerCase(),
-        ...features,
-      }),
+      body: JSON.stringify(predictionPayload),
     });
 
     if (!response.ok) throw new Error("Prediction API returned error");
@@ -96,8 +98,7 @@ const handlePredict = async () => {
     const result = await response.json();
     console.log("📩 Prediction API response:", result);
 
-    setPrediction(result); // 👈 sets { predicted_outcome, confidence_score }
-
+    setPrediction(result);
     const randomIndex = Math.floor(Math.random() * successMessages.length);
     setSuccessMessage(successMessages[randomIndex]);
     setSuccessToast(true);
@@ -199,12 +200,7 @@ const PlayerPropForm = () => {
         prop_type,
         prop_value: parseFloat(prop_value),
         over_under: over_under.toLowerCase(),
-        rolling_result_avg_7: features.rolling_result_avg_7 ?? 0,
-        hit_streak: features.hit_streak ?? 0,
-        win_streak: features.win_streak ?? 0,
-        is_home: features.is_home ?? 0,
-        opponent_avg_win_rate: features.opponent_avg_win_rate ?? 0,
-        player_id: features.player_id ?? "unknown-player", // or pass a real ID if you have it
+        ...fullFeatures, // ✅ includes all required fields safely
       };
 
       console.log("📤 Sending prediction request to:", apiUrl);
