@@ -39,27 +39,23 @@ export async function syncTrainingData() {
       home_away: prop.home_away,
       game_time: prop.game_time,
       player_id: prop.player_id,
-       // ✅ New Fields for Evaluation Tracking
-  predicted_outcome: prop.predicted_outcome || null,
-  confidence_score: prop.confidence_score || null,
-  prediction_timestamp: prop.prediction_timestamp || null,
-  was_correct: prop.was_correct || null,
-  prop_source: prop.prop_source || "user-added", // Defaults to user-added if not specified
-};
+      // ✅ New Fields for Evaluation Tracking
+      predicted_outcome: prop.predicted_outcome || null,
+      confidence_score: prop.confidence_score || null,
+      prediction_timestamp: prop.prediction_timestamp || null,
+      was_correct: prop.was_correct || null,
+      prop_source: prop.prop_source || "user-added", // Defaults to user-added if not specified
     };
+  }
 
-    const { error: upsertError } = await supabase
-      .from("model_training_props")
-      .upsert(upsertData, { onConflict: ["id"] });
+  const { error: upsertError } = await supabase
+    .from("model_training_props")
+    .upsert(upsertData, { onConflict: ["id"] });
 
-    if (upsertError) {
-      console.error(
-        `❌ Failed to upsert prop ${prop.id}:`,
-        upsertError.message
-      );
-    } else {
-      console.log(`✅ Synced prop ${prop.id} to model_training_props`);
-    }
+  if (upsertError) {
+    console.error(`❌ Failed to upsert prop ${prop.id}:`, upsertError.message);
+  } else {
+    console.log(`✅ Synced prop ${prop.id} to model_training_props`);
   }
 }
 

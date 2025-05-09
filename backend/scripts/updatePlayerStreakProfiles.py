@@ -1,8 +1,10 @@
 import os
+import sys
 from datetime import datetime, timedelta
 from supabase import create_client, Client
 from collections import defaultdict
 
+# ✅ Supabase Client Setup
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -50,7 +52,7 @@ def compute_streaks_and_avg(props):
             "hit_streak": hit_streak,
             "win_streak": win_streak,
             "rolling_result_avg_7": rolling_avg,
-            "streak_type": "neutral",
+            "streak_type": "neutral",  # ✅ Safe default for new field
         }
 
     return list(streak_profiles.values())
@@ -62,9 +64,8 @@ def upsert_streak_profiles(profiles):
 
     try:
         response = supabase.table("player_streak_profiles") \
-    .upsert(profiles, on_conflict=["prop_type", "player_id"]) \
-    .execute()
-
+            .upsert(profiles, on_conflict=["player_id", "prop_type"]) \
+            .execute()
 
         if response.data:
             print(f"✅ Upserted {len(response.data)} streak profiles.")
@@ -73,9 +74,7 @@ def upsert_streak_profiles(profiles):
 
     except Exception as e:
         print(f"❌ Upsert failed: {e}")
-
-
-
+        sys.exit(1)  # Force GitHub Actions to show failure
 
 def main():
     print("📦 Fetching recent resolved props...")

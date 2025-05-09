@@ -1,0 +1,36 @@
+name: Update Player Streak Profiles
+
+on:
+  schedule:
+    - cron: "0 5 * * *" # 🕔 Runs every day at 05:00 UTC
+  workflow_dispatch: # ✅ Allows manual triggering
+
+jobs:
+  update-player-streaks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: 🟢 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt  # ✅ Assuming requirements.txt is at project root
+
+      - name: 🔐 Export Environment Secrets
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "SUPABASE_URL=$SUPABASE_URL" >> $GITHUB_ENV
+          echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY" >> $GITHUB_ENV
+
+      - name: 🧠 Run Player Streak Profiles Update
+        run: |
+          cd backend && python scripts/updatePlayerStreakProfiles.py
