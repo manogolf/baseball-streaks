@@ -44,20 +44,20 @@ export async function syncTrainingData() {
       confidence_score: prop.confidence_score || null,
       prediction_timestamp: prop.prediction_timestamp || null,
       was_correct: prop.was_correct || null,
-      prop_source: prop.prop_source || "user-added", // Defaults to user-added if not specified
+      prop_source: prop.prop_source || "user-added",
     };
+  
+    const { error: upsertError } = await supabase
+      .from("model_training_props")
+      .upsert(upsertData, { onConflict: ["id"] });
+  
+    if (upsertError) {
+      console.error(`❌ Failed to upsert prop ${prop.id}:`, upsertError.message);
+    } else {
+      console.log(`✅ Synced prop ${prop.id} to model_training_props`);
+    }
   }
-
-  const { error: upsertError } = await supabase
-    .from("model_training_props")
-    .upsert(upsertData, { onConflict: ["id"] });
-
-  if (upsertError) {
-    console.error(`❌ Failed to upsert prop ${prop.id}:`, upsertError.message);
-  } else {
-    console.log(`✅ Synced prop ${prop.id} to model_training_props`);
-  }
-}
+  
 
 // ✅ Safe top-level execution block
 if (import.meta.url === `file://${process.argv[1]}`) {
