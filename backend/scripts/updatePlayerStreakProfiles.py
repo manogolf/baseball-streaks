@@ -60,12 +60,15 @@ def upsert_streak_profiles(profiles):
         print("⚠️ No streak data to upsert.")
         return
 
-    response = (
-        supabase.table("player_streak_profiles")
-        .upsert(profiles, on_conflict=["player_id", "prop_type"])  # ✅ Conflict handling
+    response = supabase.table("player_streak_profiles") \
+        .upsert(profiles, on_conflict=["player_id", "prop_type"]) \
         .execute()
-    )
-    print(f"✅ Upserted {len(profiles)} streak profiles")
+
+    if response.data:
+        print(f"✅ Upserted {len(response.data)} streak profiles")
+    else:
+        print("⚠️ Upsert returned no data.")
+
 
 
 def main():
