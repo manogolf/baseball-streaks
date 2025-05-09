@@ -1,18 +1,14 @@
 import os
-import sys
 from datetime import datetime, timedelta, timezone
 from supabase import create_client, Client
 from collections import defaultdict
 
-# ✅ Supabase Client Setup
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-from datetime import datetime, timedelta, timezone
-
 def fetch_recent_resolved_props(days=30):
-    today = datetime.now(timezone.utc).date()  # ✅ Timezone-aware UTC date
+    today = datetime.utcnow().date()
     since = today - timedelta(days=days)
 
     response = supabase.table("player_props") \
@@ -24,7 +20,6 @@ def fetch_recent_resolved_props(days=30):
         .execute()
 
     return response.data or []
-
 
 def compute_streaks_and_avg(props):
     streak_profiles = {}
@@ -40,8 +35,7 @@ def compute_streaks_and_avg(props):
         wins = sum(1 for o in outcomes if o == "win")
         rolling_avg = round(wins / len(outcomes), 3) if outcomes else 0
 
-        hit_streak = 0
-        win_streak = 0
+        hit_streak = win_streak = 0
         for o in outcomes:
             if o == "win":
                 hit_streak += 1
@@ -55,7 +49,7 @@ def compute_streaks_and_avg(props):
             "hit_streak": hit_streak,
             "win_streak": win_streak,
             "rolling_result_avg_7": rolling_avg,
-            "streak_type": "neutral",  # ✅ Safe default for new field
+            "streak_type": "neutral",  # Safe default
         }
 
     return list(streak_profiles.values())
@@ -65,20 +59,27 @@ def upsert_streak_profiles(profiles):
         print("⚠️ No streak data to upsert.")
         return
 
+    sql_values = ",".join(
+        f"('{p['player_id']}', '{p['prop_type']}', {p['hit_streak']}, {p['win_streak']}, {p['rolling_result_avg_7']}, '{p['streak_type']}')"
+        for p in profiles
+    )
+
+    sql = f"""
+        INSERT INTO player_streak_profiles (player_id, prop_type, hit_streak, win_streak, rolling_result_avg_7, streak_type)
+        VALUES {sql_values}
+        ON CONFLICT (player_id, prop_type)
+        DO UPDATE SET
+            hit_streak = EXCLUDED.hit_streak,
+            win_streak = EXCLUDED.win_streak,
+            rolling_result_avg_7 = EXCLUDED.rolling_result_avg_7,
+            streak_type = EXCLUDED.streak_type;
+    """
+
     try:
-        response = supabase.table("player_streak_profiles") \
-    .upsert(profiles, { "on_conflict": ["player_id", "prop_type"] }) \
-    .execute()
-
-
-        if response.data:
-            print(f"✅ Upserted {len(response.data)} streak profiles.")
-        else:
-            print("ℹ️ No changes made during upsert.")
-
+        supabase.rpc("execute_raw_sql", {"sql": sql}).execute()
+        print(f"✅ Upserted {len(profiles)} streak profiles using raw SQL.")
     except Exception as e:
-        print(f"❌ Upsert failed: {e}")
-        sys.exit(1)  # Force GitHub Actions to show failure
+        print(f"❌ Raw SQL upsert failed: {e}")
 
 def main():
     print("📦 Fetching recent resolved props...")
