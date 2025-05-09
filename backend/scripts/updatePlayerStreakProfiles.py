@@ -50,6 +50,7 @@ def compute_streaks_and_avg(props):
             "hit_streak": hit_streak,
             "win_streak": win_streak,
             "rolling_result_avg_7": rolling_avg,
+            "streak_type": "neutral",
         }
 
     return list(streak_profiles.values())
