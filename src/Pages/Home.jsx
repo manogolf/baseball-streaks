@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import TodayGames from "../components/TodayGames";
 import StreakCard from "../components/StreakCard";
+import { todayET } from "../utils/timeUtils.js";
 
 export default function Home() {
   console.log("✅ API URL:", process.env.REACT_APP_API_URL);
@@ -9,7 +10,8 @@ export default function Home() {
   useEffect(() => {
     const fetchGames = async () => {
       try {
-        const today = new Date().toISOString().split("T")[0];
+        const today = todayET();
+
         const response = await fetch(
           `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${today}&hydrate=team,linescore,probablePitcher,decisions,game(content(summary),live),boxscore`
         );

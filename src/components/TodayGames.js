@@ -1,5 +1,6 @@
 // src/components/TodayGames.js
 import React, { useState, useEffect } from "react";
+import { supabase } from "../lib/supabaseClient.js";
 import { DateTime } from "luxon"; // Needed for formatGameTime inside timeUtils
 import {
   todayET,
