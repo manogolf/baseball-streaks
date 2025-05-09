@@ -62,8 +62,9 @@ def upsert_streak_profiles(profiles):
 
     try:
         response = supabase.table("player_streak_profiles") \
-            .upsert(profiles, on_conflict=["player_id", "prop_type"]) \
-            .execute()
+    .upsert(profiles, on_conflict=["prop_type", "player_id"]) \
+    .execute()
+
 
         if response.data:
             print(f"✅ Upserted {len(response.data)} streak profiles.")
