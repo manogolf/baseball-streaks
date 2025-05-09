@@ -39,6 +39,13 @@ export async function syncTrainingData() {
       home_away: prop.home_away,
       game_time: prop.game_time,
       player_id: prop.player_id,
+       // ✅ New Fields for Evaluation Tracking
+  predicted_outcome: prop.predicted_outcome || null,
+  confidence_score: prop.confidence_score || null,
+  prediction_timestamp: prop.prediction_timestamp || null,
+  was_correct: prop.was_correct || null,
+  prop_source: prop.prop_source || "user-added", // Defaults to user-added if not specified
+};
     };
 
     const { error: upsertError } = await supabase
