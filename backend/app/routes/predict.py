@@ -37,6 +37,7 @@ def predict(input: PropInput):
             .eq("player_id", input.player_id)
             .eq("prop_type", input.prop_type)
             .maybe_single()
+            .execute()
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Supabase error: {e}")
