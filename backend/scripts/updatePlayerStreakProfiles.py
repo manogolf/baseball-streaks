@@ -11,7 +11,7 @@ def fetch_recent_resolved_props(days=30):
     today = datetime.utcnow().date()
     since = today - timedelta(days=days)
 
-    response = supabase.from("player_props") \
+    response = supabase.table("player_props") \
         .select("*") \
         .gte("game_date", since.isoformat()) \
         .neq("outcome", None) \
@@ -59,7 +59,7 @@ def upsert_streak_profiles(profiles):
         print("⚠️ No streak data to upsert.")
         return
 
-    response = supabase.from("player_streak_profiles").upsert(profiles).execute()
+    response = supabase.table("player_streak_profiles").upsert(profiles).execute()
     print(f"✅ Upserted {len(profiles)} streak profiles")
 
 def main():
