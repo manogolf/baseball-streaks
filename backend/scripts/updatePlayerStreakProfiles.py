@@ -1,6 +1,6 @@
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from supabase import create_client, Client
 from collections import defaultdict
 
@@ -9,8 +9,10 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+from datetime import datetime, timedelta, timezone
+
 def fetch_recent_resolved_props(days=30):
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()  # ✅ Timezone-aware UTC date
     since = today - timedelta(days=days)
 
     response = supabase.table("player_props") \
@@ -22,6 +24,7 @@ def fetch_recent_resolved_props(days=30):
         .execute()
 
     return response.data or []
+
 
 def compute_streaks_and_avg(props):
     streak_profiles = {}
@@ -64,8 +67,9 @@ def upsert_streak_profiles(profiles):
 
     try:
         response = supabase.table("player_streak_profiles") \
-            .upsert(profiles, on_conflict=["player_id", "prop_type"]) \
-            .execute()
+    .upsert(profiles, { "on_conflict": ["player_id", "prop_type"] }) \
+    .execute()
+
 
         if response.data:
             print(f"✅ Upserted {len(response.data)} streak profiles.")
