@@ -207,10 +207,10 @@ const PlayerPropForm = () => {
       game_id,
       player_id, // ✅ new
       status: "pending",
-      created_et: nowET,
+      created_et: now,
       predicted_outcome: prediction?.predicted_outcome || null, // ✅ match key from handlePredict
       confidence_score: prediction?.confidence_score || null, // ✅ match key from handlePredict
-      prediction_timestamp: prediction ? nowET : null,
+      prediction_timestamp: prediction ? now : null,
       over_under: formData.over_under,
     };
 

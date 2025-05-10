@@ -3,83 +3,9 @@ import { format, isValid } from "date-fns";
 import { todayET, currentTimeET, toISODate } from "../utils/timeUtils.js";
 import { supabase } from "../lib/supabaseClient.js";
 import Calendar from "./ui/calendar.jsx";
+import AccuracyByPropType from "./AccuracyByPropType"; // Adjust the path if necessary
 
-function AccuracyByPropType({ selectedDate }) {
-  const [accuracyData, setAccuracyData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const target_date = toISODate(selectedDate); // ✅
-
-  useEffect(() => {
-    if (!selectedDate) return;
-
-    const fetchAccuracy = async () => {
-      setLoading(true);
-      const { data, error } = await supabase.rpc("get_daily_prop_accuracy", {
-        target_date: toISODate(selectedDate),
-      });
-
-      if (error) {
-        console.error("❌ Failed to fetch accuracy data:", error.message);
-        setAccuracyData([]);
-      } else {
-        setAccuracyData(data);
-      }
-      setLoading(false);
-    };
-
-    fetchAccuracy();
-  }, [selectedDate]);
-
-  return (
-    <div className="mt-12 border rounded-md p-3 shadow-sm bg-white w-full max-w-sm">
-      <h3 className="text-lg font-semibold mb-2">Prediction Accuracy</h3>
-      {loading ? (
-        <p className="text-sm text-gray-500">Loading...</p>
-      ) : accuracyData.length === 0 ? (
-        <p className="text-sm text-gray-500">No predictions for this day.</p>
-      ) : (
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b">
-              <th className="text-left py-1">Prop Type</th>
-              <th className="text-right py-1">Total</th>
-              <th className="text-right py-1">Correct</th>
-              <th className="text-right py-1">Accuracy (%)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {accuracyData.map((row) => (
-              <tr key={row.prop_type} className="border-b">
-                <td className="py-1">{row.prop_type}</td>
-                <td className="text-right py-1">{row.total}</td>
-                <td className="text-right py-1">{row.correct}</td>
-                <td className="text-right py-1">{row.accuracy_pct}</td>
-              </tr>
-            ))}
-            {accuracyData.length > 1 && (
-              <tr className="border-t font-semibold">
-                <td className="py-1">Total</td>
-                <td className="text-right py-1">
-                  {accuracyData.reduce((sum, row) => sum + row.total, 0)}
-                </td>
-                <td className="text-right py-1">
-                  {accuracyData.reduce((sum, row) => sum + row.correct, 0)}
-                </td>
-                <td className="text-right py-1">
-                  {(
-                    (accuracyData.reduce((sum, row) => sum + row.correct, 0) /
-                      accuracyData.reduce((sum, row) => sum + row.total, 0)) *
-                    100
-                  ).toFixed(1)}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
-}
+<AccuracyByPropType selectedDate={selectedDate} />;
 
 export default function PropTracker() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -87,15 +13,8 @@ export default function PropTracker() {
   const [filteredProps, setFilteredProps] = useState([]);
 
   useEffect(() => {
-    const fetchProps = async () => {
-      const { data, error } = await supabase.from("player_props").select("*");
-      if (error) console.error("Error fetching props:", error);
-      else setAllProps(data);
-    };
-    fetchProps();
-  }, []);
+    if (!selectedDate) return;
 
-  useEffect(() => {
     const selectedDateObj =
       typeof selectedDate === "string"
         ? new Date(selectedDate + "T00:00:00")
@@ -107,11 +26,23 @@ export default function PropTracker() {
     }
 
     const selectedDateString = format(selectedDateObj, "yyyy-MM-dd");
-    const filtered = allProps.filter(
-      (prop) => prop.game_date === selectedDateString
-    );
-    setFilteredProps(filtered);
-  }, [selectedDate, allProps]);
+
+    const fetchProps = async () => {
+      const { data, error } = await supabase
+        .from("player_props")
+        .select("*")
+        .eq("game_date", selectedDateString);
+
+      if (error) {
+        console.error("Error fetching props:", error);
+      } else {
+        setAllProps(data);
+        setFilteredProps(data); // Directly set filtered props since already filtered by date
+      }
+    };
+
+    fetchProps();
+  }, [selectedDate]);
 
   const selectedDateObj =
     typeof selectedDate === "string"

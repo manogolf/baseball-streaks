@@ -151,6 +151,10 @@ const PlayerPropsTable = () => {
             const label =
               statusKey.charAt(0).toUpperCase() + statusKey.slice(1);
 
+            const sortedProps = filteredProps.sort(
+              (a, b) => new Date(b.created_at) - new Date(a.created_at)
+            );
+
             return (
               <tr
                 key={p.id}
