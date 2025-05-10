@@ -3,15 +3,10 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.score_any_prop import predict_prop
-from supabase import create_client, Client
+from app.supabase_client import supabase 
 import os
 
 router = APIRouter()
-
-# ✅ Supabase Client Setup
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ✅ Input Schema
 class PropInput(BaseModel):
@@ -29,9 +24,8 @@ class PropInput(BaseModel):
 def predict(input: PropInput):
     print("📥 Normalized input:", input.model_dump())
 
-    # 🔄 Fetch streak info
     try:
-        streak_resp = (
+        response = (
             supabase.table("player_streak_profiles")
             .select("streak_count, streak_type")
             .eq("player_id", input.player_id)
@@ -39,14 +33,12 @@ def predict(input: PropInput):
             .maybe_single()
             .execute()
         )
+        streak_data = response.data or {}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Supabase error: {e}")
 
-    if not streak_resp:
-        streak_count, streak_type = 0, "neutral"
-    else:
-        streak_count = streak_resp.get("streak_count", 0)
-        streak_type = streak_resp.get("streak_type", "neutral")
+    streak_count = streak_data.get("streak_count", 0)
+    streak_type = streak_data.get("streak_type", "neutral")
 
     print(f"🔥 Streak: {streak_type} ({streak_count})")
 
@@ -61,3 +53,4 @@ def predict(input: PropInput):
 
     print("🔮 Model response:", result)
     return result
+

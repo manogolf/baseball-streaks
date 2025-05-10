@@ -1,0 +1,21 @@
+export const propExtractors = {
+  Hits: (stats) => stats.hits,
+  Runs: (stats) => stats.runs,
+  "Runs Scored": (stats) => stats.runs,
+  RBIs: (stats) => stats.rbi,
+  "Home Runs": (stats) => stats.homeRuns,
+  Walks: (stats) => stats.baseOnBalls,
+  Strikeouts: (stats) => stats.strikeOuts,
+  "Stolen Bases": (stats) => stats.stolenBases,
+  Doubles: (stats) => stats.doubles,
+  Triples: (stats) => stats.triples,
+  "Total Bases": (stats) => stats.totalBases,
+  "Hits + Runs + RBIs": (stats) => stats.hits + stats.runs + stats.rbi,
+  "Runs + RBIs": (stats) => stats.runs + stats.rbi,
+  "Outs Recorded": (stats) => stats.outs, // Typically for pitchers; adjust logic if needed
+  "Strikeouts (Batting)": (stats) => stats.strikeOuts,
+  "Strikeouts (Pitching)": (stats) => stats.pitStrikeOuts || null, // Pitching stats if available
+  "Earned Runs": (stats) => stats.earnedRuns,
+  "Hits Allowed": (stats) => stats.hitsAllowed || null,
+  "Walks Allowed": (stats) => stats.walksAllowed || null,
+};

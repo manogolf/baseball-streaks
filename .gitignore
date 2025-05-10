@@ -26,5 +26,11 @@ venv/
 archive/backfillOaklandGameIds.js
 __pycache__/
 *.pyc
+# Ignore training data and generated files
+training_data/
+data/
+*.csv
+*.json
+
 
 
