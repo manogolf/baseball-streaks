@@ -1,25 +1,10 @@
 import "dotenv/config";
 import cron from "node-cron";
 import { updatePropStatuses } from "./updatePropResults.js";
-import { syncTrainingData } from "./syncTrainingData.js";
-import { syncStreakProfiles } from "./syncStreakProfiles.js";
 
-export const updateAndSyncProps = async () => {
-  console.log("🔄 Running update and sync logic...");
+console.log("⏳ Cron runner starting...");
 
-  try {
-    await updatePropStatuses();
-    await syncTrainingData();
-    await syncStreakProfiles();
-    console.log("✅ Update + Sync complete");
-  } catch (err) {
-    console.error("🔥 Error during update/sync:", err.message);
-    throw err; // rethrow so outer wrapper catches it
-  }
-};
-
-console.log("⏳ Cron job starting...");
-
+// ✅ Determine if this is an in-season period (March to September)
 const month = new Date().getUTCMonth();
 const inSeason = month >= 2 && month <= 9;
 const cronExpression = inSeason ? "*/30 * * * *" : "0 10 * * *";
@@ -36,25 +21,28 @@ const isGitHubAction = process.env.GITHUB_ACTIONS === "true";
 
 const safelyRun = async (label) => {
   try {
-    console.log(`🚀 ${label}: running updateAndSyncProps...`);
-    await updateAndSyncProps();
-    console.log(`✅ ${label}: job complete. Exiting...`);
-    if (isGitHubAction) process.exit(0);
+    console.log(`🚀 ${label}: Running updatePropStatuses...`);
+    await updatePropStatuses();
+    console.log(`✅ ${label}: Job complete.`);
+    if (isGitHubAction) process.exit(0); // Required for GitHub Action to properly finish
   } catch (err) {
-    console.error(`❌ ${label}: failed with error:`, err);
+    console.error(`❌ ${label}: Failed with error:`, err);
     if (isGitHubAction) process.exit(1);
   }
 };
 
+// ✅ If triggered via GitHub Action, run once and exit
 if (isGitHubAction) {
   safelyRun("GitHub Action");
 } else {
+  // ✅ Run immediately when starting locally
   safelyRun("Local run");
 
+  // ✅ Schedule based on cron expression
   cron.schedule(cronExpression, async () => {
     const now = new Date().toISOString();
     console.log(`🕒 Cron triggered at ${now}`);
-    await safelyRun("Cron job");
+    await safelyRun("Scheduled Cron Job");
     console.log("✅ Cron job complete.\n");
   });
 }

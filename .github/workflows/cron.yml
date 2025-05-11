@@ -2,29 +2,29 @@ name: Cron Runner
 
 on:
   schedule:
-    - cron: "*/113 * * * *" # Every 113 minutes
-  workflow_dispatch: # ✅ Enables manual run from GitHub UI
+    - cron: "*/113 * * * *" # Runs every 113 minutes
+  workflow_dispatch: # ✅ Manual trigger from GitHub UI
 
 jobs:
   run-cron:
     runs-on: ubuntu-latest
 
-    env: # ⬅️ Inject Supabase environment variables here
+    env: # ✅ Inject environment variables securely from GitHub Secrets
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }} # Optional, only if used
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
     steps:
-      - name: 📦 Checkout repo
-        uses: actions/checkout@v3
+      - name: 📦 Checkout repository
+        uses: actions/checkout@v4
 
-      - name: 🧰 Set up Node
-        uses: actions/setup-node@v3
+      - name: 🧰 Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 18 # ✅ Match your current environment
 
       - name: 📥 Install dependencies
-        run: npm install
+        run: npm ci # Faster and more reliable than `npm install` for locked dependencies
 
-      - name: 🚀 Run cron script
+      - name: 🚀 Run Cron Script
         run: node scripts/cronRunner.js

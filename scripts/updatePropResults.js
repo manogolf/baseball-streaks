@@ -5,7 +5,6 @@ import {
   getPendingProps,
 } from "../src/utils/propUtils.js";
 import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
-import { nowET } from "../src/utils/timeUtils.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -21,11 +20,11 @@ function determineStatus(actual, line, overUnder) {
     : "loss";
 }
 
-async function updatePropStatus(prop) {
+export async function updatePropStatus(prop) {
   console.log(`📡 Checking prop: ${prop.player_name} - ${prop.prop_type}`);
 
   const { data: playerStats, error } = await supabase
-    .from("player_stats") // Replace this with the correct source if needed
+    .from("player_stats")
     .select("*")
     .eq("player_id", prop.player_id)
     .eq("game_date", prop.game_date)
@@ -83,7 +82,7 @@ async function updatePropStatus(prop) {
   return true;
 }
 
-async function updatePropStatuses() {
+export async function updatePropStatuses() {
   const props = await getPendingProps();
   console.log(`🔎 Found ${props.length} pending props.`);
 
@@ -103,18 +102,20 @@ async function updatePropStatuses() {
 
   await expireOldPendingProps();
 
-  console.log("🏁 Update Summary:");
-  console.log(`✅ Updated: ${updated}`);
-  console.log(`⏭️ Skipped: ${skipped}`);
-  console.log(`❌ Errors: ${errors}`);
+  console.log(
+    `🏁 Update Summary → ✅ Updated: ${updated} | ⏭️ Skipped: ${skipped} | ❌ Errors: ${errors}`
+  );
 }
 
-(async () => {
-  try {
-    await updatePropStatuses();
-    console.log("✅ Finished running updatePropStatuses");
-  } catch (err) {
-    console.error("🔥 Fatal error in updatePropStatuses:", err);
-    process.exit(1);
-  }
-})();
+// ✅ Ensure this only auto-runs when executed directly, NOT when imported
+if (import.meta.url === `file://${process.argv[1]}`) {
+  (async () => {
+    try {
+      await updatePropStatuses();
+      console.log("✅ Finished running updatePropStatuses");
+    } catch (err) {
+      console.error("🔥 Fatal error in updatePropStatuses:", err);
+      process.exit(1);
+    }
+  })();
+}
