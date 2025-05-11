@@ -5,10 +5,10 @@ import {
   Link,
   useLocation,
 } from "react-router-dom";
-import Header from "../components/Header";
-import Home from "../Pages/Home";
-import PropsDashboard from "../Pages/PropsDashboard";
-import LoginPage from "../Pages/LoginPage";
+import Header from "../components/Header.js";
+import Home from "../Pages/Home.js";
+import PropsDashboard from "../Pages/PropsDashboard.js";
+import LoginPage from "../Pages/LoginPage.js";
 
 export default function AppRouter() {
   return (

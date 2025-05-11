@@ -9,8 +9,8 @@ export default function PropsDashboard() {
   const [selectedDate, setSelectedDate] = useState(null); // 🗓 controlled from calendar
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 px-4 pb-10">
-      <div className="bg-white p-4 rounded-xl shadow">
+    <div className="min-h-screen bg-gray-100 px-4 py-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         {user ? (
           <PlayerPropForm />
         ) : (
@@ -24,11 +24,11 @@ export default function PropsDashboard() {
         )}
       </div>
 
-      <div className="bg-white p-4 rounded-xl shadow">
+      <div className="bg-gray-100 p-4 rounded-xl shadow">
         <PlayerPropsTable selectedDate={selectedDate} />
       </div>
 
-      <div className="bg-white p-4 rounded-xl shadow">
+      <div className="bg-gray-100 p-4 rounded-xl shadow">
         <PropTracker
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}

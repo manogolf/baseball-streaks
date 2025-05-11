@@ -2,10 +2,8 @@ import { useEffect, useState } from "react";
 import { format, isValid } from "date-fns";
 import { todayET, currentTimeET, toISODate } from "../utils/timeUtils.js";
 import { supabase } from "../lib/supabaseClient.js";
-import Calendar from "./ui/calendar.jsx";
-import AccuracyByPropType from "./AccuracyByPropType"; // Adjust the path if necessary
-
-<AccuracyByPropType selectedDate={selectedDate} />;
+import Calendar from "./ui/calendar.js";
+import AccuracyByPropType from "./AccuracyByPropType.js"; // Adjust the path if necessary
 
 export default function PropTracker() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -54,7 +52,7 @@ export default function PropTracker() {
     : "Invalid Date";
 
   const renderPropsTable = (props) => (
-    <div className="bg-white shadow-md rounded-lg overflow-hidden border">
+    <div className="bg-blue-50 shadow-md rounded-lg overflow-hidden border">
       <table className="w-full text-sm text-left">
         <thead className="bg-gray-100">
           <tr>

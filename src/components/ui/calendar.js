@@ -6,7 +6,7 @@ import "react-day-picker/dist/style.css";
 
 const Calendar = ({ selected, onSelect }) => {
   return (
-    <div className="rounded-md border bg-white">
+    <div className="rounded-md border bg-blue-50">
       <DayPicker
         mode="single"
         selected={selected}

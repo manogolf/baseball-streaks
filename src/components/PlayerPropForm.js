@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient.js";
 import { getGamePkForTeamOnDate } from "../utils/fetchGameID.js";
 import { nowET, todayET, currentTimeET } from "../utils/timeUtils.js";
-import { useAuth } from "../context/AuthContext.jsx";
+import { useAuth } from "../context/AuthContext.js";
 import { buildFeatureVector } from "../utils/buildFeatureVector.js";
 import { getPlayerID } from "../utils/fetchPlayerID.js";
 import { requiredFeatures } from "../config/predictionSchema.js";

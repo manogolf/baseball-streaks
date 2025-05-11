@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext.jsx";
+import { useAuth } from "../context/AuthContext.js";
 
 export default function Header() {
   const { user, signOut } = useAuth();
@@ -12,7 +12,7 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-blue-50 border-b border-blue-50 shadow-sm py-6 px-4 mb-4">
+    <header className="bg-blue-100 border-b border-blue-50 shadow-sm py-6 px-4 mb-4">
       <div className="max-w-4xl mx-auto py-6 flex items-center justify-between">
         {/* LEFT: Logo */}
         <Link to="/" className="flex items-baseline">

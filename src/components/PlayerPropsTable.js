@@ -97,7 +97,7 @@ const PlayerPropsTable = () => {
       : "";
 
   return (
-    <div className="bg-white p-4 rounded-xl shadow-md overflow-x-auto">
+    <div className="bg-blue-100 p-4 rounded-xl shadow-md overflow-x-auto">
       <h2 className="text-lg font-semibold mb-4">Today’s Player Props</h2>
       <table className="min-w-full text-sm text-gray-800">
         <thead className="bg-gray-100">

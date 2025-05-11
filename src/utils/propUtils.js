@@ -1,5 +1,3 @@
-// src/utils/propUtils.js
-
 import { createClient } from "@supabase/supabase-js";
 import { nowET, todayET, currentTimeET } from "./timeUtils.js";
 
@@ -30,6 +28,28 @@ export const propExtractors = {
   "Hits Allowed": (stats) => stats.hitsAllowed || null,
   "Walks Allowed": (stats) => stats.walksAllowed || null,
 };
+
+// 📌 Normalize Prop Type to Match Extractors
+export function normalizePropType(propType) {
+  if (!propType) return null;
+
+  // Attempt exact match first
+  if (propExtractors[propType]) return propType;
+
+  // Try formatting corrections
+  const formatted = propType
+    .toLowerCase()
+    .replace(/\(.*?\)/g, "") // remove anything in parentheses
+    .replace(/\s+/g, " ") // collapse spaces
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase()); // capitalize words
+
+  return (
+    Object.keys(propExtractors).find(
+      (key) => key.toLowerCase() === formatted.toLowerCase()
+    ) || null
+  );
+}
 
 // 📅 Expire Old Pending Props (2+ days old)
 export async function expireOldPendingProps() {
