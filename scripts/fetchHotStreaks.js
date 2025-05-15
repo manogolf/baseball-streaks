@@ -3,10 +3,6 @@
 import { supabase } from "../utils/supabaseUtils.js";
 import fetch from "node-fetch";
 
-const supabaseUrl = "https://cnwwhhmpashijqbspvhf.supabase.co";
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Use env var, do not hardcode
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 // Settings
 const LOOKBACK_GAMES = 25; // Look back further
 
