@@ -1,6 +1,6 @@
 // src/scripts/fetchHotStreaks.js
 
-import { supabase } from "../utils/supabaseUtils.js";
+import { supabase } from "../src/utils/supabaseUtils.js";
 import fetch from "node-fetch";
 
 // Settings
