@@ -12,10 +12,19 @@ const supabaseKey = isFrontend
   : process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-  throw new Error("❌ Supabase environment variables are missing.");
+  console.warn(
+    "⚠️ Missing Supabase env vars. URL:",
+    supabaseUrl,
+    "KEY:",
+    supabaseKey
+  );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase =
+  supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+
+console.log("🔍 Supabase URL:", supabaseUrl);
+console.log("🔍 Supabase Key:", supabaseKey);
 
 // 📌 Fetch Resolved Props
 export async function fetchResolvedProps() {
