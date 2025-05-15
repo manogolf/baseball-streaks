@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { supabase } from "../src/utils/supabaseUtils.js";
-import { getPlayerID } from "../src/utils/playerUtils.js";
+import { getPendingProps } from "../src/utils/propUtils.js";
 import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
 
 function determineStatus(actual, line, overUnder) {
