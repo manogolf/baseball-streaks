@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { supabase } from "../../src/utils/supabaseUtils.js";
+import { supabase } from "../src/utils/supabaseUtils.js";
 import { getPlayerID } from "../../src/utils/playerUtils.js";
 import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
 
