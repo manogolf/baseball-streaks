@@ -187,59 +187,43 @@ const PlayerPropForm = ({ onPropAdded }) => {
 
       // Optional: setPrediction(result); — only needed for UI use
 
-      // 👉 Step 2: Prepare full prop submission data
-      const preparedData = await preparePropSubmission(formData);
-
-      const { game_id, player_id } = preparedData;
-      const now = nowET().toISO();
-
-      const payload = {
-        player_name: preparedData.player_name || formData.player_name,
-        team: preparedData.team || formData.team,
-        prop_type: preparedData.prop_type,
-        prop_value: parseFloat(preparedData.prop_value),
-        game_date: preparedData.game_date || formData.game_date,
-        game_id,
-        player_id,
-        status: "pending",
-        created_at: now,
-        predicted_outcome: result?.predicted_outcome ?? null,
-        confidence_score: result?.confidence_score ?? null,
-        prediction_timestamp: result ? now : null,
-        over_under: preparedData.over_under.toLowerCase(),
-      };
-
-      console.log("📩 Final Supabase Insert Payload:", payload);
-
-      const { error: insertError } = await supabase
-        .from("player_props")
-        .insert(payload);
-
-      if (insertError) throw insertError;
-
-      if (onPropAdded) onPropAdded();
-
-      // 👉 Step 3: Show toast + reset form
-      setSuccessMessage("Prop successfully added.");
-      setSuccessToast(true);
-      setTimeout(() => setSuccessToast(false), 4000);
-
-      setFormData({
-        player_name: "",
-        team: "",
-        prop_type: "",
-        prop_value: ".5",
-        over_under: "over",
-        game_date: todayET(),
-      });
-    } catch (err) {
-      console.error("❌ Submission error:", err);
-      setError("Failed to add player prop.");
-      setTimeout(() => setError(""), 4000);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+      // 👉 Step 2: Resolve Game ID early to catch errors
+        let resolvedGameId;
+        try {
+          resolvedGameId = await getGamePkForTeamOnDate(team, game_date);
+          if (!resolvedGameId) {
+            throw new Error(`No game found for ${team} on ${game_date}`);
+          }
+        } catch (err) {
+          alert(`⚠️ Could not find a game for ${team} on ${game_date}. Please check the date or team abbreviation.`);
+          setSubmitting(false);
+          return;
+        }
+        
+        // 👉 Step 3: Prepare full prop submission data with injected game_id
+        const preparedData = await preparePropSubmission({
+          ...formData,
+          game_id: resolvedGameId,
+        });
+        
+        const { player_id } = preparedData;
+        const now = nowET().toISO();
+        
+        const payload = {
+          player_name: preparedData.player_name || formData.player_name,
+          team: preparedData.team || formData.team,
+          prop_type: preparedData.prop_type,
+          prop_value: parseFloat(preparedData.prop_value),
+          game_date: preparedData.game_date || formData.game_date,
+          game_id: resolvedGameId,
+          player_id,
+          status: "pending",
+          created_at: now,
+          predicted_outcome: result?.predicted_outcome ?? null,
+          confidence_score: result?.confidence_score ?? null,
+          prediction_timestamp: result ? now : null,
+          over_under: preparedData.over_under.toLowerCase(),
+        };
 
   return (
     <form
