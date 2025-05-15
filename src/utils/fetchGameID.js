@@ -1,38 +1,4 @@
-// ❗ Top of fetchGameId.js
 import { getFullTeamName } from "./teamNameMap.js";
-
-const TEAM_NAME_MAP = {
-  ATL: "Atlanta Braves",
-  ARI: "Arizona Diamondbacks",
-  BAL: "Baltimore Orioles",
-  BOS: "Boston Red Sox",
-  CHC: "Chicago Cubs",
-  CHW: "Chicago White Sox",
-  CIN: "Cincinnati Reds",
-  CLE: "Cleveland Guardians",
-  COL: "Colorado Rockies",
-  DET: "Detroit Tigers",
-  HOU: "Houston Astros",
-  KC: "Kansas City Royals",
-  LAA: "Los Angeles Angels",
-  LAD: "Los Angeles Dodgers",
-  MIA: "Miami Marlins",
-  MIL: "Milwaukee Brewers",
-  MIN: "Minnesota Twins",
-  NYM: "New York Mets",
-  NYY: "New York Yankees",
-  OAK: "Oakland Athletics",
-  PHI: "Philadelphia Phillies",
-  PIT: "Pittsburgh Pirates",
-  SD: "San Diego Padres",
-  SEA: "Seattle Mariners",
-  SF: "San Francisco Giants",
-  STL: "St. Louis Cardinals",
-  TB: "Tampa Bay Rays",
-  TEX: "Texas Rangers",
-  TOR: "Toronto Blue Jays",
-  WSH: "Washington Nationals",
-};
 
 async function getGamePkForTeamOnDate(teamAbbr, gameDate) {
   const fullTeamName = getFullTeamName(teamAbbr);
@@ -42,24 +8,57 @@ async function getGamePkForTeamOnDate(teamAbbr, gameDate) {
     return null;
   }
 
-  const response = await fetch(
-    `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${gameDate}`
-  );
-  const data = await response.json();
+  const apiUrl = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${gameDate}`;
+  console.log(`📡 Fetching schedule from: ${apiUrl}`);
 
-  const games = data.dates?.[0]?.games ?? [];
+  try {
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+      console.error(`❌ Failed to fetch schedule: HTTP ${response.status}`);
+      return null;
+    }
 
-  const match = games.find((game) => {
-    return (
-      game.teams.away.team.name === fullTeamName ||
-      game.teams.home.team.name === fullTeamName
+    const data = await response.json();
+    const games = data.dates?.[0]?.games ?? [];
+
+    if (games.length === 0) {
+      console.warn(`📅 No games found on ${gameDate}.`);
+      return null;
+    }
+
+    const match = games.find(
+      (game) =>
+        game.teams.away.team.name === fullTeamName ||
+        game.teams.home.team.name === fullTeamName
     );
-  });
 
-  const game_id = match?.gamePk;
-  console.log("Fetched game ID:", game_id);
+    if (!match) {
+      console.warn(
+        `❌ No game found for team: ${fullTeamName} on ${gameDate}.`
+      );
+      console.log(
+        "📦 Games on date:",
+        games.map((g) => ({
+          home: g.teams.home.team.name,
+          away: g.teams.away.team.name,
+          gamePk: g.gamePk,
+        }))
+      );
+      return null;
+    }
 
-  return game_id || null;
+    const game_id = match.gamePk;
+    console.log(
+      `🎮 Found game ID for ${fullTeamName} on ${gameDate}: ${game_id}`
+    );
+    return game_id;
+  } catch (err) {
+    console.error(
+      `🔥 Error fetching game ID for ${fullTeamName} on ${gameDate}:`,
+      err
+    );
+    return null;
+  }
 }
 
 export { getGamePkForTeamOnDate };

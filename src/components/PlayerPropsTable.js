@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient.js";
+import { supabase } from "../utils/supabaseUtils.js";
 import { nowET, todayET, currentTimeET } from "../utils/timeUtils.js";
+import { getPropDisplayLabel } from "../utils/propUtils.js";
 
 const statusColor = {
   win: "bg-green-100 text-green-700",
@@ -49,28 +50,21 @@ const PlayerPropsTable = () => {
     };
 
     fetchProps();
-
     const subscription = supabase
-      .channel("public:player_props")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "player_props" },
-        (payload) => {
-          console.log("🔔 New prop inserted!", payload.new);
-          setProps((prev) => [payload.new, ...prev]);
-          setRecentProps((prev) => [...prev, payload.new.id]);
+      .from("player_props")
+      .on("INSERT", (payload) => {
+        console.log("🔔 New prop inserted!", payload.new);
+        setProps((prev) => [payload.new, ...prev]);
+        setRecentProps((prev) => [...prev, payload.new.id]);
 
-          setTimeout(() => {
-            setRecentProps((prev) =>
-              prev.filter((id) => id !== payload.new.id)
-            );
-          }, 5000);
-        }
-      )
+        setTimeout(() => {
+          setRecentProps((prev) => prev.filter((id) => id !== payload.new.id));
+        }, 5000);
+      })
       .subscribe();
 
     return () => {
-      supabase.removeChannel(subscription);
+      supabase.removeSubscription(subscription);
     };
   }, []);
 
@@ -151,10 +145,6 @@ const PlayerPropsTable = () => {
             const label =
               statusKey.charAt(0).toUpperCase() + statusKey.slice(1);
 
-            const sortedProps = filteredProps.sort(
-              (a, b) => new Date(b.created_at) - new Date(a.created_at)
-            );
-
             return (
               <tr
                 key={p.id}
@@ -171,7 +161,10 @@ const PlayerPropsTable = () => {
                   )}
                 </td>
                 <td className="px-3 py-2">{p.team}</td>
-                <td className="px-3 py-2">{p.prop_type}</td>
+                <td className="px-3 py-2">
+                  {getPropDisplayLabel(p.prop_type)}
+                </td>
+
                 <td className="px-3 py-2">{p.prop_value}</td>
                 <td className="px-3 py-2">
                   <span

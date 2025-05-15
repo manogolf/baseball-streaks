@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { supabase } from "../lib/supabaseClient.js";
+import { supabase } from "../utils/supabaseUtils.js";
 import { toISODate } from "../utils/timeUtils.js";
 
 export default function AccuracyByPropType({ selectedDate }) {

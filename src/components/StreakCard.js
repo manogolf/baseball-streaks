@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { supabase } from "../lib/supabaseClient.js";
+import { supabase } from "../utils/supabaseUtils.js";
 import { nowET, todayET, currentTimeET } from "../utils/timeUtils.js";
 
 const StreaksCard = () => {

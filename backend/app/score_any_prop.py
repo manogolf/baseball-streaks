@@ -1,37 +1,16 @@
 import pandas as pd
 import joblib
 import os
-
 import pathlib
+import json
+
+with open(os.path.join(os.path.dirname(__file__), 'prop_types.json')) as f:
+    PROP_MODEL_MAP = json.load(f)
+
 
 # Get absolute path to project root (2 levels up from score_any_prop.py)
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[2]
 MODEL_DIR = PROJECT_ROOT / "models"
-
-
-# Canonical mapping for all accepted prop types
-PROP_MODEL_MAP = {
-    "hits": "Hits",
-    "home runs": "Home_Runs",
-    "rbis": "RBIs",
-    "strikeouts (pitching)": "Strikeouts_(Pitching)",
-    "strikeouts (batting)": "Strikeouts_(Batting)",
-    "runs scored": "Runs_Scored",
-    "walks": "Walks",
-    "doubles": "Doubles",
-    "triples": "Triples",
-    "outs recorded": "Outs_Recorded",
-    "earned runs": "Earned_Runs",
-    "hits allowed": "Hits_Allowed",
-    "walks allowed": "Walks_Allowed",
-    "stolen bases": "Stolen_Bases",
-    "total bases": "Total_Bases",
-    "runs": "Runs",
-    "hits + runs + rbis": "Hits_+_Runs_+_RBIs",
-    "runs + rbis": "Runs_+_RBIs",
-    "singles": "Singles"
-}
-
 
 def predict_prop(prop_type: str, input_data: dict) -> dict:
     over_under = input_data.get("over_under", "under")  # default to under

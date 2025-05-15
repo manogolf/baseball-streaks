@@ -1,11 +1,11 @@
 // src/components/TodayGames.js
 import React, { useState, useEffect } from "react";
-import { supabase } from "../lib/supabaseClient.js";
-import { DateTime } from "luxon"; // Needed for formatGameTime inside timeUtils
+import { supabase } from "../utils/supabaseUtils.js";
 import {
   todayET,
   formatGameTime,
   getEasternDateFromISO,
+  toISODate,
 } from "../utils/timeUtils.js";
 
 const TodayGames = ({ games }) => {
@@ -110,7 +110,7 @@ const TodayGames = ({ games }) => {
   // ✅ Filter games to only those scheduled for today (Eastern Time)
   const today = todayET();
   const todaysGames = (games || []).filter((game) => {
-    const gameDateET = getEasternDateFromISO(game.gameDate);
+    const gameDateET = toISODate(game.gameDate);
     return gameDateET === today;
   });
 

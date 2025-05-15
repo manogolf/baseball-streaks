@@ -1,16 +1,16 @@
-import 'dotenv/config';
-import { createClient } from '@supabase/supabase-js';
-import fetch from 'node-fetch';
-import { getStatFromLiveFeed } from './getStatFromLiveFeed.js';
+import "dotenv/config";
+import { supabase } from "../utils/supabaseUtils.js";
+import fetch from "node-fetch";
+import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const MLB_API_BASE = 'https://statsapi.mlb.com/api/v1';
+const MLB_API_BASE = "https://statsapi.mlb.com/api/v1";
 
 function normalizeName(name) {
-  return name.toLowerCase().replace(',', '').replace(/\./g, '').trim();
+  return name.toLowerCase().replace(",", "").replace(/\./g, "").trim();
 }
 
 function findPlayerId(boxscore, targetName) {
@@ -20,19 +20,20 @@ function findPlayerId(boxscore, targetName) {
   const normalizedTarget = normalizeName(targetName);
 
   for (const [id, info] of Object.entries(allPlayers)) {
-    const name = normalizeName(info?.person?.fullName || '');
+    const name = normalizeName(info?.person?.fullName || "");
     if (name.includes(normalizedTarget)) {
-      return id.replace('ID', '');
+      return id.replace("ID", "");
     }
   }
   return null;
 }
 
 function determineStatus(actual, line, overUnder) {
-  if (actual === line) return 'push';
-  return (actual > line && overUnder === 'over') || (actual < line && overUnder === 'under')
-    ? 'win'
-    : 'loss';
+  if (actual === line) return "push";
+  return (actual > line && overUnder === "over") ||
+    (actual < line && overUnder === "under")
+    ? "win"
+    : "loss";
 }
 
 function getStatFromBoxscore(boxscore, playerId, propType) {
@@ -45,49 +46,52 @@ function getStatFromBoxscore(boxscore, playerId, propType) {
   const batting = stats.batting || {};
   const pitching = stats.pitching || {};
   const singles =
-    (batting.hits ?? 0) - (batting.doubles ?? 0) - (batting.triples ?? 0) - (batting.homeRuns ?? 0);
+    (batting.hits ?? 0) -
+    (batting.doubles ?? 0) -
+    (batting.triples ?? 0) -
+    (batting.homeRuns ?? 0);
   const outsRecorded = pitching?.inningsPitched
     ? Math.floor(parseFloat(pitching.inningsPitched) * 3)
     : 0;
 
   switch (propType) {
-    case 'hits':
+    case "hits":
       return batting.hits ?? 0;
-    case 'strikeouts':
-    case 'Strikeouts (Pitching)':
+    case "strikeouts":
+    case "Strikeouts (Pitching)":
       return pitching.strikeOuts ?? 0;
-    case 'homeRuns':
+    case "homeRuns":
       return batting.homeRuns ?? 0;
-    case 'walks':
+    case "walks":
       return batting.baseOnBalls ?? 0;
-    case 'Total Bases':
+    case "Total Bases":
       return (
         singles * 1 +
         (batting.doubles ?? 0) * 2 +
         (batting.triples ?? 0) * 3 +
         (batting.homeRuns ?? 0) * 4
       );
-    case 'Hits + Runs + RBIs':
+    case "Hits + Runs + RBIs":
       return (batting.hits ?? 0) + (batting.runs ?? 0) + (batting.rbi ?? 0);
-    case 'Runs Scored':
+    case "Runs Scored":
       return batting.runs ?? 0;
-    case 'Doubles':
+    case "Doubles":
       return batting.doubles ?? 0;
-    case 'Singles':
+    case "Singles":
       return singles;
-    case 'RBIs':
+    case "RBIs":
       return batting.rbi ?? 0;
-    case 'Stolen Bases':
+    case "Stolen Bases":
       return batting.stolenBases ?? 0;
-    case 'Hits Allowed':
+    case "Hits Allowed":
       return pitching.hits ?? 0;
-    case 'Walks Allowed':
+    case "Walks Allowed":
       return pitching.baseOnBalls ?? 0;
-    case 'Strikeouts (Batting)':
+    case "Strikeouts (Batting)":
       return batting.strikeOuts ?? 0;
-    case 'Outs Recorded':
+    case "Outs Recorded":
       return outsRecorded;
-    case 'Runs + RBIs':
+    case "Runs + RBIs":
       return (batting.runs ?? 0) + (batting.rbi ?? 0);
     default:
       console.warn(`⚠️ Unknown propType: ${propType}`);
@@ -102,7 +106,9 @@ async function updatePropStatus(prop) {
 
   const playerId = findPlayerId(json, prop.player_name);
   if (!playerId) {
-    console.warn(`⚠️ Player not found: ${prop.player_name} (likely didn't play)`);
+    console.warn(
+      `⚠️ Player not found: ${prop.player_name} (likely didn't play)`
+    );
     return false;
   }
 
@@ -112,35 +118,47 @@ async function updatePropStatus(prop) {
     console.warn(
       `⚠️ No stat found for ${prop.prop_type} on ${prop.player_name}, trying live feed...`
     );
-    actualValue = await getStatFromLiveFeed(prop.game_id, playerId, prop.prop_type);
+    actualValue = await getStatFromLiveFeed(
+      prop.game_id,
+      playerId,
+      prop.prop_type
+    );
   }
 
   if (actualValue === null) {
-    console.warn(`⚠️ No stat found (boxscore + live) for ${prop.prop_type} on ${prop.player_name}`);
+    console.warn(
+      `⚠️ No stat found (boxscore + live) for ${prop.prop_type} on ${prop.player_name}`
+    );
     return false;
   }
 
-  const outcome = determineStatus(actualValue, prop.prop_value, prop.over_under);
+  const outcome = determineStatus(
+    actualValue,
+    prop.prop_value,
+    prop.over_under
+  );
   const { error } = await supabase
-    .from('player_props')
-    .update({ result: actualValue, outcome, status: 'resolved' })
-    .eq('id', prop.id);
+    .from("player_props")
+    .update({ result: actualValue, outcome, status: "resolved" })
+    .eq("id", prop.id);
 
   if (error) {
     console.error(`❌ Failed to update prop ${prop.id}:`, error.message);
     return false;
   } else {
-    console.log(`✅ ${prop.player_name} (${prop.prop_type}): ${actualValue} → ${outcome}`);
+    console.log(
+      `✅ ${prop.player_name} (${prop.prop_type}): ${actualValue} → ${outcome}`
+    );
     return true;
   }
 }
 
 async function getPendingProps() {
   const { data, error } = await supabase
-    .from('player_props')
-    .select('*')
-    .eq('status', 'pending')
-    .lte('game_date', new Date().toISOString().split('T')[0]);
+    .from("player_props")
+    .select("*")
+    .eq("status", "pending")
+    .lte("game_date", new Date().toISOString().split("T")[0]);
 
   if (error) throw error;
   return data;
@@ -164,7 +182,7 @@ export async function updatePropStatuses() {
     }
   }
 
-  console.log('🏁 Finished processing pending props:');
+  console.log("🏁 Finished processing pending props:");
   console.log(`✅ Updated: ${updated}`);
   console.log(`⏭️ Skipped: ${skipped}`);
   console.log(`❌ Errors: ${errors}`);

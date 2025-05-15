@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient.js";
+import { supabase } from "../utils/supabaseUtils.js";
 
 const AuthContext = createContext();
 
@@ -8,32 +8,24 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const getCurrentSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      setLoading(false);
-    };
+    const session = supabase.auth.session(); // ✅ v1.x correct usage
+    setUser(session?.user ?? null);
+    setLoading(false);
 
-    getCurrentSession();
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
+    const { data: authListener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
+        console.log("🔔 Auth listener triggered:", { session });
         setUser(session?.user ?? null);
       }
     );
 
     return () => {
-      listener.subscription.unsubscribe();
+      authListener?.unsubscribe(); // ✅ v1.x correct cleanup
     };
   }, []);
 
   const signIn = async ({ email, password }) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signIn({ email, password }); // ✅ v1.x syntax
     if (error) throw error;
   };
 

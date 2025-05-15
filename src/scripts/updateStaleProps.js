@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../utils/supabaseUtils.js";
 import { updatePropStatus } from "../../scripts/updatePropResults.js";
 import { nowET } from "../utils/timeUtils.js";
 

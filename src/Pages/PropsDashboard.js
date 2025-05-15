@@ -10,7 +10,7 @@ export default function PropsDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-100 px-4 py-6">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="bg-blue-100 p-4 rounded-xl shadow-md overflow-x-auto">
         {user ? (
           <PlayerPropForm />
         ) : (

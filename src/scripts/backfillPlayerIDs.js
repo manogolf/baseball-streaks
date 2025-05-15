@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../utils/supabaseUtils.js";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
 dotenv.config();

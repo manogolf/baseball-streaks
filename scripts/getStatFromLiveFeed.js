@@ -6,6 +6,12 @@ export async function getStatFromLiveFeed(gameId, playerId, propType) {
   try {
     const res = await fetch(url);
     const json = await res.json();
+    // ✅ Guard: ensure game is finished
+    const gameState = json?.gameData?.status?.abstractGameState;
+    if (gameState !== "Final") {
+      console.warn(`⏳ Game ${gameId} is not final (status = ${gameState})`);
+      return null;
+    }
     const allPlays = json?.liveData?.plays?.allPlays || [];
     const normalizedType = (propType || "")
       .toLowerCase()

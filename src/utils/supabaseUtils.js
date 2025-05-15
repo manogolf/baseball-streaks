@@ -1,11 +1,23 @@
 import { createClient } from "@supabase/supabase-js";
 import { nowET, todayET, currentTimeET } from "./timeUtils.js";
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const isFrontend = typeof window !== "undefined";
 
+const supabaseUrl = isFrontend
+  ? process.env.REACT_APP_SUPABASE_URL
+  : process.env.SUPABASE_URL;
+
+const supabaseKey = isFrontend
+  ? process.env.REACT_APP_SUPABASE_ANON_KEY
+  : process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+export const supabase = createClient(supabaseUrl, supabaseKey);
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error("❌ Supabase environment variables are missing.");
+}
+
+// 📌 Fetch Resolved Props
 export async function fetchResolvedProps() {
   const { data, error } = await supabase
     .from("player_props")
@@ -19,6 +31,7 @@ export async function fetchResolvedProps() {
   return data;
 }
 
+// 📌 Fetch Pending Props
 export async function getPendingProps() {
   const { data, error } = await supabase
     .from("player_props")
@@ -42,6 +55,7 @@ export async function getPendingProps() {
   );
 }
 
+// 📌 Delete Old Pending Props
 export async function expireOldPendingProps() {
   const twoDaysAgo = nowET().minus({ days: 2 }).toISODate();
   const { data, error } = await supabase
@@ -58,6 +72,7 @@ export async function expireOldPendingProps() {
   }
 }
 
+// 📌 Update Prop Statuses Using a Callback
 export async function updatePropStatuses(updatePropStatusFn) {
   const props = await getPendingProps();
   console.log(`🔎 Found ${props.length} pending props to update.`);
@@ -84,6 +99,7 @@ export async function updatePropStatuses(updatePropStatusFn) {
   );
 }
 
+// 📌 Sync Resolved Props to Training Table
 export async function syncTrainingData() {
   const resolvedProps = await fetchResolvedProps();
 
@@ -127,4 +143,58 @@ export async function syncTrainingData() {
       console.log(`✅ Synced prop ${prop.id} to model_training_props`);
     }
   }
+}
+
+// 📌 NEW: Fetch Recent Props for Feature Engineering
+export async function fetchRecentProps(
+  player_name,
+  prop_type,
+  dateISO,
+  limit = 7
+) {
+  const { data, error } = await supabase
+    .from("player_props")
+    .select("outcome")
+    .eq("player_name", player_name)
+    .eq("prop_type", prop_type)
+    .lt("game_date", dateISO)
+    .order("game_date", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error(
+      `❌ Failed to fetch recent props for ${player_name}:`,
+      error.message
+    );
+    return [];
+  }
+  return data;
+}
+
+// 📌 NEW: Fetch Opponent-Level Outcomes for Feature Engineering
+export async function fetchOpponentGames(
+  player_name,
+  prop_type,
+  opponent,
+  dateISO,
+  limit = 5
+) {
+  const { data, error } = await supabase
+    .from("player_props")
+    .select("outcome")
+    .eq("player_name", player_name)
+    .eq("prop_type", prop_type)
+    .eq("opponent", opponent)
+    .lt("game_date", dateISO)
+    .order("game_date", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error(
+      `❌ Failed to fetch opponent games for ${player_name} vs ${opponent}:`,
+      error.message
+    );
+    return [];
+  }
+  return data;
 }

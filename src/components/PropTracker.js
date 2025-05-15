@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { format, isValid } from "date-fns";
 import { todayET, currentTimeET, toISODate } from "../utils/timeUtils.js";
-import { supabase } from "../lib/supabaseClient.js";
+import { supabase } from "../utils/supabaseUtils.js";
 import Calendar from "./ui/calendar.js";
 import AccuracyByPropType from "./AccuracyByPropType.js"; // Adjust the path if necessary
+import { getPropDisplayLabel } from "../utils/propUtils.js";
 
 export default function PropTracker() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -54,7 +55,7 @@ export default function PropTracker() {
   const renderPropsTable = (props) => (
     <div className="bg-blue-50 shadow-md rounded-lg overflow-hidden border">
       <table className="w-full text-sm text-left">
-        <thead className="bg-gray-100">
+        <thead className="bg-gray-50">
           <tr>
             <th className="px-4 py-2">Player</th>
             <th className="px-4 py-2">Team</th>
@@ -78,7 +79,9 @@ export default function PropTracker() {
                 </td>
 
                 <td className="px-4 py-2">{prop.team}</td>
-                <td className="px-4 py-2">{prop.prop_type}</td>
+                <td className="px-4 py-2">
+                  {getPropDisplayLabel(prop.prop_type)}
+                </td>
                 <td className="px-4 py-2">{prop.prop_value}</td>
                 <td className="px-4 py-2">
                   <span
@@ -138,7 +141,7 @@ export default function PropTracker() {
         <div className="flex-1">
           <h2 className="text-lg font-semibold mb-2">
             {isTodaySelected
-              ? "Today's Player Props"
+              ? "Player Props for Selected Date"
               : `Player Props for ${formattedDate}`}
           </h2>
           {renderPropsTable(filteredProps)}

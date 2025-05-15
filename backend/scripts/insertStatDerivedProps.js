@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../utils/supabaseUtils.js";
 import fetch from "node-fetch";
 import "dotenv/config";
 import { yesterdayET } from "../../src/utils/timeUtils.js";

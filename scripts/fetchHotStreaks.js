@@ -1,6 +1,6 @@
 // src/scripts/fetchHotStreaks.js
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../utils/supabaseUtils.js";
 import fetch from "node-fetch";
 
 const supabaseUrl = "https://cnwwhhmpashijqbspvhf.supabase.co";

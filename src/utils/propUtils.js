@@ -1,21 +1,16 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../utils/supabaseUtils.js";
 import { nowET, todayET, currentTimeET } from "./timeUtils.js";
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 // 🏷️ Stat Extractors by Prop Type
 export const propExtractors = {
   Hits: (stats) => stats.hits,
-  Runs: (stats) => stats.runs,
   "Runs Scored": (stats) => stats.runs,
   RBIs: (stats) => stats.rbi,
   "Home Runs": (stats) => stats.homeRuns,
   Walks: (stats) => stats.baseOnBalls,
   Strikeouts: (stats) => stats.strikeOuts,
   "Stolen Bases": (stats) => stats.stolenBases,
+  Singles: (stats) => stats.singles,
   Doubles: (stats) => stats.doubles,
   Triples: (stats) => stats.triples,
   "Total Bases": (stats) => stats.totalBases,
@@ -33,22 +28,15 @@ export const propExtractors = {
 export function normalizePropType(propType) {
   if (!propType) return null;
 
-  // Attempt exact match first
-  if (propExtractors[propType]) return propType;
-
-  // Try formatting corrections
   const formatted = propType
     .toLowerCase()
-    .replace(/\(.*?\)/g, "") // remove anything in parentheses
-    .replace(/\s+/g, " ") // collapse spaces
-    .trim()
-    .replace(/\b\w/g, (char) => char.toUpperCase()); // capitalize words
+    .replace(/[()]/g, "") // remove stray parentheses
+    .replace(/\s*\+\s*/g, "_") // replace ' + ' with underscore
+    .replace(/\s+/g, "_") // replace remaining spaces with underscores
+    .replace(/_+$/, "") // remove trailing underscores
+    .trim();
 
-  return (
-    Object.keys(propExtractors).find(
-      (key) => key.toLowerCase() === formatted.toLowerCase()
-    ) || null
-  );
+  return formatted;
 }
 
 // 📅 Expire Old Pending Props (2+ days old)
@@ -91,4 +79,13 @@ export async function getPendingProps() {
       prop.game_date < todayET() ||
       (prop.game_date === todayET() && prop.game_time <= currentTimeET())
   );
+}
+
+// 🔠 Display label formatter from normalized key
+export function getPropDisplayLabel(normalizedKey) {
+  const extractorLabels = Object.keys(propExtractors);
+  const match = extractorLabels.find(
+    (label) => normalizePropType(label) === normalizedKey
+  );
+  return match || normalizedKey;
 }

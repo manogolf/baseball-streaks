@@ -1,9 +1,6 @@
 import "dotenv/config";
-import { createClient } from "@supabase/supabase-js";
-import {
-  expireOldPendingProps,
-  getPendingProps,
-} from "../src/utils/propUtils.js";
+import { supabase } from "../utils/supabaseUtils.js";
+import { getPlayerID } from "../../src/utils/playerUtils.js";
 import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
 
 const supabase = createClient(
@@ -42,7 +39,9 @@ export async function updatePropStatus(prop) {
     if (liveValue === null) return false;
     prop.result = liveValue;
   } else {
-    prop.result = playerStats[prop.prop_type] ?? null;
+    const rawValue = playerStats[prop.prop_type];
+    const statExists = Object.hasOwn(playerStats, prop.prop_type);
+    prop.result = statExists ? rawValue ?? 0 : null;
   }
 
   if (prop.result === null) {
