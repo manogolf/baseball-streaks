@@ -23,9 +23,6 @@ if (!supabaseUrl || !supabaseKey) {
 export const supabase =
   supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
-console.log("🔍 Supabase URL:", supabaseUrl);
-console.log("🔍 Supabase Key:", supabaseKey);
-
 // 📌 Fetch Resolved Props
 export async function fetchResolvedProps() {
   const { data, error } = await supabase
