@@ -6,21 +6,22 @@ on:
   workflow_dispatch: # Allows manual trigger
 
 jobs:
-  streaks:
+  run-script:
     runs-on: ubuntu-latest
-    steps:
-      - name: 📥 Checkout repo
-        uses: actions/checkout@v3
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
-      - name: 🟢 Setup Node.js
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: "18"
 
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: npm ci
 
-      - name: 🌿 Run fetchHotStreaks script
-        env:
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      - name: Run hot streak fetcher
         run: node scripts/fetchHotStreaks.js
