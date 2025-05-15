@@ -11,11 +11,11 @@ const supabaseKey = isFrontend
   ? process.env.REACT_APP_SUPABASE_ANON_KEY
   : process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
-
 if (!supabaseUrl || !supabaseKey) {
   throw new Error("❌ Supabase environment variables are missing.");
 }
+
+export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // 📌 Fetch Resolved Props
 export async function fetchResolvedProps() {
