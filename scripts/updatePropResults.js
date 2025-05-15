@@ -3,11 +3,6 @@ import { supabase } from "../utils/supabaseUtils.js";
 import { getPlayerID } from "../../src/utils/playerUtils.js";
 import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
 function determineStatus(actual, line, overUnder) {
   const direction = overUnder?.toLowerCase();
   if (actual === line) return "push";
