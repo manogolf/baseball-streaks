@@ -35,7 +35,11 @@ npm-shrinkwrap.json
 training_data/
 data/
 *.csv
-*.json
+- *.json
++ *.json
++ !package.json
++ !package-lock.json
+
 
 
 
