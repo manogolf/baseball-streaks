@@ -7,7 +7,7 @@ app = FastAPI()
 # 🌍 Allowed origins for development and production
 allowed_origins = [
     "http://localhost:3000",  # Local React dev server
-    "https://your-production-domain.com",  # 🔥 Replace with your live domain
+    "https://www.proppadia.com",  # 🔥 Replace with your live domain
 ]
 
 app.add_middleware(
