@@ -5,6 +5,7 @@ import {
   expireOldPendingProps,
 } from "../src/utils/propUtils.js";
 import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
+import { extractStatForPropType } from "../src/utils/statExtractors.js"; // ✅ add this at the top
 
 function determineStatus(actual, line, overUnder) {
   const direction = overUnder?.toLowerCase();
@@ -18,6 +19,10 @@ function determineStatus(actual, line, overUnder) {
 export async function updatePropStatus(prop) {
   console.log(`📡 Checking prop: ${prop.player_name} - ${prop.prop_type}`);
 
+  let statsSource = "boxscore";
+  let statBlock = null;
+
+  // 🔍 Step 1: Try from Supabase stats (already boxscore-based)
   const { data: playerStats, error } = await supabase
     .from("player_stats")
     .select("*")
@@ -27,22 +32,22 @@ export async function updatePropStatus(prop) {
 
   if (error || !playerStats) {
     console.warn(
-      `⚠️ No stats found for ${prop.player_name}, trying live feed...`
+      `⚠️ No stats found in player_stats for ${prop.player_name}, trying live feed...`
     );
-    const liveValue = await getStatFromLiveFeed(
+    statsSource = "live";
+    statBlock = await getStatFromLiveFeed(
       prop.game_id,
       prop.player_id,
       prop.prop_type
     );
-    if (liveValue === null) return false;
-    prop.result = liveValue;
   } else {
-    const rawValue = playerStats[prop.prop_type];
-    const statExists = Object.hasOwn(playerStats, prop.prop_type);
-    prop.result = statExists ? rawValue ?? 0 : null;
+    statBlock = playerStats;
   }
 
-  if (prop.result === null) {
+  // ✅ Use unified extractor
+  prop.result = extractStatForPropType(prop.prop_type, statBlock);
+
+  if (prop.result === null || prop.result === undefined) {
     console.warn(
       `⚠️ No stat found for ${prop.player_name} - ${prop.prop_type}`
     );
@@ -54,8 +59,9 @@ export async function updatePropStatus(prop) {
     prop.prop_value,
     prop.over_under
   );
+
   console.log(
-    `🎯 Outcome: ${prop.result} vs ${prop.prop_value} (${prop.over_under}) → ${outcome}`
+    `🎯 Outcome (${statsSource}): ${prop.result} vs ${prop.prop_value} (${prop.over_under}) → ${outcome}`
   );
 
   const { error: updateError } = await supabase

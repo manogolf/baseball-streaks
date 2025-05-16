@@ -1,64 +1,38 @@
-import { getFullTeamName } from "./teamNameMap.js";
+// scripts/fetchGameID.js
 
-async function getGamePkForTeamOnDate(teamAbbr, gameDate) {
-  const fullTeamName = getFullTeamName(teamAbbr);
+import { DateTime } from "luxon";
+import { TEAM_NAME_MAP } from "../src/utils/teamNameMap.js";
 
+export async function getGamePkForTeamOnDate(teamAbbr, dateISO) {
+  const fullTeamName = TEAM_NAME_MAP[teamAbbr];
   if (!fullTeamName) {
-    console.warn(`❌ Team abbreviation not recognized: ${teamAbbr}`);
+    console.warn(`⚠️ Unknown team abbreviation: ${teamAbbr}`);
     return null;
   }
 
-  const apiUrl = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${gameDate}`;
-  console.log(`📡 Fetching schedule from: ${apiUrl}`);
+  const apiDate = DateTime.fromISO(dateISO).toFormat("yyyy-MM-dd");
+  const url = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${apiDate}`;
 
-  try {
-    const response = await fetch(apiUrl);
-    if (!response.ok) {
-      console.error(`❌ Failed to fetch schedule: HTTP ${response.status}`);
-      return null;
-    }
+  console.log("📡 Fetching schedule from:", url);
+  const res = await fetch(url);
+  const json = await res.json();
 
-    const data = await response.json();
-    const games = data.dates?.[0]?.games ?? [];
+  const games = json.dates?.[0]?.games || [];
+  console.log("📦 Games on date:", games);
 
-    if (games.length === 0) {
-      console.warn(`📅 No games found on ${gameDate}.`);
-      return null;
-    }
+  for (const game of games) {
+    const { gamePk, teams } = game;
+    const homeTeam = teams.home.team.name;
+    const awayTeam = teams.away.team.name;
 
-    const match = games.find(
-      (game) =>
-        game.teams.away.team.name === fullTeamName ||
-        game.teams.home.team.name === fullTeamName
-    );
-
-    if (!match) {
-      console.warn(
-        `❌ No game found for team: ${fullTeamName} on ${gameDate}.`
-      );
+    if (homeTeam === fullTeamName || awayTeam === fullTeamName) {
       console.log(
-        "📦 Games on date:",
-        games.map((g) => ({
-          home: g.teams.home.team.name,
-          away: g.teams.away.team.name,
-          gamePk: g.gamePk,
-        }))
+        `🎮 Found game ID for ${fullTeamName} on ${apiDate}: ${gamePk}`
       );
-      return null;
+      return gamePk;
     }
-
-    const game_id = match.gamePk;
-    console.log(
-      `🎮 Found game ID for ${fullTeamName} on ${gameDate}: ${game_id}`
-    );
-    return game_id;
-  } catch (err) {
-    console.error(
-      `🔥 Error fetching game ID for ${fullTeamName} on ${gameDate}:`,
-      err
-    );
-    return null;
   }
-}
 
-export { getGamePkForTeamOnDate };
+  console.warn(`❌ No game found for team: ${fullTeamName} on ${apiDate}`);
+  return null;
+}

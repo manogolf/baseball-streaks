@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import predict
+from app.routes.player_profile import router as player_profile_router
+app.include_router(player_profile_router)
+
+
 
 app = FastAPI()
 

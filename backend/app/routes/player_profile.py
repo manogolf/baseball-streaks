@@ -1,61 +1,64 @@
-# backend/app/routes/player_profile.py
-
-from fastapi import APIRouter, Path, HTTPException
-from supabase import create_client, Client
+from fastapi import APIRouter, HTTPException
+from supabase import create_client
 import os
-import httpx
+from datetime import datetime, timedelta
 
 router = APIRouter()
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+# Supabase Client Setup
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 @router.get("/player-profile/{player_id}")
-async def get_player_profile(player_id: str = Path(..., description="MLB player ID")):
-    try:
-        props_resp = (
-            supabase.table("player_props")
-            .select("*")
-            .eq("player_id", player_id)
-            .neq("outcome", None)
-            .order("game_date", desc=True)
-            .limit(10)
-            .execute()
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Supabase error: {e}")
+async def get_player_profile(player_id: str):
+    if not player_id:
+        raise HTTPException(status_code=400, detail="Player ID is required")
 
-    props = props_resp.data or []
-    recent_outcomes = [p["outcome"] for p in props]
-    wins = sum(1 for o in recent_outcomes if o == "win")
-    rolling_avg = wins / len(recent_outcomes) if recent_outcomes else 0
+    # Step 1: Fetch recent resolved props (last 7 games)
+    today = datetime.utcnow().date()
+    seven_days_ago = today - timedelta(days=7)
 
-    hit_streak = 0
-    for o in recent_outcomes:
-        if o == "win":
-            hit_streak += 1
-        else:
-            break
+    props_resp = (
+        supabase
+        .from_("player_props")
+        .select("*")
+        .eq("player_id", player_id)
+        .eq("status", "win")
+        .gte("game_date", seven_days_ago.isoformat())
+        .order("game_date", desc=True)
+        .limit(10)
+        .execute()
+    )
 
-    mlb_url = f"https://statsapi.mlb.com/api/v1/people/{player_id}?hydrate=stats(group=[hitting,pitching],type=[career,season])"
-    try:
-        async with httpx.AsyncClient() as client:
-            mlb_resp = await client.get(mlb_url)
-        mlb_data = mlb_resp.json()
-        stats = mlb_data.get("people", [{}])[0].get("stats", [])
+    if props_resp.error:
+        raise HTTPException(status_code=500, detail="Failed to fetch props")
 
-        career_stats = next((s["splits"][0]["stat"] for s in stats if s["type"]["displayName"] == "career"), {})
-        season_stats = next((s["splits"][0]["stat"] for s in stats if s["type"]["displayName"] == "season"), {})
+    recent_props = props_resp.data
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"MLB API error: {e}")
+    # Step 2: Add streak logic
+    current_streak = 0
+    streak_type = None
+
+    for prop in recent_props:
+        if prop["outcome"] == "win":
+            if streak_type in [None, "win"]:
+                streak_type = "win"
+                current_streak += 1
+            else:
+                break
+        elif prop["outcome"] == "loss":
+            if streak_type in [None, "loss"]:
+                streak_type = "loss"
+                current_streak += 1
+            else:
+                break
 
     return {
         "player_id": player_id,
-        "recent_props": props,
-        "rolling_result_avg_7": round(rolling_avg, 3),
-        "hit_streak": hit_streak,
-        "career_stats": career_stats,
-        "season_stats": season_stats,
+        "recent_props": recent_props,
+        "streak": {
+            "count": current_streak,
+            "type": streak_type or "neutral"
+        }
     }
