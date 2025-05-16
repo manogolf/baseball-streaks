@@ -8,7 +8,6 @@ export const propExtractors = {
   RBIs: (stats) => stats.rbi,
   "Home Runs": (stats) => stats.homeRuns,
   Walks: (stats) => stats.baseOnBalls,
-  Strikeouts: (stats) => stats.strikeOuts,
   "Stolen Bases": (stats) => stats.stolenBases,
   Singles: (stats) => stats.singles,
   Doubles: (stats) => stats.doubles,

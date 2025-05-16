@@ -101,6 +101,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
         prop_value,
         over_under,
         game_date,
+        game_id, // 🧠 you’re overriding the internal lookup with this
       });
 
       const features = await buildFeatureVector({
