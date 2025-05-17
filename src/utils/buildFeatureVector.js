@@ -1,8 +1,8 @@
 // src/utils/buildFeatureVector.js
 import { supabase } from "./supabaseUtils.js";
 import { checkIfHome, getPlayerID } from "./playerUtils.js";
-import { getGamePkForTeamOnDate } from "./fetchGameID.js";
-import { todayET, toISODate } from "./timeUtils.js"; // ✅ Using utilities only
+import { getGamePkForTeamOnDate } from "../scripts/shared/fetchGameID.js";
+import { todayET, toISODate } from "../scripts/shared/timeUtils.js"; // ✅ Using utilities only
 
 export async function buildFeatureVector({
   player_name,

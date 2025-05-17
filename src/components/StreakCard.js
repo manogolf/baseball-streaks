@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../utils/supabaseUtils.js";
-import { nowET, todayET, currentTimeET } from "../utils/timeUtils.js";
+import { nowET, todayET, currentTimeET } from "../scripts/shared/timeUtils.js";
 
 const StreaksCard = () => {
   const [hotStreaks, setHotStreaks] = useState([]);

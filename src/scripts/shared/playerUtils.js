@@ -1,4 +1,4 @@
-import { supabase } from "../utils/supabaseUtils.js";
+import { supabase } from "./supabaseUtils.js";
 import { normalizePropType } from "./propUtils.js";
 import { getGamePkForTeamOnDate } from "./fetchGameID.js";
 import { toISODate } from "./timeUtils.js";

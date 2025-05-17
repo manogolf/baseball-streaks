@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../utils/supabaseUtils.js";
-import { nowET, todayET, currentTimeET } from "../utils/timeUtils.js";
-import { getPropDisplayLabel } from "../utils/propUtils.js";
+import { nowET, todayET, currentTimeET } from "../scripts/shared/timeUtils.js";
+import { getPropDisplayLabel } from "../scripts/shared/propUtils.js";
 
 const statusColor = {
   win: "bg-green-100 text-green-700",
@@ -9,7 +9,8 @@ const statusColor = {
   push: "bg-blue-100 text-blue-700",
   resolved: "bg-gray-200 text-gray-600",
   live: "bg-yellow-100 text-yellow-800 animate-pulse",
-  pending: "bg-gray-100 text-gray-600",
+  pending: "bg-gray-200 text-gray-600", // optionally improve this too
+  dnp: "bg-zinc-200 text-zinc-700",
 };
 
 const PlayerPropsTable = () => {

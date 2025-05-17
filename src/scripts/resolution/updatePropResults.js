@@ -1,11 +1,8 @@
 import "dotenv/config";
-import { supabase } from "../src/utils/supabaseUtils.js";
-import {
-  getPendingProps,
-  expireOldPendingProps,
-} from "../src/utils/propUtils.js";
+import { supabase } from "../shared/index.js";
+import { getPendingProps, expireOldPendingProps } from "../shared/propUtils.js";
 import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
-import { extractStatForPropType } from "../src/utils/statExtractors.js"; // ✅ add this at the top
+import { extractStatForPropType } from "./statExtractors.js"; // ✅ add this at the top
 
 function determineStatus(actual, line, overUnder) {
   const direction = overUnder?.toLowerCase();
@@ -19,10 +16,15 @@ function determineStatus(actual, line, overUnder) {
 export async function updatePropStatus(prop) {
   console.log(`📡 Checking prop: ${prop.player_name} - ${prop.prop_type}`);
 
+  // ❌ Skip invalid lines (e.g., negative totals)
+  if (prop.prop_value < 0) {
+    console.warn(`🚫 Invalid prop line value: ${prop.prop_value} — skipping`);
+    return false;
+  }
+
   let statsSource = "boxscore";
   let statBlock = null;
 
-  // 🔍 Step 1: Try from Supabase stats (already boxscore-based)
   const { data: playerStats, error } = await supabase
     .from("player_stats")
     .select("*")
@@ -44,7 +46,23 @@ export async function updatePropStatus(prop) {
     statBlock = playerStats;
   }
 
-  // ✅ Use unified extractor
+  // 📦 Log raw stat block for debugging
+  console.log("📊 Stat block keys:", Object.keys(statBlock || {}));
+
+  // 🟡 DNP detection — all values null?
+  const values = Object.values(statBlock || {});
+  const meaningfulValues = values.filter((v) => v !== null && v !== undefined);
+  if (meaningfulValues.length === 0) {
+    console.warn(
+      `⛔ Player ${prop.player_name} appears to not have played. Marking as DNP.`
+    );
+    await supabase
+      .from("player_props")
+      .update({ status: "dnp", result: null, outcome: null, was_correct: null })
+      .eq("id", prop.id);
+    return false;
+  }
+
   prop.result = extractStatForPropType(prop.prop_type, statBlock);
 
   if (prop.result === null || prop.result === undefined) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../utils/supabaseUtils.js";
-import { toISODate } from "../utils/timeUtils.js";
+import { toISODate } from "../scripts/shared/timeUtils.js";
 
 export default function AccuracyByPropType({ selectedDate }) {
   const [accuracyData, setAccuracyData] = useState([]);

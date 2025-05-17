@@ -1,4 +1,4 @@
-// src/utils/timeUtils.js
+// src/scripts/shared/timeUtils.js
 import { DateTime } from "luxon";
 
 // 📌 Get Current Time in Eastern Time (ISO String)
@@ -9,6 +9,11 @@ export function nowET() {
 // 📌 Get Today’s Date in Eastern Time (YYYY-MM-DD)
 export function todayET() {
   return nowET().toISODate();
+}
+
+// 📌 Get Yesterday’s Date in Eastern Time (YYYY-MM-DD)
+export function yesterdayET() {
+  return nowET().minus({ days: 1 }).toISODate();
 }
 
 // 📌 Get Current Time of Day in Eastern Time (HH:mm)

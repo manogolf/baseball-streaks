@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import TodayGames from "../components/TodayGames.js";
 import StreakCard from "../components/StreakCard.js";
-import { todayET } from "../utils/timeUtils.js";
+import { todayET } from "../scripts/shared/timeUtils.js";
 
 export default function Home() {
   console.log("✅ API URL:", process.env.REACT_APP_API_URL);

@@ -8,7 +8,8 @@ import {
 import Header from "../components/Header.js";
 import Home from "../Pages/Home.js";
 import PropsDashboard from "../Pages/PropsDashboard.js";
-import LoginPage from "../Pages/LoginPage.js";
+import LoginPage from "../Pages/Login.js";
+import PlayerProfilePage from "../Pages/PlayerProfile.js"; // adjust path if needed
 
 export default function AppRouter() {
   return (
@@ -31,6 +32,13 @@ export default function AppRouter() {
             Props
           </Link>
           <Link
+            to="/player/691182" // Example ID
+            className="text-sm text-gray-700 hover:text-indigo-700 font-medium"
+          >
+            Player Profile
+          </Link>
+
+          <Link
             to="/login"
             className="text-sm text-gray-700 hover:text-indigo-700 font-medium"
           >
@@ -44,6 +52,7 @@ export default function AppRouter() {
         <Route path="/" element={<Home />} />
         <Route path="/props" element={<PropsDashboard />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/player/:playerId" element={<PlayerProfilePage />} />
       </Routes>
     </BrowserRouter>
   );

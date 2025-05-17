@@ -1,6 +1,7 @@
 import "dotenv/config";
 import cron from "node-cron";
 import { updatePropStatuses } from "./updatePropResults.js";
+import { syncStatsForDate } from "../src/scripts/resolution/syncPlayerStats.js";
 
 console.log("⏳ Cron runner starting...");
 
@@ -16,6 +17,8 @@ console.log(
       : "daily at 10:00 UTC (off-season)"
   }`
 );
+
+await syncStatsForDate(); // defaults to yesterday ET
 
 const isGitHubAction = process.env.GITHUB_ACTIONS === "true";
 

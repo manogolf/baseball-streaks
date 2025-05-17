@@ -1,4 +1,4 @@
-// src/utils/teamNameMap.js
+// src/scripts/shared/teamNameMap.js
 
 // Map of team abbreviations to full names
 export const teamNameMap = {
@@ -7,7 +7,7 @@ export const teamNameMap = {
   BAL: "Baltimore Orioles",
   BOS: "Boston Red Sox",
   CHC: "Chicago Cubs",
-  CWS: "Chicago White Sox",
+  CHW: "Chicago White Sox",
   CIN: "Cincinnati Reds",
   CLE: "Cleveland Guardians",
   COL: "Colorado Rockies",

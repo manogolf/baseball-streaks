@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../utils/supabaseUtils.js";
-import { nowET, todayET } from "../utils/timeUtils.js";
+import { nowET, todayET } from "../scripts/shared/timeUtils.js";
 import { useAuth } from "../context/AuthContext.js";
 import { buildFeatureVector } from "../utils/buildFeatureVector.js";
 import { requiredFeatures } from "../config/predictionSchema.js";
@@ -10,7 +10,7 @@ import {
   propExtractors,
   getPropDisplayLabel,
   normalizePropType,
-} from "../utils/propUtils.js";
+} from "../scripts/shared/propUtils.js";
 
 const apiUrl = `${
   process.env.REACT_APP_API_URL || "http://localhost:8000"
@@ -186,45 +186,60 @@ const PlayerPropForm = ({ onPropAdded }) => {
       const result = await response.json();
       console.log("📬 Received prediction:", result);
 
-      // Optional: setPrediction(result); — only needed for UI use
-
       // 👉 Step 2: Resolve Game ID early to catch errors
-        let resolvedGameId;
-        try {
-          resolvedGameId = await getGamePkForTeamOnDate(team, game_date);
-          if (!resolvedGameId) {
-            throw new Error(`No game found for ${team} on ${game_date}`);
-          }
-        } catch (err) {
-          alert(`⚠️ Could not find a game for ${team} on ${game_date}. Please check the date or team abbreviation.`);
-          setSubmitting(false);
-          return;
+      let resolvedGameId;
+      try {
+        resolvedGameId = await getGamePkForTeamOnDate(
+          formData.team,
+          formData.game_date
+        );
+        if (!resolvedGameId) {
+          throw new Error(
+            `No game found for ${formData.team} on ${formData.game_date}`
+          );
         }
-        
-        // 👉 Step 3: Prepare full prop submission data with injected game_id
-        const preparedData = await preparePropSubmission({
-          ...formData,
-          game_id: resolvedGameId,
-        });
-        
-        const { player_id } = preparedData;
-        const now = nowET().toISO();
-        
-        const payload = {
-          player_name: preparedData.player_name || formData.player_name,
-          team: preparedData.team || formData.team,
-          prop_type: preparedData.prop_type,
-          prop_value: parseFloat(preparedData.prop_value),
-          game_date: preparedData.game_date || formData.game_date,
-          game_id: resolvedGameId,
-          player_id,
-          status: "pending",
-          created_at: now,
-          predicted_outcome: result?.predicted_outcome ?? null,
-          confidence_score: result?.confidence_score ?? null,
-          prediction_timestamp: result ? now : null,
-          over_under: preparedData.over_under.toLowerCase(),
-        };
+      } catch (err) {
+        alert(
+          `⚠️ Could not find a game for ${formData.team} on ${formData.game_date}. Please check the date or team abbreviation.`
+        );
+        setSubmitting(false);
+        return;
+      }
+
+      // 👉 Step 3: Prepare full prop submission data with injected game_id
+      const preparedData = await preparePropSubmission({
+        ...formData,
+        game_id: resolvedGameId,
+      });
+
+      const { player_id } = preparedData;
+      const now = nowET().toISO();
+
+      const payload = {
+        player_name: preparedData.player_name || formData.player_name,
+        team: preparedData.team || formData.team,
+        prop_type: preparedData.prop_type,
+        prop_value: parseFloat(preparedData.prop_value),
+        game_date: preparedData.game_date || formData.game_date,
+        game_id: resolvedGameId,
+        player_id,
+        status: "pending",
+        created_at: now,
+        predicted_outcome: result?.predicted_outcome ?? null,
+        confidence_score: result?.confidence_score ?? null,
+        prediction_timestamp: result ? now : null,
+        over_under: preparedData.over_under.toLowerCase(),
+      };
+
+      // TODO: You can insert payload to Supabase or call onPropAdded here
+    } catch (err) {
+      console.error("❌ Prediction flow error:", err);
+      setError("Prediction failed or timed out.");
+      setTimeout(() => setError(""), 4000);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <form
@@ -263,7 +278,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
             "BAL",
             "BOS",
             "CHC",
-            "CHW",
+            "CWS",
             "CIN",
             "CLE",
             "COL",

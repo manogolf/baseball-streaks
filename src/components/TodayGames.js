@@ -6,7 +6,7 @@ import {
   formatGameTime,
   getEasternDateFromISO,
   toISODate,
-} from "../utils/timeUtils.js";
+} from "../scripts/shared/timeUtils.js";
 
 const TodayGames = ({ games }) => {
   const [standings, setStandings] = useState([]);
