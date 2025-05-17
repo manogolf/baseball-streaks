@@ -17,15 +17,33 @@ supabase = create_client(
 MODEL_DIR = "models"
 
 def fetch_data(prop_type):
-    """Pulls resolved training data for a specific prop type."""
-    response = supabase.table("model_training_props") \
-        .select("*") \
-        .eq("prop_type", prop_type) \
-        .in_("outcome", ["win", "loss"]) \
-        .execute()
+    """Pulls resolved and balanced training data for a specific prop type."""
+    def fetch_outcome_subset(outcome):
+        res = supabase.table("model_training_props") \
+            .select("*") \
+            .eq("prop_type", prop_type) \
+            .eq("outcome", outcome) \
+            .limit(500) \
+            .execute()
+        return pd.DataFrame(res.data)
 
-    df = pd.DataFrame(response.data)
+    win_df = fetch_outcome_subset("win")
+    loss_df = fetch_outcome_subset("loss")
+
+    if win_df.empty or loss_df.empty:
+        print(f"Outcome value counts: win={len(win_df)}, loss={len(loss_df)}")
+        raise ValueError(f"Not enough outcome variation to train {prop_type}")
+
+    min_len = min(len(win_df), len(loss_df))
+    df = pd.concat([
+    win_df.sample(min_len),
+    loss_df.sample(min_len)
+], ignore_index=True)
+
+
+    df["outcome"] = df["outcome"].str.lower().str.strip()
     return df
+
 
 
 def train_and_save_model(prop_type):
@@ -44,9 +62,12 @@ def train_and_save_model(prop_type):
     df["hit_streak"] = df.get("hit_streak", 0)
     df["win_streak"] = df.get("win_streak", 0)
     df["is_home"] = df.get("is_home", 0)
+    df["outcome"] = df["outcome"].str.lower().str.strip()
 
     X = df[["line_diff", "hit_streak", "win_streak", "is_home", "opponent_encoded"]]
     y = df["outcome"].map({"win": 1, "loss": 0})
+
+    print("Outcome value counts:", df["outcome"].value_counts(dropna=False).to_dict())
 
     if y.nunique() < 2:
         raise ValueError(f"Not enough outcome variation to train {prop_type}")
