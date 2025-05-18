@@ -58,35 +58,41 @@ def train_and_save_model(prop_type):
         pd.to_numeric(df["rolling_result_avg_7"], errors="coerce").fillna(0)
         - pd.to_numeric(df["prop_value"], errors="coerce").fillna(0)
     )
-    df["opponent_encoded"] = df.get("opponent_avg_win_rate", 0.5)
-    df["hit_streak"] = df.get("hit_streak", 0)
-    df["win_streak"] = df.get("win_streak", 0)
-    df["is_home"] = df.get("is_home", 0)
+    df["opponent_encoded"] = pd.to_numeric(df["opponent_avg_win_rate"], errors="coerce").fillna(0.5)
+    df["hit_streak"] = pd.to_numeric(df["hit_streak"], errors="coerce").fillna(0)
+    df["win_streak"] = pd.to_numeric(df["win_streak"], errors="coerce").fillna(0)
+    df["is_home"] = pd.to_numeric(df["is_home"], errors="coerce").fillna(0)
     df["outcome"] = df["outcome"].str.lower().str.strip()
 
-    X = df[["line_diff", "hit_streak", "win_streak", "is_home", "opponent_encoded"]]
-    y = df["outcome"].map({"win": 1, "loss": 0})
+    # ✅ Filter only complete rows
+    feature_cols = ["line_diff", "hit_streak", "win_streak", "is_home", "opponent_encoded"]
+    df.dropna(subset=feature_cols + ["outcome"], inplace=True)
 
-    print("Outcome value counts:", df["outcome"].value_counts(dropna=False).to_dict())
+    # ✅ Prepare training data
+    X = df[feature_cols]
+    y = df["outcome"].map({"win": 1, "loss": 0})
 
     if y.nunique() < 2:
         raise ValueError(f"Not enough outcome variation to train {prop_type}")
+
+    print(f"📦 {prop_type} training rows: {len(df)} (win/loss)")
 
     # ✅ Train model
     model = RandomForestClassifier(n_estimators=100, random_state=42)
     model.fit(X, y)
 
-    # ✅ Evaluate
+    # ✅ Accuracy
     y_pred = model.predict(X)
     acc = accuracy_score(y, y_pred)
     print(f"✅ {prop_type} model accuracy: {acc:.3f}")
 
-    # ✅ Print feature importances
+    # ✅ Feature importances
     importances = model.feature_importances_
-    print("📊 Feature importances:", dict(zip(X.columns, importances)))
+    print("📊 Feature importances:", dict(zip(feature_cols, importances)))
 
     # ✅ Save model
     os.makedirs(MODEL_DIR, exist_ok=True)
     model_path = os.path.join(MODEL_DIR, f"{prop_type}_model.pkl")
     joblib.dump(model, model_path)
     print(f"💾 Saved model: {model_path}")
+

@@ -41,7 +41,13 @@ data/
 + !package-lock.json
 models/*.pkl
 
+# Virtual environment
+.venv/
+
+# MacOS junk
+.DS_Store
 
 
-
-
+# Model artifacts
+models/
+*.pkl

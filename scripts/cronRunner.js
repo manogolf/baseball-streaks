@@ -1,6 +1,6 @@
 import "dotenv/config";
 import cron from "node-cron";
-import { updatePropStatuses } from "./updatePropResults.js";
+import { updatePropStatuses } from "../src/scripts/resolution/updatePropResults.js";
 import { syncStatsForDate } from "../src/scripts/resolution/syncPlayerStats.js";
 
 console.log("⏳ Cron runner starting...");
