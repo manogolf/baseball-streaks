@@ -15,37 +15,34 @@ async def get_player_profile(player_id: str):
     if not player_id:
         raise HTTPException(status_code=400, detail="Player ID is required")
 
-    # Step 1: Fetch recent resolved props (last 25 games)
+    # Step 1: Fetch recent resolved props (last 10)
     today = datetime.utcnow().date()
     seven_days_ago = today - timedelta(days=7)
 
     props_resp = (
-    supabase
-    .from_("player_props")
-    .select("*")
-    .eq("player_id", player_id)
-    .gte("game_date", seven_days_ago.isoformat())
-    .order("game_date", desc=True)
-    .limit(10)
-    .execute()
-)
+        supabase
+        .from_("player_props")
+        .select("*")
+        .eq("player_id", player_id)
+        .gte("game_date", seven_days_ago.isoformat())
+        .order("game_date", desc=True)
+        .limit(10)
+        .execute()
+    )
 
-if props_resp.data is None:
-    raise HTTPException(status_code=500, detail="Failed to fetch props")
+    if props_resp.data is None:
+        raise HTTPException(status_code=500, detail="Failed to fetch props")
 
-recent_props = props_resp.data
+    recent_props = props_resp.data
 
-if not recent_props:
-    raise HTTPException(status_code=404, detail="No props found for this player")
+    if not recent_props:
+        raise HTTPException(status_code=404, detail="No props found for this player")
 
+    # Step 2: Streak logic
+    current_streak = 0
+    streak_type = None
 
-
-
-# Step 2: Streak logic
-current_streak = 0
-streak_type = None
-
-for prop in recent_props:
+    for prop in recent_props:
         if prop["outcome"] == "win":
             if streak_type in [None, "win"]:
                 streak_type = "win"
@@ -59,12 +56,9 @@ for prop in recent_props:
             else:
                 break
 
-@router.get("/player-profile/{player_id}")
-async def get_player_profile(player_id: str):
-     return {
+    return {
         "player_id": player_id,
-        "streaks": [],
-        "recent_props": [],
+        "streak_type": streak_type,
+        "streak_count": current_streak,
+        "recent_props": recent_props,
     }
-
-
