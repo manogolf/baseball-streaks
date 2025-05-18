@@ -47,7 +47,7 @@ function extractPlayerStats(player) {
   };
 }
 
-async function syncStatsForDate(dateStr) {
+export async function syncStatsForDate(dateStr) {
   const gameIds = await fetchCompletedGames(dateStr);
   console.log(`📅 ${dateStr} → Found ${gameIds.length} final games`);
 
@@ -111,5 +111,3 @@ syncStatsForDate(targetDate)
     console.error("🔥 syncPlayerStats failed:", err.message);
     process.exit(1);
   });
-
-export { syncStatsForDate };
