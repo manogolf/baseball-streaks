@@ -17,6 +17,7 @@ function determineStatus(actual, line, overUnder) {
 export async function updatePropStatus(prop) {
   console.log(`📡 Checking prop: ${prop.player_name} - ${prop.prop_type}`);
 
+  // ❌ Skip invalid props
   if (prop.prop_value < 0) {
     console.warn(`🚫 Invalid prop line value: ${prop.prop_value} — skipping`);
     return false;
@@ -25,14 +26,15 @@ export async function updatePropStatus(prop) {
   let statsSource = "boxscore";
   let statBlock = null;
 
-  const { data: playerStats, error } = await supabase
+  // ✅ Try Supabase player_stats first
+  const { data: playerStats, error: statsError } = await supabase
     .from("player_stats")
     .select("*")
     .eq("game_id", prop.game_id)
     .eq("player_id", prop.player_id)
     .maybeSingle();
 
-  if (error || !playerStats) {
+  if (statsError || !playerStats) {
     console.warn(
       `⚠️ No stats found in player_stats for ${prop.player_name}, trying live feed...`
     );
@@ -46,6 +48,10 @@ export async function updatePropStatus(prop) {
     statBlock = playerStats;
   }
 
+  // 📦 Log keys to debug unexpected nulls
+  console.log("📊 Stat block keys:", Object.keys(statBlock || {}));
+
+  // 🟡 Detect DNP — no meaningful stats
   const values = Object.values(statBlock || {});
   const meaningfulValues = values.filter((v) => v !== null && v !== undefined);
   if (meaningfulValues.length === 0) {
@@ -59,6 +65,7 @@ export async function updatePropStatus(prop) {
     return false;
   }
 
+  // ✅ Extract actual result from stat block
   prop.result = extractStatForPropType(prop.prop_type, statBlock);
 
   if (prop.result === null || prop.result === undefined) {
@@ -68,6 +75,7 @@ export async function updatePropStatus(prop) {
     return false;
   }
 
+  // 🎯 Calculate outcome
   const outcome = determineStatus(
     prop.result,
     prop.prop_value,
@@ -78,6 +86,7 @@ export async function updatePropStatus(prop) {
     `🎯 Outcome (${statsSource}): ${prop.result} vs ${prop.prop_value} (${prop.over_under}) → ${outcome}`
   );
 
+  // ✅ Write final result to Supabase
   const { error: updateError } = await supabase
     .from("player_props")
     .update({
