@@ -1,5 +1,6 @@
 import "dotenv/config";
 import cron from "node-cron";
+import { yesterdayET } from "../src/scripts/shared/timeUtils.js";
 import { updatePropStatuses } from "../src/scripts/resolution/updatePropResults.js";
 import { syncStatsForDate } from "../src/scripts/resolution/syncPlayerStats.js";
 
@@ -18,7 +19,7 @@ console.log(
   }`
 );
 
-await syncStatsForDate(); // defaults to yesterday ET
+await syncStatsForDate(yesterdayET()); // ✅ fixes undefined
 
 const isGitHubAction = process.env.GITHUB_ACTIONS === "true";
 
