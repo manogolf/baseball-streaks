@@ -1,3 +1,5 @@
+// File: src/scripts/resolution/syncPlayerStats.js
+
 import "dotenv/config";
 import { supabase } from "../shared/index.js";
 import { yesterdayET, toISODate } from "../shared/timeUtils.js";
@@ -47,6 +49,7 @@ function extractPlayerStats(player) {
   };
 }
 
+// ✅ EXPORTED FUNCTION — critical for cronRunner.js
 export async function syncStatsForDate(dateStr) {
   const gameIds = await fetchCompletedGames(dateStr);
   console.log(`📅 ${dateStr} → Found ${gameIds.length} final games`);
@@ -101,13 +104,3 @@ export async function syncStatsForDate(dateStr) {
     }
   }
 }
-
-// ✅ Define target date only once, after everything is set up
-const targetDate = process.argv[2] || yesterdayET();
-
-syncStatsForDate(targetDate)
-  .then(() => console.log("🏁 Done syncing player_stats"))
-  .catch((err) => {
-    console.error("🔥 syncPlayerStats failed:", err.message);
-    process.exit(1);
-  });
