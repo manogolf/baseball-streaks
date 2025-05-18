@@ -1,6 +1,6 @@
 // scripts/generatePlayerStreakProfiles.js
 import "dotenv/config";
-import { supabase } from "../utils/supabaseUtils.js";
+import { supabase } from "./shared/supabaseUtils.js";
 import { DateTime } from "luxon";
 
 const supabase = createClient(

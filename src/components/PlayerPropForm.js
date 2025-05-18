@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../utils/supabaseUtils.js";
+import { supabase } from "../scripts/shared/supabaseUtils.js";
 import { nowET, todayET } from "../scripts/shared/timeUtils.js";
 import { useAuth } from "../context/AuthContext.js";
 import { buildFeatureVector } from "../utils/buildFeatureVector.js";
 import { requiredFeatures } from "../config/predictionSchema.js";
 import { normalizeFeatureKeys } from "../utils/normalizeFeatureKeys.js";
-import { preparePropSubmission } from "../utils/playerUtils.js";
+import { preparePropSubmission } from "../scripts/shared/playerUtils.js";
 import {
   propExtractors,
   getPropDisplayLabel,

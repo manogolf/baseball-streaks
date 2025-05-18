@@ -1,6 +1,6 @@
 // scripts/syncStreakProfiles.js
 import "dotenv/config";
-import { supabase } from "../utils/supabaseUtils.js";
+import { supabase } from "../src/shared/supabaseUtils.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,

@@ -1,6 +1,6 @@
 // src/components/TodayGames.js
 import React, { useState, useEffect } from "react";
-import { supabase } from "../utils/supabaseUtils.js";
+import { supabase } from "../scripts/shared/supabaseUtils.js";
 import {
   todayET,
   formatGameTime,

@@ -1,4 +1,4 @@
-import { supabase } from "./index.js";
+import { supabase } from "./supabaseUtils.js";
 import { nowET, todayET, currentTimeET } from "./timeUtils.js";
 
 // 🏷️ Stat Extractors by Prop Type

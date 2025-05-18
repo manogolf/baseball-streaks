@@ -5,7 +5,7 @@ import {
   currentTimeET,
   toISODate,
 } from "../scripts/shared/timeUtils.js";
-import { supabase } from "../utils/supabaseUtils.js";
+import { supabase } from "../scripts/shared/supabaseUtils.js";
 import Calendar from "./ui/calendar.js";
 import AccuracyByPropType from "./AccuracyByPropType.js"; // Adjust the path if necessary
 import { getPropDisplayLabel } from "../scripts/shared/propUtils.js";

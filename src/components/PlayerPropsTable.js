@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { supabase } from "../utils/supabaseUtils.js";
+import { supabase } from "../scripts/shared/supabaseUtils.js";
 import { nowET, todayET, currentTimeET } from "../scripts/shared/timeUtils.js";
 import { getPropDisplayLabel } from "../scripts/shared/propUtils.js";
 

@@ -1,8 +1,8 @@
-import { supabase } from "../utils/supabaseUtils.js";
+import { supabase } from "../../src/scripts/shared/supabaseUtils.js";
 import fetch from "node-fetch";
 import "dotenv/config";
-import { yesterdayET } from "../../src/utils/timeUtils.js";
-import { propExtractors } from "../../src/utils/propUtils.js";
+import { yesterdayET } from "../../src/scripts/shared/timeUtils.js";
+import { propExtractors } from "../../src/scripts/shared/propUtils.js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
