@@ -111,3 +111,5 @@ syncStatsForDate(targetDate)
     console.error("🔥 syncPlayerStats failed:", err.message);
     process.exit(1);
   });
+
+export { syncStatsForDate };
