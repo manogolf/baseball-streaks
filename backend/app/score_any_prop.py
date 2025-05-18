@@ -2,14 +2,12 @@ import pandas as pd
 import joblib
 import os
 import pathlib
-import json
 import sys
 
+# Ensure the current directory is on the path for local imports
 sys.path.append(os.path.dirname(__file__))
 
-with open(os.path.join(os.path.dirname(__file__), 'prop_types.json')) as f:
-    PROP_MODEL_MAP = json.load(f)
-
+from app.prop_utils import get_canonical_model_name
 
 # Get absolute path to project root (2 levels up from score_any_prop.py)
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -18,25 +16,8 @@ MODEL_DIR = PROJECT_ROOT / "models"
 def predict_prop(prop_type: str, input_data: dict) -> dict:
     over_under = input_data.get("over_under", "under")  # default to under
 
-    """
-    Load and apply the correct model for a given prop type using normalized input.
-    
-    input_data keys:
-        - 'prop_value'
-        - 'rolling_result_avg_7'
-        - 'hit_streak'
-        - 'win_streak'
-        - 'is_home'
-        - 'opponent_avg_win_rate' (optional)
-    """
-
-    # Normalize and validate prop_type
-    from prop_utils import normalize_prop_type  # ✅ correct
-
-    normalized_key = normalize_prop_type(prop_type)
-
-
-    canonical_type = PROP_MODEL_MAP.get(normalized_key)
+    # ✅ Get canonical model name
+    canonical_type = get_canonical_model_name(prop_type)
 
     if not canonical_type:
         print(f"❌ Unknown or unsupported prop type: {prop_type}")
@@ -70,16 +51,14 @@ def predict_prop(prop_type: str, input_data: dict) -> dict:
 
     # Run prediction
     try:
-        over_under = input_data.get("over_under", "under")
-        # load model, compute features, etc...
-
         prob = model.predict_proba(features)[0][1]
         raw_prediction = "win" if prob >= 0.5 else "loss"
 
-        if over_under == "over":
-            prediction = "win" if raw_prediction == "loss" else "loss"
-        else:
-            prediction = raw_prediction
+        prediction = (
+            "win" if over_under == "under" and raw_prediction == "loss"
+            else "loss" if over_under == "under"
+            else raw_prediction
+        )
 
         return {
             "predicted_outcome": prediction,
