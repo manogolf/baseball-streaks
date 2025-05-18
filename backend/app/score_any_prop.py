@@ -10,8 +10,7 @@ sys.path.append(os.path.dirname(__file__))
 from app.prop_utils import get_canonical_model_name
 
 # Get absolute path to project root (2 levels up from score_any_prop.py)
-PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[2]
-MODEL_DIR = PROJECT_ROOT / "models"
+MODEL_DIR = pathlib.Path(__file__).resolve().parent.parent / "models"
 
 def predict_prop(prop_type: str, input_data: dict) -> dict:
     over_under = input_data.get("over_under", "under")  # default to under
