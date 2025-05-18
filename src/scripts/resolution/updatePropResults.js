@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { supabase } from "../shared/index.js";
+import { todayET, yesterdayET } from "../shared/timeUtils.js";
 import { getPendingProps, expireOldPendingProps } from "../shared/propUtils.js";
 import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
 import { extractStatForPropType } from "./statExtractors.js"; // ✅ add this at the top
@@ -16,7 +17,6 @@ function determineStatus(actual, line, overUnder) {
 export async function updatePropStatus(prop) {
   console.log(`📡 Checking prop: ${prop.player_name} - ${prop.prop_type}`);
 
-  // ❌ Skip invalid lines (e.g., negative totals)
   if (prop.prop_value < 0) {
     console.warn(`🚫 Invalid prop line value: ${prop.prop_value} — skipping`);
     return false;
@@ -28,8 +28,8 @@ export async function updatePropStatus(prop) {
   const { data: playerStats, error } = await supabase
     .from("player_stats")
     .select("*")
+    .eq("game_id", prop.game_id)
     .eq("player_id", prop.player_id)
-    .eq("game_date", prop.game_date)
     .maybeSingle();
 
   if (error || !playerStats) {
@@ -46,10 +46,6 @@ export async function updatePropStatus(prop) {
     statBlock = playerStats;
   }
 
-  // 📦 Log raw stat block for debugging
-  console.log("📊 Stat block keys:", Object.keys(statBlock || {}));
-
-  // 🟡 DNP detection — all values null?
   const values = Object.values(statBlock || {});
   const meaningfulValues = values.filter((v) => v !== null && v !== undefined);
   if (meaningfulValues.length === 0) {
