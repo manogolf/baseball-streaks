@@ -4,16 +4,6 @@ import os
 import pathlib
 import json
 
-def normalize_prop_type(prop_type: str) -> str:
-    return (
-        prop_type.strip().lower()
-        .replace("(", "")
-        .replace(")", "")
-        .replace(" + ", "_")
-        .replace(" ", "_")
-        .rstrip("_")
-    )
-
 
 with open(os.path.join(os.path.dirname(__file__), 'prop_types.json')) as f:
     PROP_MODEL_MAP = json.load(f)
@@ -39,7 +29,10 @@ def predict_prop(prop_type: str, input_data: dict) -> dict:
     """
 
     # Normalize and validate prop_type
+    from app.utils.prop_utils import normalize_prop_type
+
     normalized_key = normalize_prop_type(prop_type)
+
 
     canonical_type = PROP_MODEL_MAP.get(normalized_key)
 
