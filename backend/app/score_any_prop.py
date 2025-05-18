@@ -29,7 +29,7 @@ def predict_prop(prop_type: str, input_data: dict) -> dict:
     """
 
     # Normalize and validate prop_type
-    from app.utils.prop_utils import normalize_prop_type
+    from prop_utils import normalize_prop_type  # ✅ correct
 
     normalized_key = normalize_prop_type(prop_type)
 
