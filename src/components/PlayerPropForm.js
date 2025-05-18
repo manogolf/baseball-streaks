@@ -11,6 +11,7 @@ import {
   getPropDisplayLabel,
   normalizePropType,
 } from "../scripts/shared/propUtils.js";
+import { getGamePkForTeamOnDate } from "../scripts/shared/fetchGameID.js";
 
 const apiUrl = `${
   process.env.REACT_APP_API_URL || "http://localhost:8000"
@@ -90,10 +91,6 @@ const PlayerPropForm = ({ onPropAdded }) => {
     }
 
     try {
-      const apiUrl = `${
-        process.env.REACT_APP_API_URL || "http://localhost:8001"
-      }/predict`;
-
       const preparedData = await preparePropSubmission({
         player_name,
         team,
@@ -185,27 +182,25 @@ const PlayerPropForm = ({ onPropAdded }) => {
       const result = await response.json();
       console.log("📬 Received prediction:", result);
 
-      // 👉 Step 2: Resolve Game ID early to catch errors
-      let resolvedGameId;
-      try {
-        resolvedGameId = await getGamePkForTeamOnDate(
-          formData.team,
-          formData.game_date
+      // 👉 Step 2: Resolve Game ID
+      const resolvedGameId = await getGamePkForTeamOnDate(
+        formData.team,
+        formData.game_date
+      );
+
+      if (!resolvedGameId) {
+        console.error(
+          `❌ No game found for ${formData.team} on ${formData.game_date}`
         );
-        if (!resolvedGameId) {
-          throw new Error(
-            `No game found for ${formData.team} on ${formData.game_date}`
-          );
-        }
-      } catch (err) {
         alert(
           `⚠️ Could not find a game for ${formData.team} on ${formData.game_date}. Please check the date or team abbreviation.`
         );
-        setSubmitting(false);
         return;
       }
 
-      // 👉 Step 3: Prepare full prop submission data with injected game_id
+      console.log(`✅ Resolved game ID: ${resolvedGameId}`);
+
+      // 👉 Step 3: Prepare payload
       const preparedData = await preparePropSubmission({
         ...formData,
         game_id: resolvedGameId,
@@ -230,7 +225,34 @@ const PlayerPropForm = ({ onPropAdded }) => {
         over_under: preparedData.over_under.toLowerCase(),
       };
 
-      // TODO: You can insert payload to Supabase or call onPropAdded here
+      // 👉 Step 4: Save to Supabase
+      const { error: insertError } = await supabase
+        .from("player_props")
+        .insert([payload]);
+
+      if (insertError) {
+        console.error("❌ Supabase insert error:", insertError.message);
+        setError("Failed to save prop.");
+        setTimeout(() => setError(""), 4000);
+        return;
+      }
+
+      console.log("✅ Prop successfully added to Supabase.");
+      onPropAdded?.();
+
+      // ✅ Toast + clear form
+      setSuccessMessage("✅ Prop successfully added!");
+      setSuccessToast(true);
+      setFormData((prev) => ({
+        ...prev,
+        player_name: "",
+        team: "",
+        prop_type: "",
+        prop_value: "",
+        over_under: "over",
+        game_date: todayET(),
+      }));
+      setTimeout(() => setSuccessToast(false), 4000);
     } catch (err) {
       console.error("❌ Prediction flow error:", err);
       setError("Prediction failed or timed out.");
