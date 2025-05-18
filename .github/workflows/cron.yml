@@ -9,11 +9,6 @@ jobs:
   run-cron:
     runs-on: ubuntu-latest
 
-    env: # ✅ Inject environment variables securely from GitHub Secrets
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-
     steps:
       - name: 📦 Checkout repository
         uses: actions/checkout@v4
@@ -24,7 +19,12 @@ jobs:
           node-version: 18 # ✅ Match your current environment
 
       - name: 📥 Install dependencies
-        run: npm ci # Faster and more reliable than `npm install` for locked dependencies
+        run: npm ci
 
       - name: 🚀 Run Cron Script
         run: node scripts/cronRunner.js
+        env: # ✅ Correct placement — tied to this step
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GITHUB_ACTIONS: true
