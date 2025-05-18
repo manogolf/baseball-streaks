@@ -3,7 +3,9 @@ import joblib
 import os
 import pathlib
 import json
+import sys
 
+sys.path.append(os.path.dirname(__file__))
 
 with open(os.path.join(os.path.dirname(__file__), 'prop_types.json')) as f:
     PROP_MODEL_MAP = json.load(f)
