@@ -41,11 +41,11 @@ if not recent_props:
 
 
 
-    # Step 2: Streak logic
-    current_streak = 0
-    streak_type = None
+# Step 2: Streak logic
+current_streak = 0
+streak_type = None
 
-    for prop in recent_props:
+for prop in recent_props:
         if prop["outcome"] == "win":
             if streak_type in [None, "win"]:
                 streak_type = "win"
@@ -59,11 +59,12 @@ if not recent_props:
             else:
                 break
 
-    return {
+@router.get("/player-profile/{player_id}")
+async def get_player_profile(player_id: str):
+     return {
         "player_id": player_id,
-        "recent_props": recent_props,
-        "streak": {
-            "count": current_streak,
-            "type": streak_type or "neutral"
-        }
+        "streaks": [],
+        "recent_props": [],
     }
+
+
