@@ -27,6 +27,7 @@ export function extractStatForPropType(propType, playerData) {
     total_bases: playerData.total_bases,
     hits_runs_rbis:
       (playerData.hits || 0) + (playerData.runs || 0) + (playerData.rbis || 0),
+    runs_rbis: (playerData.runs || 0) + (playerData.rbis || 0), // ✅ Added mapping
 
     // Pitching props
     outs_recorded: playerData.outs_recorded,

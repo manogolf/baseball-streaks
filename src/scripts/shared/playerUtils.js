@@ -6,6 +6,31 @@ import { toISODate } from "./timeUtils.js";
 /**
  * Prepares a full prop payload with resolved IDs and normalized fields.
  */
+
+export function didPlayerParticipate(stats) {
+  if (!stats || typeof stats !== "object") return false;
+
+  const hasBattingStats =
+    stats.batting &&
+    Object.values(stats.batting).some((v) => typeof v === "number" && v > 0);
+
+  const hasPitchingStats =
+    stats.pitching &&
+    Object.values(stats.pitching).some((v) => typeof v === "number" && v > 0);
+
+  return hasBattingStats || hasPitchingStats;
+}
+
+export function validateStatBlock(stats) {
+  if (!stats || typeof stats !== "object") return false;
+
+  const validBatting = stats.batting && typeof stats.batting === "object";
+  const validPitching = stats.pitching && typeof stats.pitching === "object";
+
+  // You can expand this with more rules if needed later
+  return validBatting || validPitching;
+}
+
 export async function preparePropSubmission({
   player_name,
   team,
