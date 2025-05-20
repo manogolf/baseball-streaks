@@ -6,6 +6,7 @@ import { buildFeatureVector } from "../utils/buildFeatureVector.js";
 import { requiredFeatures } from "../config/predictionSchema.js";
 import { normalizeFeatureKeys } from "../utils/normalizeFeatureKeys.js";
 import { preparePropSubmission } from "../scripts/shared/playerUtils.js";
+import { getPropTypeOptions } from "../scripts/shared/propUtils.js";
 import { STAT_FIELD_MAP } from "../utils/derivePropValue.js"; // adjust if needed
 import {
   getPropDisplayLabel,
@@ -38,15 +39,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
   const [successToast, setSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
-  const propTypeOptions = Object.keys(STAT_FIELD_MAP)
-    .map((key) => {
-      const normalizedKey = normalizePropType(key);
-      return {
-        value: normalizedKey,
-        label: getPropDisplayLabel(normalizedKey),
-      };
-    })
-    .sort((a, b) => a.label.localeCompare(b.label)); // ✅ Alphabetical sort by label
+  const propTypeOptions = getPropTypeOptions();
 
   const successMessages = [
     "🎯 Prediction ready — make your move!",

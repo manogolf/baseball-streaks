@@ -19,6 +19,7 @@ import {
 } from "recharts";
 
 import { getBaseUrl } from "../scripts/shared/getBaseUrl.js";
+import { getPropDisplayLabel } from "../scripts/shared/propUtils.js";
 
 export default function ModelMetricsDashboard() {
   const [metrics, setMetrics] = useState([]);
@@ -40,7 +41,6 @@ export default function ModelMetricsDashboard() {
     fetchMetrics();
   }, []);
 
-  // ✅ Insert here
   if (loading) return <div className="p-4">Loading model metrics...</div>;
   if (!metrics.length) return <div className="p-4">No metrics available.</div>;
 
@@ -63,7 +63,7 @@ export default function ModelMetricsDashboard() {
             <TableBody>
               {metrics.map((row) => (
                 <TableRow key={row.prop_type}>
-                  <TableCell>{row.prop_type}</TableCell>
+                  <TableCell>{getPropDisplayLabel(row.prop_type)}</TableCell>
                   <TableCell>
                     {typeof row.accuracy_pct === "number"
                       ? `${row.accuracy_pct.toFixed(1)}%`
@@ -90,7 +90,12 @@ export default function ModelMetricsDashboard() {
                 domain={[0, 100]}
                 tickFormatter={(v) => `${v}%`}
               />
-              <YAxis type="category" dataKey="prop_type" width={120} />
+              <YAxis
+                type="category"
+                dataKey="prop_type"
+                width={160}
+                tickFormatter={getPropDisplayLabel}
+              />
               <Tooltip formatter={(val) => `${val}%`} />
               <Bar dataKey="accuracy_pct" fill="#8884d8" />
             </BarChart>

@@ -2,6 +2,8 @@ import { supabase } from "./supabaseUtils.js";
 import { normalizePropType } from "./propUtils.js";
 import { getGamePkForTeamOnDate } from "./fetchGameID.js";
 import { toISODate } from "./timeUtils.js";
+import { STAT_FIELD_MAP } from "../../utils/derivePropValue.js";
+import { getPropDisplayLabel } from "./propUtils.js";
 
 /**
  * Prepares a full prop payload with resolved IDs and normalized fields.

@@ -118,9 +118,38 @@ export async function getPendingProps() {
 
 // 🔠 Display label formatter from normalized key
 export function getPropDisplayLabel(normalizedKey) {
-  const extractorLabels = Object.keys(STAT_FIELD_MAP);
-  const match = extractorLabels.find(
-    (label) => normalizePropType(label) === normalizedKey
-  );
-  return match || normalizedKey;
+  const DISPLAY_LABELS = {
+    hits: "Hits",
+    runs_scored: "Runs Scored",
+    rbis: "RBIs",
+    home_runs: "Home Runs",
+    singles: "Singles",
+    doubles: "Doubles",
+    triples: "Triples",
+    walks: "Walks",
+    strikeouts_batting: "Strikeouts (Batting)",
+    strikeouts_pitching: "Strikeouts (Pitching)",
+    stolen_bases: "Stolen Bases",
+    total_bases: "Total Bases",
+    hits_runs_rbis: "Hits + Runs + RBIs",
+    runs_rbis: "Runs + RBIs",
+    outs_recorded: "Outs Recorded",
+    walks_allowed: "Walks Allowed",
+    earned_runs: "Earned Runs",
+    hits_allowed: "Hits Allowed",
+  };
+
+  return DISPLAY_LABELS[normalizedKey] || normalizedKey;
+}
+
+export function getPropTypeOptions() {
+  return Object.keys(STAT_FIELD_MAP)
+    .map((key) => {
+      const normalizedKey = normalizePropType(key);
+      return {
+        value: normalizedKey,
+        label: getPropDisplayLabel(normalizedKey),
+      };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
 }

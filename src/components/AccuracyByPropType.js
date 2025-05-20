@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../scripts/shared/supabaseUtils.js";
 import { toISODate } from "../scripts/shared/timeUtils.js";
+import { getPropDisplayLabel } from "../scripts/shared/propUtils.js";
 
 export default function AccuracyByPropType({ selectedDate }) {
   const [accuracyData, setAccuracyData] = useState([]);
@@ -40,7 +41,7 @@ export default function AccuracyByPropType({ selectedDate }) {
       <tbody>
         {accuracyData.map((row) => (
           <tr key={row.prop_type} className="border-b">
-            <td className="py-1">{row.prop_type}</td>
+            <td className="py-1">{getPropDisplayLabel(row.prop_type)}</td>
             <td className="text-right py-1">{row.total}</td>
             <td className="text-right py-1">{row.correct}</td>
             <td className="text-right py-1">{row.accuracy_pct}</td>
