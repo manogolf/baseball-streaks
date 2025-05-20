@@ -27,7 +27,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
     player_name: "",
     team: "",
     prop_type: "",
-    prop_value: "",
+    prop_value: "0.5",
     over_under: "over",
     game_date: todayET(),
   });
