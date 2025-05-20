@@ -2,11 +2,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import predict
 from app.routes.player_profile import router as player_profile_router
-
-
+from app.routes.api.model_metrics import router as model_metrics_router
 
 
 app = FastAPI()
+
 
 # 🌍 Allowed origins for development and production
 allowed_origins = [
@@ -25,3 +25,4 @@ app.add_middleware(
 # Register routes
 app.include_router(predict.router)
 app.include_router(player_profile_router)
+app.include_router(model_metrics_router)

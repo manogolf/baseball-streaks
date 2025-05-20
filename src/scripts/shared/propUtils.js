@@ -118,7 +118,7 @@ export async function getPendingProps() {
 
 // 🔠 Display label formatter from normalized key
 export function getPropDisplayLabel(normalizedKey) {
-  const extractorLabels = Object.keys(propExtractors);
+  const extractorLabels = Object.keys(STAT_FIELD_MAP);
   const match = extractorLabels.find(
     (label) => normalizePropType(label) === normalizedKey
   );

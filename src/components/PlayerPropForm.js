@@ -6,8 +6,8 @@ import { buildFeatureVector } from "../utils/buildFeatureVector.js";
 import { requiredFeatures } from "../config/predictionSchema.js";
 import { normalizeFeatureKeys } from "../utils/normalizeFeatureKeys.js";
 import { preparePropSubmission } from "../scripts/shared/playerUtils.js";
+import { STAT_FIELD_MAP } from "../utils/derivePropValue.js"; // adjust if needed
 import {
-  propExtractors,
   getPropDisplayLabel,
   normalizePropType,
 } from "../scripts/shared/propUtils.js";
@@ -38,9 +38,9 @@ const PlayerPropForm = ({ onPropAdded }) => {
   const [successToast, setSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
-  const propTypeOptions = Object.keys(propExtractors)
-    .map((_, i, arr) => {
-      const normalizedKey = normalizePropType(arr[i]);
+  const propTypeOptions = Object.keys(STAT_FIELD_MAP)
+    .map((key) => {
+      const normalizedKey = normalizePropType(key);
       return {
         value: normalizedKey,
         label: getPropDisplayLabel(normalizedKey),

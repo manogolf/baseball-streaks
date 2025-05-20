@@ -14,7 +14,11 @@ supabase = create_client(supabase_url, supabase_key)
 
 # Define prediction function
 def predict(prop_type, input_data):
-    model_path = f"models/{prop_type}_model.pkl"
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # points to script dir
+    model_path = os.path.join(BASE_DIR, "..", "..", "models", f"{prop_type}_model.pkl")
+
+    print(f"🔍 Resolved model_path: {model_path}")
+
     if not os.path.exists(model_path):
         print(f"⚠️ Model file not found for prop_type: {prop_type}")
         return None, None
