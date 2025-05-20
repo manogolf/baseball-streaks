@@ -19,7 +19,7 @@ jobs:
           node-version: 18 # ✅ Match your current environment
 
       - name: 📥 Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: 🚀 Run Cron Script
         run: node scripts/cronRunner.js
