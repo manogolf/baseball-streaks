@@ -41,4 +41,4 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node scripts/insertStatDerivedProps.js
+        run: node backend/scripts/insertStatDerivedProps.js
