@@ -9,6 +9,8 @@ import {
   normalizePropType,
 } from "../../src/scripts/shared/propUtils.js";
 
+const MLB_API_URL = "https://statsapi.mlb.com/api/v1";
+
 async function fetchFinalizedGames(targetDate) {
   const response = await fetch(
     `${MLB_API_URL}/schedule?sportId=1&date=${targetDate}`
