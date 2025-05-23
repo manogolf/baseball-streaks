@@ -5,7 +5,7 @@ import "dotenv/config.js";
 
 import { yesterdayET } from "../../src/scripts/shared/timeUtils.js";
 import {
-  propExtractors,
+  extractStatForPropType,
   normalizePropType,
 } from "../../src/scripts/shared/propUtils.js";
 
@@ -60,9 +60,30 @@ async function insertStatDerivedProps(gameId) {
   if (!players) return;
 
   for (const player of players) {
-    for (const [rawType, extractor] of Object.entries(propExtractors)) {
+    const allPropTypes = [
+      "hits",
+      "runs_scored",
+      "rbis",
+      "home_runs",
+      "singles",
+      "doubles",
+      "triples",
+      "walks",
+      "strikeouts_batting",
+      "stolen_bases",
+      "total_bases",
+      "hits_runs_rbis",
+      "runs_rbis",
+      "outs_recorded",
+      "strikeouts_pitching",
+      "walks_allowed",
+      "earned_runs",
+      "hits_allowed",
+    ];
+
+    for (const rawType of allPropTypes) {
       const propType = normalizePropType(rawType);
-      const value = extractor(player.stats);
+      const value = extractStatForPropType(propType, player.stats);
       if (value == null || isNaN(value)) continue;
 
       const insertPayload = {
