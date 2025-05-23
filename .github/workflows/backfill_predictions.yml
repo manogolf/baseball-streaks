@@ -13,6 +13,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # ✅ Python Setup & Script
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -29,6 +30,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python backend/scripts/backfill_predictions.py
 
+      # ✅ Node.js Setup & Script
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
@@ -41,4 +43,4 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node scripts/insertStatDerivedProps.js
+        run: node backend/scripts/insertStatDerivedProps.js
