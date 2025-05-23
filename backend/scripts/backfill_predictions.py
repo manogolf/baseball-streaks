@@ -24,7 +24,7 @@ def download_model_if_missing(model_name):
         return local_path
 
     print(f"⬇️ Downloading {model_name} from Supabase...")
-    signed_url_data = supabase.storage.from_("mlb-models").create_signed_url(model_name, 60)
+    signed_url_data = supabase.storage.from_("2025.05.23.mlb-models").create_signed_url(model_name, 60)
     signed_url = signed_url_data.data["signedUrl"]
 
     response = requests.get(signed_url)
