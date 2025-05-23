@@ -47,3 +47,9 @@ export function formatGameTime(isoDateTime) {
     localTime: dt.toFormat("HH:mm"),
   };
 }
+
+export function formatDateET(dateString) {
+  return DateTime.fromISO(dateString, { zone: "utc" })
+    .setZone("America/New_York")
+    .toFormat("LLL dd, yyyy");
+}

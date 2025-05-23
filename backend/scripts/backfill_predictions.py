@@ -26,6 +26,8 @@ def download_model_if_missing(model_name):
     print(f"⬇️ Downloading {model_name} from Supabase...")
 
     response = supabase.storage.from_("2025.05.23.mlb-models").create_signed_url(model_name, 60)
+    print(f"📤 Raw Supabase response for {model_name}:\n{response}")
+
 
     # Supabase Python client returns a dict, not an object
     if not response or "data" not in response or not response["data"].get("signedUrl"):

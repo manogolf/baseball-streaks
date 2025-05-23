@@ -3,14 +3,23 @@ import cron from "node-cron";
 import { yesterdayET } from "../src/scripts/shared/timeUtils.js";
 import { updatePropStatuses } from "../src/scripts/resolution/updatePropResults.js";
 import { syncStatsForDate } from "../src/scripts/resolution/syncPlayerStats.js";
+import path from "path";
+import fs from "fs";
+import { downloadModelFromSupabase } from "../src/scripts/shared/downloadModelFromSupabase.js"; // 🔄 Corrected relative path
 
 console.log("⏳ Cron runner starting...");
 
-// ✅ Determine if this is an in-season period (March to September)
+const modelDir = "./models";
+const modelFiles = [
+  "hits_model.pkl",
+  "runs_scored_model.pkl",
+  "total_bases_model.pkl",
+  // Add other model filenames as needed
+];
+
 const month = new Date().getUTCMonth();
 const inSeason = month >= 2 && month <= 9;
 const cronExpression = inSeason ? "*/30 * * * *" : "0 10 * * *";
-
 console.log(
   `📅 Scheduling cron job: ${
     inSeason
@@ -19,30 +28,44 @@ console.log(
   }`
 );
 
-await syncStatsForDate(yesterdayET()); // ✅ fixes undefined
-
 const isGitHubAction = process.env.GITHUB_ACTIONS === "true";
+
+// 🔁 Ensure models are present
+async function ensureModelsExist() {
+  for (const filename of modelFiles) {
+    const modelPath = path.join(modelDir, filename);
+    if (!fs.existsSync(modelPath)) {
+      console.log(`⬇️  Downloading ${filename} from Supabase...`);
+      try {
+        await downloadModelFromSupabase(filename, modelPath);
+        console.log(`✅ Downloaded ${filename}`);
+      } catch (err) {
+        console.error(`❌ Error downloading ${filename}: ${err.message}`);
+      }
+    } else {
+      console.log(`📦 ${filename} already exists.`);
+    }
+  }
+}
 
 const safelyRun = async (label) => {
   try {
+    await ensureModelsExist(); // ✅ Models before anything else
+    await syncStatsForDate(yesterdayET());
     console.log(`🚀 ${label}: Running updatePropStatuses...`);
     await updatePropStatuses();
     console.log(`✅ ${label}: Job complete.`);
-    if (isGitHubAction) process.exit(0); // Required for GitHub Action to properly finish
+    if (isGitHubAction) process.exit(0);
   } catch (err) {
     console.error(`❌ ${label}: Failed with error:`, err);
     if (isGitHubAction) process.exit(1);
   }
 };
 
-// ✅ If triggered via GitHub Action, run once and exit
 if (isGitHubAction) {
-  safelyRun("GitHub Action");
+  await safelyRun("GitHub Action");
 } else {
-  // ✅ Run immediately when starting locally
-  safelyRun("Local run");
-
-  // ✅ Schedule based on cron expression
+  await safelyRun("Local run");
   cron.schedule(cronExpression, async () => {
     const now = new Date().toISOString();
     console.log(`🕒 Cron triggered at ${now}`);

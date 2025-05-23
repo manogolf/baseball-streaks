@@ -3,6 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routes import predict
 from app.routes.player_profile import router as player_profile_router
 from app.routes.api.model_metrics import router as model_metrics_router
+from routes.api import user_vs_model_accuracy
+from app.routes.api.user_vs_model_accuracy_weekly import router as user_vs_model_weekly_router
+from backend.app.routes.api.model_accuracy_weekly import router as model_accuracy_weekly_router
+
+
 
 
 app = FastAPI()
@@ -26,3 +31,7 @@ app.add_middleware(
 app.include_router(predict.router)
 app.include_router(player_profile_router)
 app.include_router(model_metrics_router)
+app.include_router(user_vs_model_accuracy.router)
+app.include_router(user_vs_model_weekly_router)
+app.include_router(model_accuracy_weekly_router)
+

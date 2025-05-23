@@ -12,7 +12,7 @@ export function extractStatForPropType(propType, playerData) {
   const statMap = {
     hits: playerData.hits,
     runs_scored: playerData.runs,
-    rbis: playerData.rbi,
+    rbis: playerData.rbis,
     home_runs: playerData.home_runs,
     singles:
       (playerData.hits || 0) -

@@ -2,6 +2,7 @@
 
 // Map of team abbreviations to full names
 export const teamNameMap = {
+  ATH: "Athletics",
   ATL: "Atlanta Braves",
   AZ: "Arizona Diamondbacks",
   BAL: "Baltimore Orioles",
@@ -21,7 +22,6 @@ export const teamNameMap = {
   MIN: "Minnesota Twins",
   NYM: "New York Mets",
   NYY: "New York Yankees",
-  OAK: "Oakland Athletics",
   PHI: "Philadelphia Phillies",
   PIT: "Pittsburgh Pirates",
   SD: "San Diego Padres",

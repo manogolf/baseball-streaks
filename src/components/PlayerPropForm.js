@@ -287,8 +287,9 @@ const PlayerPropForm = ({ onPropAdded }) => {
         >
           <option value="">Select Team</option>
           {[
+            "ATH",
             "ATL",
-            "AZ",
+            "ARI",
             "BAL",
             "BOS",
             "CHC",

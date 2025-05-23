@@ -1,5 +1,5 @@
 import { supabase } from "./supabaseUtils.js";
-import { nowET, todayET, currentTimeET } from "./timeUtils.js";
+import { toISODate, todayET, currentTimeET } from "./timeUtils.js";
 import { STAT_FIELD_MAP } from "../../utils/derivePropValue.js";
 import { validateStatBlock } from "./playerUtils.js"; // adjust path if needed
 
@@ -84,4 +84,16 @@ export function getPropTypeOptions() {
       label: getPropDisplayLabel(propType),
     }))
     .sort((a, b) => a.label.localeCompare(b.label)); // ✅ Alphabetical order
+}
+
+export function expireOldPendingProps(props) {
+  const todayISO = toISODate(todayET());
+
+  return props.map((prop) => {
+    const propDate = toISODate(prop.game_date); // normalize to ISO
+    if (prop.status === "pending" && propDate < todayISO) {
+      return { ...prop, status: "expired" };
+    }
+    return prop;
+  });
 }
