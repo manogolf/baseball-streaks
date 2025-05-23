@@ -1,5 +1,5 @@
 // scripts/insertStatDerivedProps.js
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../src/scripts/shared/supabaseUtils.js";
 import fetch from "node-fetch";
 import "dotenv/config.js";
 
