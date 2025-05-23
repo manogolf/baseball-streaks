@@ -1,7 +1,8 @@
 import "dotenv/config";
 import { supabase } from "../shared/index.js";
 import { todayET, yesterdayET } from "../shared/timeUtils.js";
-import { getPendingProps, expireOldPendingProps } from "../shared/propUtils.js";
+import { expireOldPendingProps } from "../shared/propUtils.js";
+import { getPendingProps } from "../shared/supabaseUtils.js";
 import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
 import { extractStatForPropType } from "./statExtractors.js"; // ✅ add this at the top
 

@@ -86,7 +86,7 @@ export function getPropTypeOptions() {
     .sort((a, b) => a.label.localeCompare(b.label)); // ✅ Alphabetical order
 }
 
-export function expireOldPendingProps(props) {
+export function expireOldPendingProps(props = []) {
   const todayISO = toISODate(todayET());
 
   return props.map((prop) => {
