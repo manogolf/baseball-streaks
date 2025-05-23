@@ -39,7 +39,7 @@ jobs:
       - name: Install Node dependencies
         run: npm install
 
-      - name:
+      - name: Run insertStatDerivedProps.js
         run: node backend/scripts/insertStatDerivedProps.js
 
         env:
