@@ -3,153 +3,85 @@ import { nowET, todayET, currentTimeET } from "./timeUtils.js";
 import { STAT_FIELD_MAP } from "../../utils/derivePropValue.js";
 import { validateStatBlock } from "./playerUtils.js"; // adjust path if needed
 
-// 🏷️ Stat Extractors by Prop Type
-export function extractStatForPropType(propType, playerData) {
-  const statMap = {
-    hits: playerData.hits,
-    runs_scored: playerData.runs,
-    rbis: playerData.rbi,
-    home_runs: playerData.home_runs,
-    singles:
-      (playerData.hits || 0) -
-      (playerData.doubles || 0) -
-      (playerData.triples || 0) -
-      (playerData.home_runs || 0),
-    doubles: playerData.doubles,
-    triples: playerData.triples,
-    walks: playerData.walks,
-    strikeouts_batting: playerData.strikeouts_batting,
+// 🧠 Extractor map: Maps prop types to stat extraction logic
+export const propExtractors = {
+  hits: (stats) => stats.hits,
+  runs_scored: (stats) => stats.runs,
+  rbis: (stats) => stats.rbi,
+  home_runs: (stats) => stats.home_runs,
+  singles: (stats) =>
+    (stats.hits || 0) -
+    (stats.doubles || 0) -
+    (stats.triples || 0) -
+    (stats.home_runs || 0),
+  doubles: (stats) => stats.doubles,
+  triples: (stats) => stats.triples,
+  walks: (stats) => stats.walks,
+  strikeouts_batting: (stats) => stats.strikeouts,
+  stolen_bases: (stats) => stats.stolen_bases,
+  total_bases: (stats) =>
+    (stats.hits || 0) -
+    (stats.doubles || 0) -
+    (stats.triples || 0) -
+    (stats.home_runs || 0) +
+    2 * (stats.doubles || 0) +
+    3 * (stats.triples || 0) +
+    4 * (stats.home_runs || 0),
+  hits_runs_rbis: (stats) =>
+    (stats.hits || 0) + (stats.runs || 0) + (stats.rbi || 0),
+  runs_rbis: (stats) => (stats.runs || 0) + (stats.rbi || 0),
 
-    stolen_bases: playerData.stolen_bases,
-    total_bases:
-      (playerData.hits || 0) -
-      (playerData.doubles || 0) -
-      (playerData.triples || 0) -
-      (playerData.home_runs || 0) +
-      2 * (playerData.doubles || 0) +
-      3 * (playerData.triples || 0) +
-      4 * (playerData.home_runs || 0),
-    hits_runs_rbis:
-      (playerData.hits || 0) + (playerData.runs || 0) + (playerData.rbis || 0),
-    runs_rbis: (playerData.runs || 0) + (playerData.rbis || 0),
+  // Pitching props
+  outs_recorded: (stats) => stats.outs,
+  strikeouts_pitching: (stats) => stats.strikeOuts,
+  walks_allowed: (stats) => stats.baseOnBalls,
+  earned_runs: (stats) => stats.earnedRuns,
+  hits_allowed: (stats) => stats.hits,
+};
 
-    // Pitching props
-    outs_recorded: playerData.outs_recorded,
-    strikeouts_pitching: playerData.strikeouts_pitching,
-    walks_allowed: playerData.walks_allowed,
-    earned_runs: playerData.earned_runs,
-    hits_allowed: playerData.hits_allowed,
-  };
-
-  return statMap[propType] ?? null;
-}
-
+// ✅ Returns whether the stat value is a number
 export function isStatEligibleForPropType(stats, propType) {
-  if (!validateStatBlock(stats)) return false;
-
-  const deriveFn = STAT_FIELD_MAP[propType];
-  if (!deriveFn) return false;
-
-  try {
-    const value = deriveFn(stats);
-    return typeof value === "number" && !isNaN(value);
-  } catch (err) {
-    console.warn(`⚠️ Error checking eligibility for ${propType}:`, err);
-    return false;
-  }
+  const value = propExtractors[propType]?.(stats);
+  return typeof value === "number" && !isNaN(value);
 }
 
-// 📌 Normalize Prop Type to Match Extractors
-export function normalizePropType(propType) {
-  if (!propType) return null;
-
-  const formatted = propType
-    .toLowerCase()
-    .replace(/[()]/g, "") // remove stray parentheses
-    .replace(/\s*\+\s*/g, "_") // replace ' + ' with underscore
-    .replace(/\s+/g, "_") // replace remaining spaces with underscores
-    .replace(/_+$/, "") // remove trailing underscores
-    .trim();
-
-  return formatted;
+// ✅ Converts prop types like "Strikeouts (Batting)" -> "strikeouts_batting"
+export function normalizePropType(label) {
+  return label.toLowerCase().replace(/[()]/g, "").replace(/\s+/g, "_");
 }
 
-// 📅 Expire Old Pending Props (2+ days old)
-export async function expireOldPendingProps() {
-  const twoDaysAgo = nowET().minus({ days: 2 }).toISODate();
+// ✅ Human-readable labels for prop types
+const DISPLAY_LABELS = {
+  hits: "Hits",
+  runs_scored: "Runs Scored",
+  rbis: "RBIs",
+  home_runs: "Home Runs",
+  singles: "Singles",
+  doubles: "Doubles",
+  triples: "Triples",
+  walks: "Walks",
+  strikeouts_batting: "Strikeouts (Batting)",
+  stolen_bases: "Stolen Bases",
+  total_bases: "Total Bases",
+  hits_runs_rbis: "Hits + Runs + RBIs",
+  runs_rbis: "Runs + RBIs",
+  outs_recorded: "Outs Recorded",
+  strikeouts_pitching: "Strikeouts (Pitching)",
+  walks_allowed: "Walks Allowed",
+  earned_runs: "Earned Runs",
+  hits_allowed: "Hits Allowed",
+};
 
-  const { data, error } = await supabase
-    .from("player_props")
-    .delete()
-    .eq("status", "pending")
-    .lt("game_date", twoDaysAgo);
-
-  if (error) {
-    console.error("⚠️ Failed to delete old pending props:", error.message);
-  } else {
-    const deletedCount = data?.length || 0;
-    console.log(`🧹 Deleted ${deletedCount} stale pending props.`);
-  }
+export function getPropDisplayLabel(propType) {
+  return DISPLAY_LABELS[propType] || propType;
 }
 
-// 📋 Get Pending Props for Processing
-export async function getPendingProps() {
-  const { data, error } = await supabase
-    .from("player_props")
-    .select("*")
-    .eq("status", "pending")
-    .or(
-      `game_date.lt.${todayET()},and(game_date.eq.${todayET()},game_time.lte.${currentTimeET()}),and(game_date.eq.${todayET()},game_time.is.null)`
-    )
-    .order("game_date", { ascending: false })
-    .order("game_time", { ascending: false });
-
-  if (error) {
-    console.error("❌ Failed to fetch pending props:", error.message);
-    return [];
-  }
-
-  return data.filter(
-    (prop) =>
-      prop.game_date < todayET() ||
-      (prop.game_date === todayET() && prop.game_time <= currentTimeET())
-  );
-}
-
-// 🔠 Display label formatter from normalized key
-export function getPropDisplayLabel(normalizedKey) {
-  const DISPLAY_LABELS = {
-    hits: "Hits",
-    runs_scored: "Runs Scored",
-    rbis: "RBIs",
-    home_runs: "Home Runs",
-    singles: "Singles",
-    doubles: "Doubles",
-    triples: "Triples",
-    walks: "Walks",
-    strikeouts_batting: "Strikeouts (Batting)",
-    strikeouts_pitching: "Strikeouts (Pitching)",
-    stolen_bases: "Stolen Bases",
-    total_bases: "Total Bases",
-    hits_runs_rbis: "Hits + Runs + RBIs",
-    runs_rbis: "Runs + RBIs",
-    outs_recorded: "Outs Recorded",
-    walks_allowed: "Walks Allowed",
-    earned_runs: "Earned Runs",
-    hits_allowed: "Hits Allowed",
-  };
-
-  return DISPLAY_LABELS[normalizedKey] || normalizedKey;
-}
-
+// ✅ Used by PlayerPropForm.js
 export function getPropTypeOptions() {
   return Object.keys(STAT_FIELD_MAP)
-    .map((key) => {
-      const normalizedKey = normalizePropType(key);
-      return {
-        value: normalizedKey,
-        label: getPropDisplayLabel(normalizedKey),
-      };
-    })
-    .sort((a, b) => a.label.localeCompare(b.label));
+    .map((propType) => ({
+      value: propType,
+      label: getPropDisplayLabel(propType),
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label)); // ✅ Alphabetical order
 }
