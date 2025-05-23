@@ -1,121 +1,89 @@
-// scripts/insertStatDerivedProps.js
+// scripts/backfill/insertStatDerivedProps.js
+
 import { supabase } from "../../src/scripts/shared/supabaseUtils.js";
 import fetch from "node-fetch";
-import "dotenv/config.js";
-
-import { yesterdayET } from "../../src/scripts/shared/timeUtils.js";
+import "dotenv/config";
+import { yesterdayET, toISODate } from "../../src/scripts/shared/timeUtils.js";
 import {
-  extractStatForPropType,
+  propExtractors,
   normalizePropType,
 } from "../../src/scripts/shared/propUtils.js";
 
-const MLB_API_URL = "https://statsapi.mlb.com/api/v1";
+async function fetchFinalizedGames(targetDate) {
+  const response = await fetch(
+    `${MLB_API_URL}/schedule?sportId=1&date=${targetDate}`
+  );
+  if (!response.ok) throw new Error(`MLB API failed: ${response.status}`);
 
-async function fetchFinalizedGameIds(date) {
-  const url = `${MLB_API_URL}/schedule?sportId=1&date=${date}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch schedule: ${res.status}`);
-
-  const json = await res.json();
-  const games = json.dates?.[0]?.games || [];
-
+  const data = await response.json();
+  const games = (data.dates || []).flatMap((d) => d.games || []);
   return games
-    .filter((g) => g.status.detailedState === "Final")
+    .filter((g) => g.status?.detailedState === "Final")
     .map((g) => g.gamePk);
 }
 
-async function fetchBoxscore(gameId) {
+async function fetchPlayerStats(gameId) {
   const res = await fetch(`${MLB_API_URL}/game/${gameId}/boxscore`);
-  if (!res.ok) {
-    console.warn(`⚠️ Failed to fetch boxscore for game ${gameId}`);
-    return null;
-  }
-
-  const json = await res.json();
-  const allPlayers = [];
-
-  for (const side of ["home", "away"]) {
-    const players = json.teams?.[side]?.players || {};
-    for (const id in players) {
-      const p = players[id];
-      const stats = p?.stats?.batting;
-      if (!stats) continue;
-
-      allPlayers.push({
-        id: p.person.id,
-        fullName: p.person.fullName,
-        team: json.teams[side]?.team?.abbreviation || "UNK",
-        stats,
-        gameDate: json.gameData?.datetime?.originalDate || null,
-        isPitcher: false,
-      });
-    }
-  }
-
-  return allPlayers;
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.teams
+    ? { home: data.teams.home.players, away: data.teams.away.players }
+    : null;
 }
 
-async function insertStatDerivedProps(gameId) {
-  const players = await fetchBoxscore(gameId);
+async function processGame(gameId, gameDate) {
+  const players = await fetchPlayerStats(gameId);
   if (!players) return;
 
-  for (const player of players) {
-    const allPropTypes = [
-      "hits",
-      "runs_scored",
-      "rbis",
-      "home_runs",
-      "singles",
-      "doubles",
-      "triples",
-      "walks",
-      "strikeouts_batting",
-      "stolen_bases",
-      "total_bases",
-      "hits_runs_rbis",
-      "runs_rbis",
-      "outs_recorded",
-      "strikeouts_pitching",
-      "walks_allowed",
-      "earned_runs",
-      "hits_allowed",
-    ];
+  for (const side of ["home", "away"]) {
+    const teamPlayers = players[side];
+    for (const key in teamPlayers) {
+      const player = teamPlayers[key];
+      const stats = player?.stats?.batting || player?.stats?.pitching;
+      if (!stats) continue;
 
-    for (const rawType of allPropTypes) {
-      const propType = normalizePropType(rawType);
-      const value = extractStatForPropType(propType, player.stats);
-      if (value == null || isNaN(value)) continue;
+      for (const [propType, extractor] of Object.entries(propExtractors)) {
+        let value;
+        try {
+          value = extractor(stats);
+        } catch {
+          continue;
+        }
+        if (typeof value !== "number" || isNaN(value)) continue;
 
-      const insertPayload = {
-        id: crypto.randomUUID(),
-        player_name: player.fullName,
-        team: player.team,
-        player_id: player.id,
-        prop_type: propType,
-        prop_value: null,
-        result: value,
-        outcome: null,
-        is_pitcher: player.isPitcher,
-        game_date: player.gameDate,
-        game_id: gameId,
-        over_under: null,
-        source: "stat_derived",
-        position: null,
-        rolling_result_avg_7: null,
-        hit_streak: null,
-        win_streak: null,
-      };
+        const payload = {
+          id: crypto.randomUUID(),
+          player_name: player.person.fullName,
+          team: player.parentTeamId?.toString() ?? null,
+          position: player.position?.abbreviation || null,
+          prop_type: propType,
+          prop_value: null,
+          result: value,
+          outcome: null,
+          is_pitcher: !!player.stats?.pitching,
+          game_date: gameDate,
+          game_id: gameId,
+          over_under: null,
+          source: "stat_derived",
+          player_id: player.person.id.toString(),
+          rolling_result_avg_7: null,
+          hit_streak: null,
+          win_streak: null,
+        };
 
-      const { error } = await supabase
-        .from("model_training_props")
-        .upsert(insertPayload, { onConflict: "id" });
+        const { error } = await supabase
+          .from("model_training_props")
+          .upsert(payload, { onConflict: "id" });
 
-      if (error) {
-        console.warn(
-          `❌ Failed to insert prop for ${player.fullName}: ${error.message}`
-        );
-      } else {
-        console.log(`✅ Inserted: ${player.fullName} (${propType})`);
+        if (error) {
+          console.warn(
+            `⚠️ Failed insert for ${player.person.fullName}: ${error.message}`
+          );
+        } else {
+          console.log(
+            `✅ Inserted stat-derived prop for ${player.person.fullName} (${propType})`
+          );
+        }
       }
     }
   }
@@ -123,19 +91,16 @@ async function insertStatDerivedProps(gameId) {
 
 async function main() {
   const targetDate = process.argv[2] || yesterdayET();
-  console.log(`📆 Target Date: ${targetDate}`);
+  console.log(`📅 Running stat-derived props for: ${targetDate}`);
 
   try {
-    const gameIds = await fetchFinalizedGameIds(targetDate);
-    console.log(`🎯 ${gameIds.length} finalized games`);
-
+    const gameIds = await fetchFinalizedGames(targetDate);
     for (const gameId of gameIds) {
-      await insertStatDerivedProps(gameId);
+      await processGame(gameId, targetDate);
     }
-
-    console.log("🏁 Done inserting stat-derived props.");
+    console.log("🎉 Stat-derived prop generation complete!");
   } catch (err) {
-    console.error("❌ Script error:", err.message);
+    console.error("❌ Script failed:", err.message);
   }
 }
 
