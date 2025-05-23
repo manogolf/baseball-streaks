@@ -24,8 +24,13 @@ def download_model_if_missing(model_name):
         return local_path
 
     print(f"⬇️ Downloading {model_name} from Supabase...")
-    signed_url_data = supabase.storage.from_("2025.05.23.mlb-models").create_signed_url(model_name, 60)
-    signed_url = signed_url_data.data["signedUrl"]
+    signed_url_resp = supabase.storage.from_("2025.05.23.mlb-models").create_signed_url(model_name, 60)
+
+    if not signed_url_resp.get("data") or not signed_url_resp["data"].get("signedUrl"):
+        print(f"❌ Failed to fetch signed URL for {model_name}")
+        return None  # Skip this model gracefully
+
+    signed_url = signed_url_resp["data"]["signedUrl"]
 
     response = requests.get(signed_url)
     response.raise_for_status()
@@ -35,6 +40,7 @@ def download_model_if_missing(model_name):
 
     print(f"✅ Downloaded {model_name}")
     return local_path
+
 
 def predict(prop_type, input_data):
     model_filename = f"{prop_type}_model.pkl"
