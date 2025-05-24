@@ -5,15 +5,7 @@ import { expireOldPendingProps } from "../shared/propUtils.js";
 import { getPendingProps } from "../shared/supabaseUtils.js";
 import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
 import { extractStatForPropType } from "./statExtractors.js"; // ✅ add this at the top
-
-function determineStatus(actual, line, overUnder) {
-  const direction = overUnder?.toLowerCase();
-  if (actual === line) return "push";
-  return (actual > line && direction === "over") ||
-    (actual < line && direction === "under")
-    ? "win"
-    : "loss";
-}
+import { determineStatus } from "../shared/propUtils.js";
 
 export async function updatePropStatus(prop) {
   console.log(`📡 Checking prop: ${prop.player_name} - ${prop.prop_type}`);

@@ -97,3 +97,12 @@ export function expireOldPendingProps(props = []) {
     return prop;
   });
 }
+
+export function determineStatus(actual, line, overUnder) {
+  const direction = overUnder?.toLowerCase();
+  if (actual === line) return "push";
+  return (actual > line && direction === "over") ||
+    (actual < line && direction === "under")
+    ? "win"
+    : "loss";
+}
