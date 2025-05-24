@@ -8,7 +8,7 @@ export const teamNameMap = {
   BAL: "Baltimore Orioles",
   BOS: "Boston Red Sox",
   CHC: "Chicago Cubs",
-  CHW: "Chicago White Sox",
+  CWS: "Chicago White Sox",
   CIN: "Cincinnati Reds",
   CLE: "Cleveland Guardians",
   COL: "Colorado Rockies",
