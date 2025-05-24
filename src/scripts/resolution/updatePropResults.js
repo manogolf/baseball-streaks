@@ -55,7 +55,16 @@ export async function updatePropStatus(prop) {
   // 🟡 Detect DNP — no meaningful stats
   const values = Object.values(statBlock || {});
   const meaningfulValues = values.filter((v) => v !== null && v !== undefined);
+
+  // ✅ Only mark as DNP if game is final
   if (meaningfulValues.length === 0) {
+    if (gameStatus !== "Final") {
+      console.log(
+        `⏳ Game ${gameId} is not final (status = ${gameStatus}) — skipping DNP check for ${prop.player_name}`
+      );
+      return false; // Skip resolution
+    }
+
     console.warn(
       `⛔ Player ${prop.player_name} appears to not have played. Marking as DNP.`
     );
