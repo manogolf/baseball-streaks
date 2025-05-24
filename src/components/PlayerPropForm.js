@@ -289,7 +289,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
           {[
             "ATH",
             "ATL",
-            "ARI",
+            "AZ",
             "BAL",
             "BOS",
             "CHC",
@@ -307,7 +307,6 @@ const PlayerPropForm = ({ onPropAdded }) => {
             "MIN",
             "NYM",
             "NYY",
-            "OAK",
             "PHI",
             "PIT",
             "SD",
