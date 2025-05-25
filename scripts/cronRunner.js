@@ -6,7 +6,7 @@ import { syncStatsForDate } from "../src/scripts/resolution/syncPlayerStats.js";
 import path from "path";
 import fs from "fs";
 import { downloadModelFromSupabase } from "../src/scripts/shared/downloadModelFromSupabase.js"; // 🔄 Corrected relative path
-import { runTrainingBackfillIfNeeded } from "..backfillTrainingFieldsExtended.js";
+import { runTrainingBackfillIfNeeded } from "./backfillTrainingFieldsExtended.js";
 
 console.log("⏳ Cron runner starting...");
 
