@@ -106,3 +106,51 @@ export function determineStatus(actual, line, overUnder) {
     ? "win"
     : "loss";
 }
+
+// 🔍 Determine if the team was home or away
+export async function determineHomeAway(team, gameId) {
+  const { data, error } = await supabase
+    .from("player_props")
+    .select("team, is_home, game_id")
+    .eq("team", team)
+    .eq("game_id", gameId)
+    .limit(1)
+    .maybeSingle();
+
+  return error || !data ? null : data.is_home;
+}
+
+// 🔍 Determine the opponent for a given team and game
+export async function determineOpponent(team, gameId) {
+  const { data, error } = await supabase
+    .from("player_props")
+    .select("team")
+    .eq("game_id", gameId)
+    .neq("team", team)
+    .limit(1)
+    .maybeSingle();
+
+  return error || !data ? null : data.team;
+}
+
+// 🔁 Calculate rolling 7-game average for this player and prop type
+export async function getRollingAverage(playerId, propType, gameDate) {
+  const { data, error } = await supabase
+    .from("model_training_props")
+    .select("result, game_date")
+    .eq("player_id", playerId)
+    .eq("prop_type", propType)
+    .lt("game_date", gameDate)
+    .order("game_date", { ascending: false })
+    .limit(7);
+
+  if (error || !data || data.length === 0) return null;
+
+  const values = data
+    .map((row) => parseFloat(row.result))
+    .filter((v) => !isNaN(v));
+  if (values.length === 0) return null;
+
+  const sum = values.reduce((acc, v) => acc + v, 0);
+  return parseFloat((sum / values.length).toFixed(2));
+}

@@ -6,6 +6,7 @@ import { syncStatsForDate } from "../src/scripts/resolution/syncPlayerStats.js";
 import path from "path";
 import fs from "fs";
 import { downloadModelFromSupabase } from "../src/scripts/shared/downloadModelFromSupabase.js"; // 🔄 Corrected relative path
+import { runTrainingBackfillIfNeeded } from "../src/scripts/backfillTrainingFieldsExtended.js";
 
 console.log("⏳ Cron runner starting...");
 
@@ -54,6 +55,8 @@ const safelyRun = async (label) => {
     await syncStatsForDate(yesterdayET());
     console.log(`🚀 ${label}: Running updatePropStatuses...`);
     await updatePropStatuses();
+    console.log(`📊 Running conditional training backfill...`);
+    await runTrainingBackfillIfNeeded(); // Only runs if incomplete rows exist
     console.log(`✅ ${label}: Job complete.`);
     if (isGitHubAction) process.exit(0);
   } catch (err) {

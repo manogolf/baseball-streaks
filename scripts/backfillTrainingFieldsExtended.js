@@ -1,0 +1,128 @@
+import { supabase } from "../src/scripts/shared/supabaseUtils.js";
+import {
+  getRollingAverage,
+  determineHomeAway,
+  determineOpponent,
+} from "../src/scripts/shared/propUtils.js";
+import { getStreaksForPlayer } from "../src/scripts/shared/playerUtils.js";
+import { getGameTimeFromID } from "../src/utils/fetchSchedule.js";
+
+console.log("🚀 Starting extended backfill for training fields...");
+
+const BATCH_SIZE = 500;
+
+export async function runTrainingBackfillIfNeeded() {
+  const { data } = await supabase
+    .from("model_training_props")
+    .select("id")
+    .is("game_time", null)
+    .limit(1);
+
+  if (data.length === 0) {
+    console.log("✅ Training data already complete. Skipping backfill.");
+    return;
+  }
+
+  console.log("⚠️ Incomplete training rows found. Running backfill...");
+  await runExtendedBackfill();
+}
+
+export async function runExtendedBackfill() {
+  const { data: rows, error } = await supabase
+    .from("model_training_props")
+    .select("*")
+    .or(
+      "rolling_result_avg_7.is.null,hit_streak.is.null,win_streak.is.null,game_time.is.null,is_home.is.null,opponent.is.null,prop_value.is.null,over_under.is.null"
+    )
+    .limit(BATCH_SIZE);
+
+  if (error) {
+    console.error("❌ Error fetching rows:", error.message);
+    return;
+  }
+
+  let updated = 0;
+
+  for (const row of rows) {
+    const updates = {};
+
+    // Rolling average
+    if (row.rolling_result_avg_7 == null) {
+      const avg = await getRollingAverage(
+        row.player_id,
+        row.prop_type,
+        row.game_date
+      );
+      if (avg != null) updates.rolling_result_avg_7 = avg;
+    }
+
+    // Streaks
+    if (row.hit_streak == null || row.win_streak == null) {
+      const streaks = await getStreaksForPlayer(row.player_id, row.prop_type);
+      if (streaks) {
+        if (row.hit_streak == null) updates.hit_streak = streaks.hit_streak;
+        if (row.win_streak == null) updates.win_streak = streaks.win_streak;
+      }
+    }
+
+    // Game time
+    if (row.game_time == null && row.game_id) {
+      const gameTime = await getGameTimeFromID(row.game_id);
+      if (gameTime) updates.game_time = gameTime;
+    }
+
+    // Home/Away status
+    if (row.is_home == null && row.team && row.game_id) {
+      const isHome = await determineHomeAway(row.team, row.game_id);
+      if (typeof isHome === "boolean") updates.is_home = isHome;
+    }
+
+    // Opponent team
+    if (row.opponent == null && row.team && row.game_id) {
+      const opponent = await determineOpponent(row.team, row.game_id);
+      if (opponent) updates.opponent = opponent;
+    }
+
+    // Prop value
+    if (
+      row.prop_value == null &&
+      row.result != null &&
+      row.source === "stat_derived"
+    ) {
+      updates.prop_value = parseFloat(row.result);
+    }
+
+    // Over/Under fallback
+    if (
+      row.over_under == null &&
+      row.predicted_outcome &&
+      row.prop_value != null &&
+      row.result != null
+    ) {
+      const actual = parseFloat(row.result);
+      const line = parseFloat(row.prop_value);
+      updates.over_under =
+        actual > line ? "over" : actual < line ? "under" : "push";
+    }
+
+    if (Object.keys(updates).length > 0) {
+      const { error: updateError } = await supabase
+        .from("model_training_props")
+        .update(updates)
+        .eq("id", row.id);
+
+      if (updateError) {
+        console.warn("⚠️ Failed to update row:", row.id, updateError.message);
+      } else {
+        updated++;
+      }
+    }
+  }
+
+  console.log(`✅ Backfill complete: ${updated} props updated`);
+}
+
+// Allow CLI usage
+if (process.argv[1].includes("backfillTrainingFieldsExtended.js")) {
+  await runTrainingBackfillIfNeeded();
+}

@@ -192,3 +192,29 @@ export async function getPlayerID(player_name, team_abbr, game_id) {
   );
   return null;
 }
+
+// 📊 Retrieve streaks for a given player_id from Supabase
+export async function getStreaksForPlayer(player_id) {
+  if (!player_id) return { streak_count: 0, streak_type: null };
+
+  try {
+    const { data, error } = await supabase
+      .from("player_streak_profiles")
+      .select("streak_count, streak_type")
+      .eq("player_id", player_id)
+      .maybeSingle();
+
+    if (error) {
+      console.error(
+        `❌ Failed to fetch streak profile for ${player_id}:`,
+        error.message
+      );
+      return { streak_count: 0, streak_type: null };
+    }
+
+    return data || { streak_count: 0, streak_type: null };
+  } catch (err) {
+    console.error(`🔥 Unexpected error fetching streaks:`, err.message);
+    return { streak_count: 0, streak_type: null };
+  }
+}
