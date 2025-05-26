@@ -1,12 +1,7 @@
 // scripts/generatePlayerStreakProfiles.js
 import "dotenv/config";
-import { supabase } from "./shared/supabaseUtils.js";
+import { supabase } from "../src/scripts/shared/supabaseUtils.js";
 import { DateTime } from "luxon";
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 async function fetchResolvedProps() {
   const { data, error } = await supabase

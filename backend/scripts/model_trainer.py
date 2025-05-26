@@ -45,7 +45,7 @@ def upload_model_to_supabase_from_memory(filename, model):
     response = supabase.storage.from_("2025.05.23.mlb-models").upload(
         path=filename,
         file=buffer.read(),
-        file_options={"content-type": "application/octet-stream", "upsert": True},
+        file_options={"content-type": "application/octet-stream", "upsert": "true"},
     )
 
     if hasattr(response, "error") and response.error:
