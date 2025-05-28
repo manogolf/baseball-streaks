@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from collections import Counter
 import httpx
 
-from backend.scripts.shared.supabase_utils import supabase
+from scripts.shared.supabase_utils import supabase
 
 router = APIRouter()
 CACHE_TTL_MINUTES = 60  # Cache freshness threshold
