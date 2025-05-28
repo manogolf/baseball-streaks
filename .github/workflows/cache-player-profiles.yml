@@ -10,12 +10,6 @@ jobs:
   cache-profiles:
     runs-on: ubuntu-latest
 
-    env:
-      NODE_ENV: production
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_KEY }} # 🔁 renamed correctly
-      REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
-
     steps:
       - name: ⬇️ Checkout repository
         uses: actions/checkout@v3
@@ -30,3 +24,6 @@ jobs:
 
       - name: 🚀 Run profile caching script
         run: node backend/scripts/cache/generateCachedPlayerProfiles.js
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
