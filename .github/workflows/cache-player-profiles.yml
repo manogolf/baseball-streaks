@@ -13,8 +13,8 @@ jobs:
     env:
       NODE_ENV: production
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-      REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }} # if used in getBaseURL()
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_KEY }} # 🔁 renamed correctly
+      REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
 
     steps:
       - name: ⬇️ Checkout repository
