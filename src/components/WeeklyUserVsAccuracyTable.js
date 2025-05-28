@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent } from "../components/ui/card.js";
 import WeeklyMetricsTable from "./archive/WeeklyMetricsTable.js";
 import WeeklyMetricsBarChart from "./archive/WeeklyMetricsBarChart.js";
-import { getBaseUrl } from "../scripts/shared/getBaseUrl.js";
+import { getBaseURL } from "../scripts/shared/getBaseURL.js";
 import { DateTime } from "luxon";
 
 export default function WeeklyUserVsAccuracy() {
@@ -14,7 +14,7 @@ export default function WeeklyUserVsAccuracy() {
     async function fetchWeeklyData() {
       try {
         const res = await fetch(
-          `${getBaseUrl()}/api/user-vs-model-accuracy-weekly`
+          `${getBaseURL()}/api/user-vs-model-accuracy-weekly`
         );
         const raw = await res.json();
 

@@ -10,6 +10,8 @@ from app.routes.api.model_metrics import router as model_metrics_router
 from app.routes.api.user_vs_model_accuracy import router as user_vs_model_accuracy_router
 from app.routes.api.user_vs_model_accuracy_weekly import router as user_vs_model_weekly_router
 from app.routes.api.model_accuracy_weekly import router as model_accuracy_weekly_router
+from backend.app.routes.api import player_list
+
 
 
 
@@ -37,5 +39,6 @@ app.include_router(model_metrics_router)
 app.include_router(user_vs_model_accuracy_router)
 app.include_router(user_vs_model_weekly_router)
 app.include_router(model_accuracy_weekly_router)
+app.include_router(player_list.router)
 
 

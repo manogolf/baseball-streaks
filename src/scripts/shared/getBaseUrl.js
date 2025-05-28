@@ -1,4 +1,4 @@
-export function getBaseUrl() {
+export function getBaseURL() {
   const isLocal = window.location.hostname === "localhost";
   return isLocal
     ? "http://localhost:8001" // 🛠 Local FastAPI server

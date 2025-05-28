@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "../components/ui/card.js";
-import { getBaseUrl } from "../scripts/shared/getBaseUrl.js";
+import { getBaseURL } from "../scripts/shared/getBaseURL.js";
 import {
   normalizePropType,
   getPropDisplayLabel,
@@ -25,7 +25,7 @@ export default function ModelMetricsDashboard() {
     async function fetchMetrics() {
       try {
         const userRes = await fetch(
-          `${getBaseUrl()}/api/user-vs-model-accuracy`
+          `${getBaseURL()}/api/user-vs-model-accuracy`
         );
         const userData = await userRes.json();
 
@@ -63,7 +63,7 @@ export default function ModelMetricsDashboard() {
 
         setMetrics(cleaned);
 
-        const modelRes = await fetch(`${getBaseUrl()}/api/model-metrics`);
+        const modelRes = await fetch(`${getBaseURL()}/api/model-metrics`);
         const modelData = await modelRes.json();
 
         const overallAggregated = {};
@@ -84,13 +84,13 @@ export default function ModelMetricsDashboard() {
         setModelAccuracy(overallCleaned);
 
         const weeklyUserRes = await fetch(
-          `${getBaseUrl()}/api/user-vs-model-accuracy-weekly`
+          `${getBaseURL()}/api/user-vs-model-accuracy-weekly`
         );
         const weeklyUserData = await weeklyUserRes.json();
         setWeeklyUserMetrics(weeklyUserData);
 
         const weeklyModelRes = await fetch(
-          `${getBaseUrl()}/api/model-accuracy-weekly`
+          `${getBaseURL()}/api/model-accuracy-weekly`
         );
         const weeklyModelData = await weeklyModelRes.json();
         // ✅ Move console.log here, after the data is loaded

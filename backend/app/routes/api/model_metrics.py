@@ -1,6 +1,6 @@
 # backend/app/routes/api/model_metrics.py
 from fastapi import APIRouter
-from app.supabase_client import supabase  # This uses your existing client
+from archive.supabase_client import supabase  # This uses your existing client
 
 router = APIRouter()
 

@@ -1,10 +1,8 @@
-// scripts/backfill/insertStatDerivedProps.js
-
 import crypto from "node:crypto";
 import { supabase } from "../../src/scripts/shared/supabaseUtils.js";
 import fetch from "node-fetch";
 import "dotenv/config";
-import { yesterdayET, toISODate } from "../../src/scripts/shared/timeUtils.js";
+import { toISODate, yesterdayET } from "../../src/scripts/shared/timeUtils.js";
 import {
   propExtractors,
   normalizePropType,
@@ -92,14 +90,33 @@ async function processGame(gameId, gameDate) {
   }
 }
 
+function generateDateRange(start, end) {
+  const dates = [];
+  const current = new Date(start);
+  const final = new Date(end);
+  while (current <= final) {
+    dates.push(toISODate(current));
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
+}
+
 async function main() {
-  const targetDate = process.argv[2] || yesterdayET();
-  console.log(`📅 Running stat-derived props for: ${targetDate}`);
+  const defaultStart = yesterdayET(-2); // Default: 3-day range
+  const startArg = process.argv[2];
+  const startDate = startArg || defaultStart;
+  const endDate = toISODate(new Date());
+
+  const dateRange = generateDateRange(startDate, endDate);
+  console.log(`📆 Dates to process: ${dateRange.join(", ")}`);
 
   try {
-    const gameIds = await fetchFinalizedGames(targetDate);
-    for (const gameId of gameIds) {
-      await processGame(gameId, targetDate);
+    for (const date of dateRange) {
+      console.log(`📅 Processing finalized games for: ${date}`);
+      const gameIds = await fetchFinalizedGames(date);
+      for (const gameId of gameIds) {
+        await processGame(gameId, date);
+      }
     }
     console.log("🎉 Stat-derived prop generation complete!");
   } catch (err) {
