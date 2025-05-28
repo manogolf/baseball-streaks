@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ValidationError
 from app.score_any_prop import predict_prop
-from archive.supabase_client import supabase
+from backend.scripts.shared.supabase_utils import supabase
 import os
 
 router = APIRouter()

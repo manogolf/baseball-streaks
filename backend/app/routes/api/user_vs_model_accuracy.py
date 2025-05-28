@@ -1,4 +1,4 @@
-from archive.supabase_client import supabase
+from backend.scripts.shared.supabase_utils import supabase
 from fastapi import APIRouter
 
 router = APIRouter()
