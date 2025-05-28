@@ -1,11 +1,11 @@
 import "dotenv/config";
 import cron from "node-cron";
-import { yesterdayET } from "../src/scripts/shared/timeUtils.js";
+import { yesterdayET } from "../backend/scripts/shared/timeUtils.js";
 import { updatePropStatuses } from "../src/scripts/resolution/updatePropResults.js";
 import { syncStatsForDate } from "../src/scripts/resolution/syncPlayerStats.js";
 import path from "path";
 import fs from "fs";
-import { downloadModelFromSupabase } from "../src/scripts/shared/downloadModelFromSupabase.js"; // 🔄 Corrected relative path
+import { downloadModelFromSupabase } from "../backend/scripts/shared/downloadModelFromSupabase.js"; // 🔄 Corrected relative path
 import { runTrainingBackfillIfNeeded } from "./backfillTrainingFieldsExtended.js";
 
 console.log("⏳ Cron runner starting...");

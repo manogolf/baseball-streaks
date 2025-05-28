@@ -1,5 +1,3 @@
-// src/scripts/shared/timeUtils.js
-
 import { DateTime } from "luxon";
 
 // 📌 Get Current Time in Eastern Time (ISO String)

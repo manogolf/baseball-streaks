@@ -1,12 +1,9 @@
 import crypto from "node:crypto";
-import { supabase } from "../../src/scripts/shared/supabaseUtils.js";
+import { supabase } from "./shared/supabaseUtils.js";
 import fetch from "node-fetch";
 import "dotenv/config";
-import { toISODate, yesterdayET } from "../../src/scripts/shared/timeUtils.js";
-import {
-  propExtractors,
-  normalizePropType,
-} from "../../src/scripts/shared/propUtils.js";
+import { toISODate, yesterdayET } from "./shared/timeUtils.js";
+import { propExtractors, normalizePropType } from "./shared/propUtils.js";
 
 const MLB_API_URL = "https://statsapi.mlb.com/api/v1";
 

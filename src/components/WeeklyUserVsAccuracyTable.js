@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent } from "../components/ui/card.js";
 import WeeklyMetricsTable from "./archive/WeeklyMetricsTable.js";
 import WeeklyMetricsBarChart from "./archive/WeeklyMetricsBarChart.js";
-import { getBaseURL } from "../scripts/shared/getBaseURL.js";
+import { getBaseURL } from "@shared/getBaseURL.js";
 import { DateTime } from "luxon";
 
 export default function WeeklyUserVsAccuracy() {

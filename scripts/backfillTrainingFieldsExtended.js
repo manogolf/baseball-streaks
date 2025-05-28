@@ -1,10 +1,10 @@
-import { supabase } from "../src/scripts/shared/supabaseUtils.js";
+import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
 import {
   getRollingAverage,
   determineHomeAway,
   determineOpponent,
-} from "../src/scripts/shared/propUtils.js";
-import { getStreaksForPlayer } from "../src/scripts/shared/playerUtils.js";
+} from "../backend/scripts/shared/propUtils.js";
+import { getStreaksForPlayer } from "../backend/scripts/shared/playerUtils.js";
 import { getGameTimeFromID } from "../src/utils/fetchSchedule.js";
 
 console.log("🚀 Starting extended backfill for training fields...");

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getBaseURL } from "../scripts/shared/getBaseURL.js";
-import { getPropDisplayLabel } from "../scripts/shared/propUtils.js";
+import { getBaseURL } from "@shared/getBaseURL.js";
+import { getPropDisplayLabel } from "@shared/propUtils.js";
 
 export default function PlayerProfileDashboard() {
   const { playerId } = useParams();

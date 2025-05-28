@@ -1,8 +1,8 @@
 // scripts/backfill/regeneratePlayerCaches.js
-import { supabase } from "../../src/scripts/shared/supabaseUtils.js";
+import { supabase } from "../shared/supabaseUtils.js";
 import fetch from "node-fetch";
 import "dotenv/config";
-import { getBaseURL } from "../../src/scripts/shared/getBaseURL.js";
+import { getBaseURL } from "../shared/getBaseURL.js";
 
 async function getAllPlayerIDs() {
   const { data, error } = await supabase

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { supabase } from "../scripts/shared/supabaseUtils.js";
-import { nowET, todayET, currentTimeET } from "../scripts/shared/timeUtils.js";
-import { getPropDisplayLabel } from "../scripts/shared/propUtils.js";
+import { supabase } from "@shared/supabaseUtils.js";
+import { nowET, todayET, currentTimeET } from "@shared/timeUtils.js";
+import { getPropDisplayLabel } from "@shared/propUtils.js";
 
 const statusColor = {
   win: "bg-green-100 text-green-700",

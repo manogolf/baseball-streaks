@@ -1,4 +1,4 @@
-import { supabase } from "./supabaseUtils.js";
+import { supabase } from "../shared/supabaseUtils.js";
 import fs, { mkdirSync } from "fs";
 import https from "https";
 import path from "path";

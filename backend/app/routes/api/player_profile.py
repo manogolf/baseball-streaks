@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from collections import Counter
 import httpx
 
@@ -143,14 +143,20 @@ async def get_player_profile(player_id: str):
         .table("player_profiles_cache")
         .select("*")
         .eq("player_id", player_id)
-        .single()
+        .maybe_single()
         .execute()
     )
-    if cached.data:
-        updated = datetime.fromisoformat(cached.data["updated_at"])
-        if datetime.utcnow() - updated < timedelta(minutes=CACHE_TTL_MINUTES):
+    if cached and cached.data and "updated_at" in cached.data:
+       try:
+           updated = datetime.fromisoformat(cached.data["updated_at"])
+           if datetime.now(timezone.utc) - updated < timedelta(minutes=CACHE_TTL_MINUTES):
             print("📦 Returning cached profile")
             return cached.data["cached_json"]
+       except Exception as e:
+        print(f"⚠️ Failed to parse cached timestamp: {e}")
+
+
+
 
     # 2. Recompute
     profile = await generate_fresh_player_profile(player_id)

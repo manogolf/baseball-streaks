@@ -1,5 +1,3 @@
-// src/scripts/shared/teamNameMap.js
-
 // Map of team abbreviations to full names
 export const teamNameMap = {
   ATH: "Athletics",

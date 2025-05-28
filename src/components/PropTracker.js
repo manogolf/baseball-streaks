@@ -1,14 +1,10 @@
 import { useEffect, useState } from "react";
 import { format, isValid } from "date-fns";
-import {
-  todayET,
-  currentTimeET,
-  toISODate,
-} from "../scripts/shared/timeUtils.js";
-import { supabase } from "../scripts/shared/supabaseUtils.js";
+import { todayET, currentTimeET, toISODate } from "@shared/timeUtils.js";
+import { supabase } from "@shared/supabaseUtils.js";
 import Calendar from "./ui/calendar.js";
 import AccuracyByPropType from "./AccuracyByPropType.js"; // Adjust the path if necessary
-import { getPropDisplayLabel } from "../scripts/shared/propUtils.js";
+import { getPropDisplayLabel } from "@shared/propUtils.js";
 
 export default function PropTracker() {
   const [selectedDate, setSelectedDate] = useState(new Date());

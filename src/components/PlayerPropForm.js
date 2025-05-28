@@ -1,18 +1,15 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../scripts/shared/supabaseUtils.js";
-import { nowET, todayET } from "../scripts/shared/timeUtils.js";
+import { supabase } from "@shared/supabaseUtils.js";
+import { nowET, todayET } from "@shared/timeUtils.js";
 import { useAuth } from "../context/AuthContext.js";
 import { buildFeatureVector } from "../utils/buildFeatureVector.js";
 import { requiredFeatures } from "../config/predictionSchema.js";
 import { normalizeFeatureKeys } from "../utils/normalizeFeatureKeys.js";
-import { preparePropSubmission } from "../scripts/shared/playerUtils.js";
-import { getPropTypeOptions } from "../scripts/shared/propUtils.js";
+import { preparePropSubmission } from "@shared/playerUtils.js";
+import { getPropTypeOptions } from "@shared/propUtils.js";
 import { STAT_FIELD_MAP } from "../utils/derivePropValue.js"; // adjust if needed
-import {
-  getPropDisplayLabel,
-  normalizePropType,
-} from "../scripts/shared/propUtils.js";
-import { getGamePkForTeamOnDate } from "../scripts/shared/fetchGameID.js";
+import { getPropDisplayLabel, normalizePropType } from "@shared/propUtils.js";
+import { getGamePkForTeamOnDate } from "@shared/fetchGameID.js";
 
 const apiUrl = `${
   process.env.REACT_APP_API_URL || "http://localhost:8000"

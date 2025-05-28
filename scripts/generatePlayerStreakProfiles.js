@@ -1,6 +1,6 @@
 // scripts/generatePlayerStreakProfiles.js
 import "dotenv/config";
-import { supabase } from "../src/scripts/shared/supabaseUtils.js";
+import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
 import { DateTime } from "luxon";
 
 async function fetchResolvedProps() {

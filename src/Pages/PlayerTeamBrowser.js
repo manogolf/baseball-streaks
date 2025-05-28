@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getBaseURL } from "../scripts/shared/getBaseURL.js";
+import { getBaseURL } from "@shared/getBaseURL.js";
 
 export default function PlayerTeamBrowser() {
   const [players, setPlayers] = useState([]);

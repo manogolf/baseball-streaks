@@ -1,6 +1,6 @@
 import { supabase } from "./supabaseUtils.js";
 import { toISODate, todayET, currentTimeET } from "./timeUtils.js";
-import { STAT_FIELD_MAP } from "../../utils/derivePropValue.js";
+import { STAT_FIELD_MAP } from "../../../src/utils/derivePropValue.js";
 import { validateStatBlock } from "./playerUtils.js"; // adjust path if needed
 
 // 🧠 Extractor map: Maps prop types to stat extraction logic
