@@ -16,8 +16,13 @@ async function getAllPlayerIds() {
 
 async function warmCacheForPlayer(playerId) {
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
+
     const url = `${getBaseURL()}/player-profile/${playerId}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+
     if (!res.ok) throw new Error(`Status ${res.status}`);
     const json = await res.json();
     console.log(`✅ Cached profile for ${playerId}`);
