@@ -1,8 +1,8 @@
 import "dotenv/config";
 import cron from "node-cron";
 import { yesterdayET } from "../backend/scripts/shared/timeUtils.js";
-import { updatePropStatuses } from "../src/scripts/resolution/updatePropResults.js";
-import { syncStatsForDate } from "../src/scripts/resolution/syncPlayerStats.js";
+import { updatePropStatuses } from "../backend/scripts/resolution/updatePropResults.js";
+import { syncStatsForDate } from "../backend/scripts/resolution/syncPlayerStats.js";
 import path from "path";
 import fs from "fs";
 import { downloadModelFromSupabase } from "../backend/scripts/shared/downloadModelFromSupabase.js"; // 🔄 Corrected relative path
