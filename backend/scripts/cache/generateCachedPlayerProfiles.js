@@ -1,6 +1,6 @@
 import fetch from "node-fetch";
-import { supabase } from "../../src/scripts/shared/supabaseUtils.js";
-import { getBaseURL } from "../../src/scripts/shared/getBaseURL.js";
+import { supabase } from "../../../src/scripts/shared/supabaseUtils.js";
+import { getBaseURL } from "../../../src/scripts/shared/getBaseURL.js";
 import "dotenv/config";
 
 async function getAllPlayerIds() {
