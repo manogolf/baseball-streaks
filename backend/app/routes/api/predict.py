@@ -1,8 +1,12 @@
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ValidationError
 from app.score_any_prop import predict_prop
-from backend.scripts.shared.supabase_utils import supabase
+import sys
 import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..")))
+
+from backend.scripts.shared.supabase_utils import supabase
+
 
 router = APIRouter()
 
