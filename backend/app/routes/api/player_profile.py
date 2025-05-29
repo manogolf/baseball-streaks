@@ -2,6 +2,8 @@ from fastapi import APIRouter, HTTPException
 from datetime import datetime, timedelta, timezone
 from collections import Counter
 import httpx
+from postgrest.exceptions import APIError
+import os
 
 from scripts.shared.supabase_utils import supabase
 
@@ -131,46 +133,53 @@ async def generate_fresh_player_profile(player_id: str):
         },
     }
 
-
 @router.get("/player-profile/{player_id}")
 async def get_player_profile(player_id: str):
     if not player_id:
         raise HTTPException(status_code=400, detail="Player ID is required")
 
-    # 1. Try to serve from cache
-    cached = (
-        supabase
-        .from_("player_profiles_cache")
-        .select("data, updated_at")
-        .eq("player_id", player_id)
-        .maybe_single()
-        .execute()
-    )
+    # ✅ 1. Try cache lookup
+    try:
+        cached = (
+            supabase
+            .from_("player_profiles_cache")
+            .select("data, updated_at")
+            .eq("player_id", player_id)
+            .limit(1)
+            .single()
+            .execute()
+        )
 
-    if cached and cached.data:
+        if cached.data:
+            updated_str = cached.data.get("updated_at")
+            if updated_str:
+                updated = datetime.fromisoformat(updated_str.replace("Z", "+00:00"))
+                if datetime.now(timezone.utc) - updated < timedelta(minutes=CACHE_TTL_MINUTES):
+                    print("📦 Returning cached profile")
+                    return cached.data["data"]
+    except Exception as e:
+        print(f"⚠️ Cache fetch error for {player_id}: {e}")
+
+    # ✅ 2. Fallback: Generate fresh profile
+    try:
+        profile = await generate_fresh_player_profile(player_id)
+
+        # ✅ 3. Attempt to write to cache
         try:
-            updated = datetime.fromisoformat(cached.data["updated_at"].replace("Z", "+00:00"))
-            if datetime.now(timezone.utc) - updated < timedelta(minutes=CACHE_TTL_MINUTES):
-                print("📦 Returning cached profile")
-                return cached.data["data"]
+            supabase.from_("player_profiles_cache").upsert({
+                "player_id": player_id,
+                "data": profile,
+                "updated_at": datetime.utcnow().isoformat()
+            }).execute()
         except Exception as e:
-            print(f"⚠️ Failed to parse cached timestamp: {e}")
+            print(f"⚠️ Failed to cache generated profile for {player_id}: {e}")
 
-    # 2. Recompute profile
-    profile = await generate_fresh_player_profile(player_id)
+        return profile
+    except Exception as e:
+        print(f"🔥 Profile generation failed for {player_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate profile for {player_id}")
 
-    # 3. Save to cache
-    (
-        supabase
-        .from_("player_profiles_cache")
-        .upsert({
-            "player_id": player_id,
-            "data": profile,
-            "updated_at": datetime.utcnow().isoformat()
-        })
-        .execute()
-    )
 
-    return profile
+
 
 
