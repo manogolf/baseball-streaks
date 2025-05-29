@@ -4,22 +4,22 @@ import { todayET, yesterdayET } from "../shared/timeUtils.js";
 import { expireOldPendingProps } from "../shared/propUtils.js";
 import { getPendingProps } from "../shared/supabaseUtils.js";
 import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
-import { extractStatForPropType } from "./statExtractors.js"; // ✅ add this at the top
+import { extractStatForPropType } from "./statExtractors.js";
 import { determineStatus } from "../shared/propUtils.js";
+import fs from "fs";
 
 export async function updatePropStatus(prop) {
   console.log(`📡 Checking prop: ${prop.player_name} - ${prop.prop_type}`);
 
-  // ❌ Skip invalid props
   if (prop.prop_value < 0) {
     console.warn(`🚫 Invalid prop line value: ${prop.prop_value} — skipping`);
-    return false;
+    return { status: "skipped", reason: "invalid line" };
   }
 
   let statsSource = "boxscore";
   let statBlock = null;
 
-  // ✅ Try Supabase player_stats first
+  // Check Supabase player_stats first
   const { data: playerStats, error: statsError } = await supabase
     .from("player_stats")
     .select("*")
@@ -41,20 +41,32 @@ export async function updatePropStatus(prop) {
     statBlock = playerStats;
   }
 
-  // 📦 Log keys to debug unexpected nulls
   console.log("📊 Stat block keys:", Object.keys(statBlock || {}));
 
-  // 🟡 Detect DNP — no meaningful stats
+  // Fetch game status from MLB live feed
+  let gameStatus = "Unknown";
+  try {
+    const res = await fetch(
+      `https://statsapi.mlb.com/api/v1.1/game/${prop.game_id}/feed/live`
+    );
+    const json = await res.json();
+    gameStatus = json?.gameData?.status?.detailedState || "Unknown";
+  } catch (err) {
+    console.warn(
+      `⚠️ Could not fetch game status for ${prop.game_id}: ${err.message}`
+    );
+  }
+
+  // Check for DNP
   const values = Object.values(statBlock || {});
   const meaningfulValues = values.filter((v) => v !== null && v !== undefined);
 
-  // ✅ Only mark as DNP if game is final
   if (meaningfulValues.length === 0) {
     if (gameStatus !== "Final") {
       console.log(
-        `⏳ Game ${gameId} is not final (status = ${gameStatus}) — skipping DNP check for ${prop.player_name}`
+        `⏳ Game ${prop.game_id} is not final (status = ${gameStatus}) — skipping DNP check for ${prop.player_name}`
       );
-      return false; // Skip resolution
+      return { status: "skipped", reason: "game not final" };
     }
 
     console.warn(
@@ -64,20 +76,20 @@ export async function updatePropStatus(prop) {
       .from("player_props")
       .update({ status: "dnp", result: null, outcome: null, was_correct: null })
       .eq("id", prop.id);
-    return false;
+    return { status: "dnp" };
   }
 
-  // ✅ Extract actual result from stat block
+  // Extract stat
   prop.result = extractStatForPropType(prop.prop_type, statBlock);
 
   if (prop.result === null || prop.result === undefined) {
     console.warn(
-      `⚠️ No stat found for ${prop.player_name} - ${prop.prop_type}`
+      `⚠️ Skipped prop (${prop.player_name}, ${prop.prop_type}) — stat missing | Source: ${statsSource} | Game ID: ${prop.game_id}`
     );
-    return false;
+    return { status: "skipped", reason: "stat not found" };
   }
 
-  // 🎯 Calculate outcome
+  // Calculate outcome
   const outcome = determineStatus(
     prop.result,
     prop.prop_value,
@@ -88,7 +100,7 @@ export async function updatePropStatus(prop) {
     `🎯 Outcome (${statsSource}): ${prop.result} vs ${prop.prop_value} (${prop.over_under}) → ${outcome}`
   );
 
-  // ✅ Write final result to Supabase
+  // Write result to Supabase
   const { error: updateError } = await supabase
     .from("player_props")
     .update({
@@ -103,11 +115,11 @@ export async function updatePropStatus(prop) {
 
   if (updateError) {
     console.error(`❌ Failed to update prop ${prop.id}:`, updateError.message);
-    return false;
+    return { status: "error" };
   }
 
   console.log(`✅ Updated prop ${prop.id} (${prop.player_name}) → ${outcome}`);
-  return true;
+  return { status: "updated" };
 }
 
 export async function updatePropStatuses() {
@@ -116,26 +128,50 @@ export async function updatePropStatuses() {
 
   let updated = 0,
     skipped = 0,
+    dnps = 0,
     errors = 0;
+
+  const skippedProps = [];
 
   for (const prop of props) {
     try {
-      const ok = await updatePropStatus(prop);
-      ok ? updated++ : skipped++;
+      const result = await updatePropStatus(prop);
+      switch (result.status) {
+        case "updated":
+          updated++;
+          break;
+        case "dnp":
+          dnps++;
+          break;
+        case "skipped":
+          skipped++;
+          skippedProps.push({ ...prop, reason: result.reason });
+          break;
+        case "error":
+          errors++;
+          break;
+      }
     } catch (err) {
       console.error(`🔥 Error processing ${prop.player_name}:`, err.message);
       errors++;
     }
   }
 
+  // Save skipped props to JSON file (optional)
+  if (skippedProps.length > 0) {
+    fs.writeFileSync(
+      "./skipped_props.json",
+      JSON.stringify(skippedProps, null, 2)
+    );
+  }
+
   await expireOldPendingProps();
 
   console.log(
-    `🏁 Update Summary → ✅ Updated: ${updated} | ⏭️ Skipped: ${skipped} | ❌ Errors: ${errors}`
+    `🏁 Update Summary → ✅ Updated: ${updated} | ⏭️ Skipped: ${skipped} | 🚷 DNP: ${dnps} | ❌ Errors: ${errors}`
   );
 }
 
-// ✅ Ensure this only auto-runs when executed directly, NOT when imported
 if (import.meta.url === `file://${process.argv[1]}`) {
   (async () => {
     try {

@@ -1,11 +1,11 @@
 import "dotenv/config";
 import cron from "node-cron";
+import path from "path";
+import fs from "fs";
 import { yesterdayET } from "../backend/scripts/shared/timeUtils.js";
 import { updatePropStatuses } from "../backend/scripts/resolution/updatePropResults.js";
 import { syncStatsForDate } from "../backend/scripts/resolution/syncPlayerStats.js";
-import path from "path";
-import fs from "fs";
-import { downloadModelFromSupabase } from "../backend/scripts/shared/downloadModelFromSupabase.js"; // 🔄 Corrected relative path
+import { downloadModelFromSupabase } from "../backend/scripts/shared/downloadModelFromSupabase.js";
 import { runTrainingBackfillIfNeeded } from "./backfillTrainingFieldsExtended.js";
 
 console.log("⏳ Cron runner starting...");
@@ -21,6 +21,7 @@ const modelFiles = [
 const month = new Date().getUTCMonth();
 const inSeason = month >= 2 && month <= 9;
 const cronExpression = inSeason ? "*/30 * * * *" : "0 10 * * *";
+
 console.log(
   `📅 Scheduling cron job: ${
     inSeason
@@ -31,7 +32,6 @@ console.log(
 
 const isGitHubAction = process.env.GITHUB_ACTIONS === "true";
 
-// 🔁 Ensure models are present
 async function ensureModelsExist() {
   for (const filename of modelFiles) {
     const modelPath = path.join(modelDir, filename);
@@ -51,13 +51,14 @@ async function ensureModelsExist() {
 
 const safelyRun = async (label) => {
   try {
-    await ensureModelsExist(); // ✅ Models before anything else
+    console.log(`🔁 ${label}: Starting scheduled tasks...`);
+    await ensureModelsExist();
     await syncStatsForDate(yesterdayET());
     console.log(`🚀 ${label}: Running updatePropStatuses...`);
-    await updatePropStatuses();
-    console.log(`📊 Running conditional training backfill...`);
-    await runTrainingBackfillIfNeeded(); // Only runs if incomplete rows exist
-    console.log(`✅ ${label}: Job complete.`);
+    await updatePropStatuses(); // Already logs summary internally
+    console.log(`📊 ${label}: Running conditional training backfill...`);
+    await runTrainingBackfillIfNeeded();
+    console.log(`✅ ${label}: All tasks complete.\n`);
     if (isGitHubAction) process.exit(0);
   } catch (err) {
     console.error(`❌ ${label}: Failed with error:`, err);
@@ -73,6 +74,5 @@ if (isGitHubAction) {
     const now = new Date().toISOString();
     console.log(`🕒 Cron triggered at ${now}`);
     await safelyRun("Scheduled Cron Job");
-    console.log("✅ Cron job complete.\n");
   });
 }

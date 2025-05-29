@@ -137,41 +137,40 @@ async def get_player_profile(player_id: str):
     if not player_id:
         raise HTTPException(status_code=400, detail="Player ID is required")
 
-    # 1. Try cache
+    # 1. Try to serve from cache
     cached = (
         supabase
-        .table("player_profiles_cache")
-        .select("*")
+        .from_("player_profiles_cache")
+        .select("data, updated_at")
         .eq("player_id", player_id)
         .maybe_single()
         .execute()
     )
-    if cached and cached.data and "updated_at" in cached.data:
-       try:
-           updated = datetime.fromisoformat(cached.data["updated_at"])
-           if datetime.now(timezone.utc) - updated < timedelta(minutes=CACHE_TTL_MINUTES):
-            print("📦 Returning cached profile")
-            return cached.data["cached_json"]
-       except Exception as e:
-        print(f"⚠️ Failed to parse cached timestamp: {e}")
 
+    if cached and cached.data:
+        try:
+            updated = datetime.fromisoformat(cached.data["updated_at"].replace("Z", "+00:00"))
+            if datetime.now(timezone.utc) - updated < timedelta(minutes=CACHE_TTL_MINUTES):
+                print("📦 Returning cached profile")
+                return cached.data["data"]
+        except Exception as e:
+            print(f"⚠️ Failed to parse cached timestamp: {e}")
 
-
-
-    # 2. Recompute
+    # 2. Recompute profile
     profile = await generate_fresh_player_profile(player_id)
 
     # 3. Save to cache
     (
         supabase
-        .table("player_profiles_cache")
+        .from_("player_profiles_cache")
         .upsert({
             "player_id": player_id,
-            "cached_json": profile,
+            "data": profile,
             "updated_at": datetime.utcnow().isoformat()
         })
         .execute()
     )
 
     return profile
+
 
