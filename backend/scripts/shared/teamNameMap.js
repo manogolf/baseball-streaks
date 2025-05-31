@@ -32,10 +32,52 @@ export const teamNameMap = {
   WSH: "Washington Nationals",
 };
 
-// Utility function to get full name from abbreviation
-export const getFullTeamName = (abbr) => {
-  // Normalize special cases
-  if (["OAK", "LV", "VIL"].includes(abbr)) return "Athletics";
+// Map of MLB team IDs to { abbr, fullName }
+export const teamIdMap = {
+  108: { abbr: "LAA", fullName: "Los Angeles Angels" },
+  109: { abbr: "ARI", fullName: "Arizona Diamondbacks" },
+  110: { abbr: "BAL", fullName: "Baltimore Orioles" },
+  111: { abbr: "BOS", fullName: "Boston Red Sox" },
+  112: { abbr: "CHC", fullName: "Chicago Cubs" },
+  113: { abbr: "CIN", fullName: "Cincinnati Reds" },
+  114: { abbr: "CLE", fullName: "Cleveland Guardians" },
+  115: { abbr: "COL", fullName: "Colorado Rockies" },
+  116: { abbr: "DET", fullName: "Detroit Tigers" },
+  117: { abbr: "HOU", fullName: "Houston Astros" },
+  118: { abbr: "KC", fullName: "Kansas City Royals" },
+  119: { abbr: "LAD", fullName: "Los Angeles Dodgers" },
+  120: { abbr: "WSH", fullName: "Washington Nationals" },
+  121: { abbr: "NYM", fullName: "New York Mets" },
+  133: { abbr: "OAK", fullName: "Athletics" }, // OAK/LV
+  134: { abbr: "PIT", fullName: "Pittsburgh Pirates" },
+  135: { abbr: "SD", fullName: "San Diego Padres" },
+  136: { abbr: "SEA", fullName: "Seattle Mariners" },
+  137: { abbr: "SF", fullName: "San Francisco Giants" },
+  138: { abbr: "STL", fullName: "St. Louis Cardinals" },
+  139: { abbr: "TB", fullName: "Tampa Bay Rays" },
+  140: { abbr: "TEX", fullName: "Texas Rangers" },
+  141: { abbr: "TOR", fullName: "Toronto Blue Jays" },
+  142: { abbr: "MIN", fullName: "Minnesota Twins" },
+  143: { abbr: "PHI", fullName: "Philadelphia Phillies" },
+  144: { abbr: "ATL", fullName: "Atlanta Braves" },
+  145: { abbr: "CWS", fullName: "Chicago White Sox" },
+  146: { abbr: "MIA", fullName: "Miami Marlins" },
+  147: { abbr: "NYY", fullName: "New York Yankees" },
+  158: { abbr: "MIL", fullName: "Milwaukee Brewers" },
+};
 
+// Normalize special cases and get full name from abbreviation
+export const getFullTeamName = (abbr) => {
+  if (["OAK", "LV", "VIL"].includes(abbr)) return "Athletics";
   return teamNameMap[abbr] || abbr;
 };
+
+// Get full name and abbreviation from team ID
+export const getTeamInfoByID = (teamId) => {
+  return teamIdMap[Number(teamId)] || null;
+};
+
+export function getFullTeamAbbreviationFromID(teamId) {
+  if (!teamId) return null;
+  return teamIdToAbbrMap[parseInt(teamId)] || null;
+}

@@ -4,6 +4,7 @@ import fetch from "node-fetch";
 import "dotenv/config";
 import { toISODate, yesterdayET } from "./shared/timeUtils.js";
 import { propExtractors, normalizePropType } from "./shared/propUtils.js";
+import { getTeamInfoByID } from "./shared/teamNameMap.js";
 
 const MLB_API_URL = "https://statsapi.mlb.com/api/v1";
 
@@ -40,6 +41,9 @@ async function processGame(gameId, gameDate) {
       const stats = player?.stats?.batting || player?.stats?.pitching;
       if (!stats) continue;
 
+      const teamId = player.parentTeamId?.toString() ?? null;
+      const teamInfo = getTeamInfoByID(teamId);
+
       for (const [propType, extractor] of Object.entries(propExtractors)) {
         let value;
         try {
@@ -52,7 +56,7 @@ async function processGame(gameId, gameDate) {
         const payload = {
           id: crypto.randomUUID(),
           player_name: player.person.fullName,
-          team: player.parentTeamId?.toString() ?? null,
+          team: teamInfo?.abbr ?? null,
           position: player.position?.abbreviation || null,
           prop_type: propType,
           prop_value: null,
@@ -99,7 +103,7 @@ function generateDateRange(start, end) {
 }
 
 async function main() {
-  const defaultStart = yesterdayET(-2); // Default: 3-day range
+  const defaultStart = yesterdayET(-2);
   const startArg = process.argv[2];
   const startDate = startArg || defaultStart;
   const endDate = toISODate(new Date());

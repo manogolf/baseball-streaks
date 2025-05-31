@@ -60,9 +60,9 @@ export default function PropTracker() {
             <th className="px-4 py-2">Player</th>
             <th className="px-4 py-2">Team</th>
             <th className="px-4 py-2">Prop</th>
+            <th className="px-4 py-2">O/U</th>
             <th className="px-4 py-2">Value</th>
             <th className="px-4 py-2">Status</th>
-            <th className="px-4 py-2">O/U</th>
           </tr>
         </thead>
         <tbody>
@@ -82,6 +82,7 @@ export default function PropTracker() {
                 <td className="px-4 py-2">
                   {getPropDisplayLabel(prop.prop_type)}
                 </td>
+                <td className="px-4 py-2">{prop.over_under}</td>
                 <td className="px-4 py-2">{prop.prop_value}</td>
                 <td className="px-4 py-2">
                   <span
@@ -92,6 +93,8 @@ export default function PropTracker() {
                         ? "bg-red-100 text-red-700"
                         : prop.outcome === "push"
                         ? "bg-blue-100 text-blue-700"
+                        : prop.status === "dnp"
+                        ? "bg-yellow-100 text-yellow-700" // ✅ NEW: DNP badge color
                         : prop.status === "expired"
                         ? "bg-gray-200 text-gray-500 italic"
                         : "bg-gray-100 text-gray-600"
@@ -100,13 +103,13 @@ export default function PropTracker() {
                     {prop.outcome
                       ? prop.outcome.charAt(0).toUpperCase() +
                         prop.outcome.slice(1)
+                      : prop.status === "dnp"
+                      ? "DNP" // ✅ NEW: Label for DNP
                       : prop.status === "expired"
                       ? "Expired"
                       : "Pending"}
                   </span>
                 </td>
-
-                <td className="px-4 py-2">{prop.over_under}</td>
               </tr>
             ))
           ) : (

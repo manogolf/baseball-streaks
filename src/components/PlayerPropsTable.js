@@ -2,19 +2,23 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "@shared/supabaseUtils.js";
 import { nowET, todayET, currentTimeET } from "@shared/timeUtils.js";
 import { getPropDisplayLabel } from "@shared/propUtils.js";
+import { isGameLive } from "@shared/gameStatusUtils.js";
+import useLivePropStatus from "../hooks/useLivePropStatus.js";
 
 const statusColor = {
-  win: "bg-green-100 text-green-700",
-  loss: "bg-red-100 text-red-700",
-  push: "bg-blue-100 text-blue-700",
-  resolved: "bg-gray-200 text-gray-600",
-  live: "bg-yellow-100 text-yellow-800 animate-pulse",
-  pending: "bg-gray-200 text-gray-600", // optionally improve this too
-  dnp: "bg-zinc-200 text-zinc-700",
+  win: "bg-green-100 text-green-700", // ✅ Success
+  loss: "bg-red-100 text-red-700", // ❌ Failed
+  push: "bg-blue-100 text-blue-700", // ⏸️ Neutral
+  resolved: "bg-gray-200 text-gray-600", // 🧾 Resolved catch-all
+  live: "bg-yellow-100 text-yellow-800", // 🔄 In progress
+  pending: "bg-gray-100 text-gray-500 italic", // 🕓 Waiting
+  dnp: "bg-zinc-200 text-zinc-700 italic", // 🚷 Did Not Play
+  expired: "bg-gray-300 text-gray-500 italic", // 🗓️ Missed/Outdated
 };
 
 const PlayerPropsTable = () => {
   const [props, setProps] = useState([]);
+  useLivePropStatus(props, setProps);
   const [recentProps, setRecentProps] = useState([]);
   const [sortConfig, setSortConfig] = useState({
     key: "game_date",
@@ -115,6 +119,13 @@ const PlayerPropsTable = () => {
             >
               Prop{getArrow("prop_type")}
             </th>
+
+            <th
+              className="px-3 py-2 text-left cursor-pointer"
+              onClick={() => handleSort("over_under")}
+            >
+              O/U{getArrow("over_under")}
+            </th>
             <th
               className="px-3 py-2 text-left cursor-pointer"
               onClick={() => handleSort("prop_value")}
@@ -122,12 +133,6 @@ const PlayerPropsTable = () => {
               Value{getArrow("prop_value")}
             </th>
             <th className="px-3 py-2 text-left">Status</th>
-            <th
-              className="px-3 py-2 text-left cursor-pointer"
-              onClick={() => handleSort("over_under")}
-            >
-              O/U{getArrow("over_under")}
-            </th>
             <th
               className="px-3 py-2 text-left cursor-pointer"
               onClick={() => handleSort("game_date")}
@@ -138,11 +143,16 @@ const PlayerPropsTable = () => {
         </thead>
         <tbody>
           {sortedProps.map((p) => {
+            const gameStatus = p.status?.toLowerCase();
+            const liveOverride = isGameLive(gameStatus) ? "live" : null;
+
             const statusKey = (
               p.outcome ??
+              liveOverride ??
               p.status ??
               "pending"
             ).toLowerCase();
+
             const label =
               statusKey.charAt(0).toUpperCase() + statusKey.slice(1);
 
@@ -166,6 +176,7 @@ const PlayerPropsTable = () => {
                   {getPropDisplayLabel(p.prop_type)}
                 </td>
 
+                <td className="px-3 py-2">{p.over_under}</td>
                 <td className="px-3 py-2">{p.prop_value}</td>
                 <td className="px-3 py-2">
                   <span
@@ -176,7 +187,7 @@ const PlayerPropsTable = () => {
                     {label}
                   </span>
                 </td>
-                <td className="px-3 py-2">{p.over_under}</td>
+
                 <td className="px-3 py-2">{p.game_date}</td>
               </tr>
             );

@@ -7,6 +7,7 @@ import {
   getEasternDateFromISO,
   toISODate,
 } from "@shared/timeUtils.js";
+import { getStatusDisplay, getStatusColor } from "@shared/gameStatusUtils.js";
 
 const TodayGames = ({ games }) => {
   const [standings, setStandings] = useState([]);
@@ -41,40 +42,6 @@ const TodayGames = ({ games }) => {
       return `🗒 Record: ${team.wins}-${team.losses}`;
     }
     return "🗒 Record: N/A";
-  };
-
-  const getStatusDisplay = (game) => {
-    const status = game.status.detailedState;
-
-    if (status === "In Progress" && game.linescore) {
-      const inningHalf = game.linescore.isTopInning ? "Top" : "Bot";
-      const inning = game.linescore.currentInning;
-      const outs = game.linescore.outs ?? "?";
-      const homeScore = game.teams.home.score ?? 0;
-      const awayScore = game.teams.away.score ?? 0;
-      const balls = game.linescore.balls ?? "-";
-      const strikes = game.linescore.strikes ?? "-";
-
-      return `${inningHalf} ${inning} • ${awayScore}-${homeScore} • ${outs} out${
-        outs === 1 ? "" : "s"
-      } • ${balls}B ${strikes}S`;
-    }
-
-    if (status === "Scheduled") {
-      const { etTime, localTime } = formatGameTime(game.gameDate);
-      return `ET: ${etTime} / Local: ${localTime}`;
-    }
-
-    if (status === "Final") return "Final";
-    return status;
-  };
-
-  const getStatusColor = (status) => {
-    if (status === "Final") return "text-red-500";
-    if (status === "In Progress") return "text-green-600";
-    if (status === "Postponed" || status.includes("Delayed"))
-      return "text-yellow-500";
-    return "text-gray-500";
   };
 
   const getStartingPitcher = (teamKey, game) => {

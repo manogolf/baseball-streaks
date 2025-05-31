@@ -10,31 +10,31 @@
  */
 export function extractStatForPropType(propType, playerData) {
   const statMap = {
-    hits: playerData.hits,
-    runs_scored: playerData.runs,
-    rbis: playerData.rbis,
-    home_runs: playerData.home_runs,
+    hits: playerData.hits ?? null,
+    runs_scored: playerData.runs ?? null,
+    rbis: playerData.rbis ?? null,
+    home_runs: playerData.home_runs ?? null,
     singles:
-      (playerData.hits || 0) -
-      (playerData.doubles || 0) -
-      (playerData.triples || 0) -
-      (playerData.home_runs || 0),
-    doubles: playerData.doubles,
-    triples: playerData.triples,
-    walks: playerData.walks,
-    strikeouts_batting: playerData.strikeouts_batting,
-    stolen_bases: playerData.stolen_bases,
-    total_bases: playerData.total_bases,
+      (playerData.hits ?? 0) -
+      (playerData.doubles ?? 0) -
+      (playerData.triples ?? 0) -
+      (playerData.home_runs ?? 0),
+    doubles: playerData.doubles ?? null,
+    triples: playerData.triples ?? null,
+    walks: playerData.walks ?? null,
+    strikeouts_batting: playerData.strikeouts_batting ?? null,
+    stolen_bases: playerData.stolen_bases ?? null,
+    total_bases: playerData.total_bases ?? null,
     hits_runs_rbis:
-      (playerData.hits || 0) + (playerData.runs || 0) + (playerData.rbis || 0),
-    runs_rbis: (playerData.runs || 0) + (playerData.rbis || 0), // ✅ Added mapping
+      (playerData.hits ?? 0) + (playerData.runs ?? 0) + (playerData.rbis ?? 0),
+    runs_rbis: (playerData.runs ?? 0) + (playerData.rbis ?? 0),
 
     // Pitching props
-    outs_recorded: playerData.outs_recorded,
-    strikeouts_pitching: playerData.strikeouts_pitching,
-    walks_allowed: playerData.walks_allowed,
-    earned_runs: playerData.earned_runs,
-    hits_allowed: playerData.hits_allowed,
+    outs_recorded: playerData.outs_recorded ?? null,
+    strikeouts_pitching: playerData.strikeouts_pitching ?? null,
+    walks_allowed: playerData.walks_allowed ?? null,
+    earned_runs: playerData.earned_runs ?? null,
+    hits_allowed: playerData.hits_allowed ?? null,
   };
 
   return statMap[propType] ?? null;

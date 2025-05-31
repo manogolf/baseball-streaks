@@ -57,11 +57,17 @@ export async function updatePropStatus(prop) {
     );
   }
 
-  // Check for DNP
-  const values = Object.values(statBlock || {});
-  const meaningfulValues = values.filter((v) => v !== null && v !== undefined);
+  // DNP CHECK FIRST
+  const statValues = Object.values(statBlock || {});
+  const allStatValuesAreZero = statValues.every((v) => v === 0);
 
-  if (meaningfulValues.length === 0) {
+  const plateApps = statBlock?.plateAppearances ?? 0;
+  const atBats = statBlock?.atBats ?? 0;
+
+  const didNotPlay =
+    !statBlock || (plateApps === 0 && atBats === 0) || allStatValuesAreZero;
+
+  if (didNotPlay) {
     if (gameStatus !== "Final") {
       console.log(
         `⏳ Game ${prop.game_id} is not final (status = ${gameStatus}) — skipping DNP check for ${prop.player_name}`
@@ -79,7 +85,7 @@ export async function updatePropStatus(prop) {
     return { status: "dnp" };
   }
 
-  // Extract stat
+  // ONLY NOW: Extract the stat
   prop.result = extractStatForPropType(prop.prop_type, statBlock);
 
   if (prop.result === null || prop.result === undefined) {

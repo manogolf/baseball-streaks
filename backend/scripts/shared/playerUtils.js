@@ -218,3 +218,23 @@ export async function getStreaksForPlayer(player_id) {
     return { streak_count: 0, streak_type: null };
   }
 }
+
+export async function upsertPlayerID({ player_id, player_name, team = null }) {
+  if (!player_id || !player_name) {
+    console.warn("⚠️ Missing player_id or player_name for upsert");
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("player_ids")
+    .upsert([{ player_id, player_name, team }], {
+      onConflict: ["player_id"],
+    });
+
+  if (error) {
+    console.error(`❌ Supabase upsert error for ${player_id}:`, error.message);
+    return null;
+  }
+
+  return data;
+}
