@@ -34,9 +34,13 @@ def download_model_if_missing(model_name):
         print(f"❌ Supabase create_signed_url failed: {e}")
         return None
 
-    if not response or "data" not in response or not response["data"].get("signedUrl"):
+    data = response.get("data") or response  # handle if response is flat or nested
+    signed_url = data.get("signedUrl") or data.get("signedURL")
+
+    if not signed_url:
         print(f"❌ Failed to retrieve signed URL for {model_name}")
         return None
+
 
     signed_url = response["data"]["signedUrl"]
 
