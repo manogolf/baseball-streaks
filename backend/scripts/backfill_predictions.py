@@ -5,18 +5,17 @@ import joblib
 from dotenv import load_dotenv
 from pathlib import Path
 from supabase import create_client
+from collections import defaultdict
 
-# Load env vars
+# Load environment variables
 load_dotenv()
-
-# Init Supabase client
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-# Ensure model directory exists
 MODEL_DIR = "backend/models"
 Path(MODEL_DIR).mkdir(parents=True, exist_ok=True)
+
 
 def download_model_if_missing(model_name):
     local_path = os.path.join(MODEL_DIR, model_name)
@@ -24,29 +23,15 @@ def download_model_if_missing(model_name):
         return local_path
 
     print(f"⬇️ Downloading {model_name} from Supabase...")
-
     response = supabase.storage.from_("2025.05.23.mlb-models").create_signed_url(model_name, 60)
-    print(f"📤 Raw Supabase response for {model_name}:\n{response}")
 
-    # Gracefully handle both nested and flat response shapes
-    if isinstance(response, dict):
-        data = response.get("data") or response  # fallback to root dict if 'data' is missing
-        signed_url = data.get("signedUrl") or data.get("signedURL")
-    else:
-        print(f"❌ Unexpected response type for {model_name}: {type(response)}")
+    if not response or not response.get("signedUrl"):
+        print(f"❌ Failed to fetch signed URL for {model_name}")
         return None
 
-    if not signed_url:
-        print(f"❌ No signed URL found for {model_name}")
-        return None
-
-    # Fetch and save model
-    try:
-        r = requests.get(signed_url)
-        r.raise_for_status()
-    except Exception as e:
-        print(f"❌ Failed to download {model_name} from signed URL: {e}")
-        return None
+    signed_url = response["signedUrl"]
+    r = requests.get(signed_url)
+    r.raise_for_status()
 
     with open(local_path, "wb") as f:
         f.write(r.content)
@@ -55,75 +40,80 @@ def download_model_if_missing(model_name):
     return local_path
 
 
-
-
-
 def predict(prop_type, input_data):
     model_filename = f"{prop_type}_model.pkl"
     model_path = download_model_if_missing(model_filename)
 
     print(f"🔍 Resolved model_path: {model_path}")
-    if not os.path.exists(model_path):
-        print(f"⚠️ Model file still not found: {model_path}")
+    if not model_path or not os.path.exists(model_path):
         return None, None
 
     model = joblib.load(model_path)
 
-    rolling_avg = input_data.get("rolling_result_avg_7") or 0
-    prop_value = input_data.get("prop_value") or 0
-    line_diff = rolling_avg - prop_value
-
     features = pd.DataFrame([{
-        "line_diff": line_diff,
+        "line_diff": input_data.get("rolling_result_avg_7", 0) - input_data.get("prop_value", 0),
         "hit_streak": input_data.get("hit_streak", 0),
         "win_streak": input_data.get("win_streak", 0),
         "is_home": input_data.get("is_home", 0),
-        "opponent_encoded": input_data.get("opponent_avg_win_rate", 0.5)
+        "opponent_encoded": input_data.get("opponent_avg_win_rate", 0.5),
     }])
 
     prob = model.predict_proba(features)[0][1]
     prediction = "win" if prob >= 0.5 else "loss"
     return prediction, round(float(prob), 4)
 
-# Fetch unresolved rows
-response = supabase.table("model_training_props") \
-    .select("*") \
-    .is_("predicted_outcome", None) \
-    .in_("outcome", ["win", "loss"]) \
-    .limit(500) \
-    .execute()
 
-rows = response.data
-print(f"📦 Found {len(rows)} props to backfill predictions...")
+def main():
+    TARGET_DATES = ["2025-05-30", "2025-05-31"]  # Update daily or make dynamic
+    updated_count = 0
 
-updated_count = 0
+    # Fetch unresolved props by player
+    response = supabase.table("model_training_props") \
+        .select("*") \
+        .in_("game_date", TARGET_DATES) \
+        .is_("predicted_outcome", None) \
+        .in_("outcome", ["win", "loss"]) \
+        .limit(10000) \
+        .execute()
 
-for row in rows:
-    try:
-        features = {
-            "prop_value": row.get("prop_value", 0),
-            "rolling_result_avg_7": row.get("rolling_result_avg_7", 0),
-            "hit_streak": row.get("hit_streak", 0),
-            "win_streak": row.get("win_streak", 0),
-            "is_home": row.get("is_home", 0),
-            "opponent_avg_win_rate": row.get("opponent_avg_win_rate", 0.5)
-        }
+    rows = response.data
+    print(f"📦 Found {len(rows)} unresolved props across {len(TARGET_DATES)} dates...")
 
-        prediction, prob = predict(row["prop_type"], features)
-        if prediction is None:
-            continue
+    props_by_player = defaultdict(list)
+    for row in rows:
+        props_by_player[row["player_id"]].append(row)
 
-        was_correct = prediction == row["outcome"]
+    for player_id, props in props_by_player.items():
+        print(f"🧠 Processing {len(props)} props for player_id {player_id}...")
+        for row in props:
+            try:
+                features = {
+                    "prop_value": row.get("prop_value", 0),
+                    "rolling_result_avg_7": row.get("rolling_result_avg_7", 0),
+                    "hit_streak": row.get("hit_streak", 0),
+                    "win_streak": row.get("win_streak", 0),
+                    "is_home": row.get("is_home", 0),
+                    "opponent_avg_win_rate": row.get("opponent_avg_win_rate", 0.5)
+                }
+                prediction, prob = predict(row["prop_type"], features)
+                if prediction is None:
+                    continue
 
-        supabase.table("model_training_props").update({
-            "predicted_outcome": prediction,
-            "confidence_score": prob,
-            "was_correct": was_correct
-        }).eq("id", row["id"]).execute()
+                was_correct = prediction == row["outcome"]
 
-        updated_count += 1
+                supabase.table("model_training_props").update({
+                    "predicted_outcome": prediction,
+                    "confidence_score": prob,
+                    "was_correct": was_correct
+                }).eq("id", row["id"]).execute()
 
-    except Exception as e:
-        print(f"⚠️ Error processing row ID {row['id']}: {e}")
+                updated_count += 1
 
-print(f"✅ Backfill complete: {updated_count} props updated.")
+            except Exception as e:
+                print(f"⚠️ Error processing row ID {row['id']}: {e}")
+
+    print(f"✅ Backfill complete: {updated_count} props updated.")
+
+
+if __name__ == "__main__":
+    main()
