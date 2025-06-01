@@ -64,6 +64,9 @@ export async function updatePropStatus(prop) {
 
   // ONLY NOW: Extract the stat
   prop.result = extractStatForPropType(prop.prop_type, statBlock);
+  console.log(
+    `🧪 [DEBUG] Extracted result for ${prop.player_name} (${prop.prop_type}): ${prop.result}`
+  );
 
   if (prop.result === null || prop.result === undefined) {
     console.warn(
