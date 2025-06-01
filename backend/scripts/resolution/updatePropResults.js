@@ -85,7 +85,10 @@ export async function updatePropStatus(prop) {
   console.log(
     `🎯 Outcome (${statsSource}): ${prop.result} vs ${prop.prop_value} (${prop.over_under}) → ${outcome}`
   );
-
+  // Diagnostic log BEFORE the update
+  console.log(
+    `🛠️ Writing to Supabase: result=${prop.result}, outcome=${outcome}, status=${outcome}, player_id=${prop.player_id}`
+  );
   // Write result to Supabase
   const { error: updateError } = await supabase
     .from("player_props")
@@ -100,13 +103,20 @@ export async function updatePropStatus(prop) {
     .eq("id", prop.id);
 
   if (updateError) {
-    console.error(`❌ Failed to update prop ${prop.id}:`, updateError.message);
-    return { status: "error" };
+    console.error(
+      `❌ Supabase update failed for ${prop.player_name} (ID: ${prop.id}): ${updateError.message}`
+    );
+  } else {
+    console.log(
+      `✅ Supabase update success for ${prop.player_name} → ${outcome}`
+    );
   }
 
-  console.log(`✅ Updated prop ${prop.id} (${prop.player_name}) → ${outcome}`);
-  return { status: "updated" };
+  return { status: "error" };
 }
+
+console.log(`✅ Updated prop ${prop.id} (${prop.player_name}) → ${outcome}`);
+return { status: "updated" };
 
 export async function updatePropStatuses() {
   const props = await getPendingProps();
