@@ -106,17 +106,14 @@ export async function updatePropStatus(prop) {
     console.error(
       `❌ Supabase update failed for ${prop.player_name} (ID: ${prop.id}): ${updateError.message}`
     );
+    return { status: "error" };
   } else {
     console.log(
-      `✅ Supabase update success for ${prop.player_name} → ${outcome}`
+      `✅ Updated prop ${prop.id} (${prop.player_name}) → ${outcome}`
     );
+    return { status: "updated" };
   }
-
-  return { status: "error" };
 }
-
-console.log(`✅ Updated prop ${prop.id} (${prop.player_name}) → ${outcome}`);
-return { status: "updated" };
 
 export async function updatePropStatuses() {
   const props = await getPendingProps();
