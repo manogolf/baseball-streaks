@@ -57,29 +57,21 @@ export async function updatePropStatus(prop) {
     );
   }
 
-  // ✅ Restored DNP logic
-  const statValues = Object.values(statBlock || {});
-  const allStatValuesAreZero = statValues.every((v) => v === 0);
+  // ✅ Improved DNP Check
+  const relevantStat = extractStatForPropType(prop.prop_type, statBlock);
 
-  const plateApps = statBlock?.plateAppearances ?? 0;
-  const atBats = statBlock?.atBats ?? 0;
-
-  const didNotPlay =
-    !statBlock || (plateApps === 0 && atBats === 0) || allStatValuesAreZero;
-
-  if (didNotPlay) {
-    console.warn(`🚷 DNP: ${prop.player_name} (${prop.prop_type})`);
-    const { error: dnpUpdateError } = await supabase
+  if (
+    statBlock == null ||
+    relevantStat === null ||
+    relevantStat === undefined
+  ) {
+    console.warn(
+      `🚷 DNP (no relevant stat): ${prop.player_name} (${prop.prop_type})`
+    );
+    await supabase
       .from("player_props")
       .update({ status: "dnp" })
       .eq("id", prop.id);
-
-    if (dnpUpdateError) {
-      console.error(
-        `❌ Failed to mark DNP for ${prop.player_name}: ${dnpUpdateError.message}`
-      );
-    }
-
     return { status: "dnp" };
   }
 
