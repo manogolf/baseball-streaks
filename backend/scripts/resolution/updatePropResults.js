@@ -61,6 +61,14 @@ export async function updatePropStatus(prop) {
   const statValues = Object.values(statBlock || {});
   const allStatValuesAreZero = statValues.every((v) => v === 0);
 
+  // Diagnostic logging before DNP decision
+  console.log(`🧪 DNP Check for ${prop.player_name}:`);
+  console.log(`  - plateApps: ${statBlock?.plateAppearances ?? "null"}`);
+  console.log(`  - atBats: ${statBlock?.atBats ?? "null"}`);
+  console.log(`  - All stat values zero: ${allStatValuesAreZero}`);
+  console.log(`  - statBlock keys: ${Object.keys(statBlock || {})}`);
+  console.log(`  - Raw statBlock:`, statBlock);
+
   const plateApps = statBlock?.plateAppearances ?? 0;
   const atBats = statBlock?.atBats ?? 0;
 
