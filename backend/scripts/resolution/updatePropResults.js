@@ -57,41 +57,10 @@ export async function updatePropStatus(prop) {
     );
   }
 
-  // DNP CHECK FIRST
-  const statValues = Object.values(statBlock || {});
-  const allStatValuesAreZero = statValues.every((v) => v === 0);
-
-  // Diagnostic logging before DNP decision
-  console.log(`🧪 DNP Check for ${prop.player_name}:`);
-  console.log(`  - plateApps: ${statBlock?.plateAppearances ?? "null"}`);
-  console.log(`  - atBats: ${statBlock?.atBats ?? "null"}`);
-  console.log(`  - All stat values zero: ${allStatValuesAreZero}`);
-  console.log(`  - statBlock keys: ${Object.keys(statBlock || {})}`);
-  console.log(`  - Raw statBlock:`, statBlock);
-
-  const plateApps = statBlock?.plateAppearances ?? 0;
-  const atBats = statBlock?.atBats ?? 0;
-
-  const didNotPlay =
-    !statBlock || (plateApps === 0 && atBats === 0) || allStatValuesAreZero;
-
-  if (didNotPlay) {
-    if (gameStatus !== "Final") {
-      console.log(
-        `⏳ Game ${prop.game_id} is not final (status = ${gameStatus}) — skipping DNP check for ${prop.player_name}`
-      );
-      return { status: "skipped", reason: "game not final" };
-    }
-
-    console.warn(
-      `⛔ Player ${prop.player_name} appears to not have played. Marking as DNP.`
-    );
-    await supabase
-      .from("player_props")
-      .update({ status: "dnp", result: null, outcome: null, was_correct: null })
-      .eq("id", prop.id);
-    return { status: "dnp" };
-  }
+  // ⛔ TEMPORARILY SKIPPING DNP LOGIC FOR DEBUGGING
+  console.warn(
+    `🧪 [DEBUG] Skipping DNP logic for ${prop.player_name}. Proceeding with stat extraction...`
+  );
 
   // ONLY NOW: Extract the stat
   prop.result = extractStatForPropType(prop.prop_type, statBlock);
