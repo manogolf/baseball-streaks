@@ -20,45 +20,40 @@ Path(MODEL_DIR).mkdir(parents=True, exist_ok=True)
 
 def download_model_if_missing(model_name):
     local_path = os.path.join(MODEL_DIR, model_name)
-    
     if os.path.exists(local_path):
-        print(f"📁 Model already exists locally: {local_path}")
         return local_path
 
     print(f"⬇️ Downloading {model_name} from Supabase...")
 
-    try:
-        response = supabase.storage.from_("2025.05.23.mlb-models").create_signed_url(model_name, 60)
-        print(f"📤 Raw Supabase response for {model_name}:\n{response}")
-    except Exception as e:
-        print(f"❌ Supabase create_signed_url failed: {e}")
-        return None
+    response = supabase.storage.from_("2025.05.23.mlb-models").create_signed_url(model_name, 60)
+    print(f"📤 Raw Supabase response for {model_name}:\n{response}")
 
-    data = response.get("data") or response  # handle if response is flat or nested
-    signed_url = data.get("signedUrl") or data.get("signedURL")
+    # Gracefully handle both nested and flat response shapes
+    if isinstance(response, dict):
+        data = response.get("data") or response  # fallback to root dict if 'data' is missing
+        signed_url = data.get("signedUrl") or data.get("signedURL")
+    else:
+        print(f"❌ Unexpected response type for {model_name}: {type(response)}")
+        return None
 
     if not signed_url:
-        print(f"❌ Failed to retrieve signed URL for {model_name}")
+        print(f"❌ No signed URL found for {model_name}")
         return None
 
-
-    signed_url = response["data"]["signedUrl"]
-
+    # Fetch and save model
     try:
         r = requests.get(signed_url)
         r.raise_for_status()
     except Exception as e:
-        print(f"❌ Failed to download model from signed URL: {e}")
+        print(f"❌ Failed to download {model_name} from signed URL: {e}")
         return None
 
-    try:
-        with open(local_path, "wb") as f:
-            f.write(r.content)
-        print(f"✅ Downloaded and saved model: {local_path}")
-        return local_path
-    except Exception as e:
-        print(f"❌ Failed to write model to disk: {e}")
-        return None
+    with open(local_path, "wb") as f:
+        f.write(r.content)
+
+    print(f"✅ Downloaded {model_name}")
+    return local_path
+
 
 
 
