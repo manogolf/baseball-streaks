@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 from supabase import create_client
 from collections import defaultdict
+from datetime import datetime, timedelta
 
 # Load environment variables
 load_dotenv()
@@ -16,6 +17,9 @@ supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 MODEL_DIR = "backend/models"
 Path(MODEL_DIR).mkdir(parents=True, exist_ok=True)
 
+def get_recent_game_dates(days=2):
+    today = datetime.utcnow().date()
+    return [(today - timedelta(days=i)).isoformat() for i in range(1, days + 1)]
 
 def download_model_if_missing(model_name):
     local_path = os.path.join(MODEL_DIR, model_name)
@@ -39,7 +43,6 @@ def download_model_if_missing(model_name):
     print(f"✅ Downloaded {model_name}")
     return local_path
 
-
 def predict(prop_type, input_data):
     model_filename = f"{prop_type}_model.pkl"
     model_path = download_model_if_missing(model_filename)
@@ -62,12 +65,10 @@ def predict(prop_type, input_data):
     prediction = "win" if prob >= 0.5 else "loss"
     return prediction, round(float(prob), 4)
 
-
 def main():
-    TARGET_DATES = ["2025-05-30", "2025-05-31"]  # Update daily or make dynamic
+    TARGET_DATES = get_recent_game_dates(2)
     updated_count = 0
 
-    # Fetch unresolved props by player
     response = supabase.table("model_training_props") \
         .select("*") \
         .in_("game_date", TARGET_DATES) \
@@ -76,7 +77,7 @@ def main():
         .limit(10000) \
         .execute()
 
-    rows = response.data
+    rows = response.data or []
     print(f"📦 Found {len(rows)} unresolved props across {len(TARGET_DATES)} dates...")
 
     props_by_player = defaultdict(list)
@@ -93,7 +94,7 @@ def main():
                     "hit_streak": row.get("hit_streak", 0),
                     "win_streak": row.get("win_streak", 0),
                     "is_home": row.get("is_home", 0),
-                    "opponent_avg_win_rate": row.get("opponent_avg_win_rate", 0.5)
+                    "opponent_avg_win_rate": row.get("opponent_avg_win_rate", 0.5),
                 }
                 prediction, prob = predict(row["prop_type"], features)
                 if prediction is None:
@@ -113,7 +114,6 @@ def main():
                 print(f"⚠️ Error processing row ID {row['id']}: {e}")
 
     print(f"✅ Backfill complete: {updated_count} props updated.")
-
 
 if __name__ == "__main__":
     main()
