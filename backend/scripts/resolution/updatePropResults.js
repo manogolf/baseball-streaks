@@ -88,6 +88,22 @@ export async function updatePropStatus(prop) {
     return { status: "skipped", reason: "stat not found" };
   }
 
+  const plateApps = statBlock?.plateAppearances ?? 0;
+
+  if (
+    (relevantStat === null || relevantStat === undefined) &&
+    plateApps === 0
+  ) {
+    console.warn(
+      `🚷 DNP (no stat + 0 PA): ${prop.player_name} (${prop.prop_type})`
+    );
+    await supabase
+      .from("player_props")
+      .update({ status: "dnp" })
+      .eq("id", prop.id);
+    return { status: "dnp" };
+  }
+
   // Calculate outcome
   const outcome = determineStatus(
     prop.result,
