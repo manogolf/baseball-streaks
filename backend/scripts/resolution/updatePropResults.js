@@ -8,6 +8,8 @@ import { extractStatForPropType } from "./statExtractors.js";
 import { determineStatus } from "../shared/propUtils.js";
 import fs from "fs";
 
+const affectedPlayerIds = new Set();
+
 export async function updatePropStatus(prop) {
   console.log(`📡 Checking prop: ${prop.player_name} - ${prop.prop_type}`);
 
@@ -19,7 +21,6 @@ export async function updatePropStatus(prop) {
   let statsSource = "boxscore";
   let statBlock = null;
 
-  // Check Supabase player_stats first
   const { data: playerStats, error: statsError } = await supabase
     .from("player_stats")
     .select("*")
@@ -43,7 +44,6 @@ export async function updatePropStatus(prop) {
 
   console.log("📊 Stat block keys:", Object.keys(statBlock || {}));
 
-  // Fetch game status from MLB live feed
   let gameStatus = "Unknown";
   try {
     const res = await fetch(
@@ -57,7 +57,6 @@ export async function updatePropStatus(prop) {
     );
   }
 
-  // ✅ Improved DNP Check
   const relevantStat = extractStatForPropType(prop.prop_type, statBlock);
 
   if (
@@ -75,7 +74,6 @@ export async function updatePropStatus(prop) {
     return { status: "dnp" };
   }
 
-  // ONLY NOW: Extract the stat
   prop.result = extractStatForPropType(prop.prop_type, statBlock);
   console.log(
     `🧪 [DEBUG] Extracted result for ${prop.player_name} (${prop.prop_type}): ${prop.result}`
@@ -104,7 +102,6 @@ export async function updatePropStatus(prop) {
     return { status: "dnp" };
   }
 
-  // Calculate outcome
   const outcome = determineStatus(
     prop.result,
     prop.prop_value,
@@ -114,11 +111,11 @@ export async function updatePropStatus(prop) {
   console.log(
     `🎯 Outcome (${statsSource}): ${prop.result} vs ${prop.prop_value} (${prop.over_under}) → ${outcome}`
   );
-  // Diagnostic log BEFORE the update
+
   console.log(
     `🛠️ Writing to Supabase: result=${prop.result}, outcome=${outcome}, status=${outcome}, player_id=${prop.player_id}`
   );
-  // Write result to Supabase
+
   const { error: updateError } = await supabase
     .from("player_props")
     .update({
@@ -137,6 +134,7 @@ export async function updatePropStatus(prop) {
     );
     return { status: "error" };
   } else {
+    affectedPlayerIds.add(prop.player_id); // ✅ track affected
     console.log(
       `✅ Updated prop ${prop.id} (${prop.player_name}) → ${outcome}`
     );
@@ -179,7 +177,6 @@ export async function updatePropStatuses() {
     }
   }
 
-  // Save skipped props to JSON file (optional)
   if (skippedProps.length > 0) {
     fs.writeFileSync(
       "./skipped_props.json",
@@ -192,6 +189,20 @@ export async function updatePropStatuses() {
   console.log(
     `🏁 Update Summary → ✅ Updated: ${updated} | ⏭️ Skipped: ${skipped} | 🚷 DNP: ${dnps} | ❌ Errors: ${errors}`
   );
+
+  // ✅ Invalidate cache for affected players
+  if (affectedPlayerIds.size > 0) {
+    const { error: cacheError } = await supabase
+      .from("player_profiles_cache")
+      .delete()
+      .in("player_id", Array.from(affectedPlayerIds));
+
+    if (cacheError) {
+      console.warn("⚠️ Failed to clear player cache:", cacheError.message);
+    } else {
+      console.log(`🧹 Cleared cache for ${affectedPlayerIds.size} players`);
+    }
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
