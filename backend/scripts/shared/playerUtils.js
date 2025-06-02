@@ -193,20 +193,21 @@ export async function getPlayerID(player_name, team_abbr, game_id) {
   return null;
 }
 
-// 📊 Retrieve streaks for a given player_id from Supabase
-export async function getStreaksForPlayer(player_id) {
-  if (!player_id) return { streak_count: 0, streak_type: null };
+// 📊 Retrieve streaks for a given player_id and prop_type from Supabase
+export async function getStreaksForPlayer(player_id, prop_type) {
+  if (!player_id || !prop_type) return { streak_count: 0, streak_type: null };
 
   try {
     const { data, error } = await supabase
       .from("player_streak_profiles")
       .select("streak_count, streak_type")
       .eq("player_id", player_id)
+      .eq("prop_type", prop_type)
       .maybeSingle();
 
     if (error) {
       console.error(
-        `❌ Failed to fetch streak profile for ${player_id}:`,
+        `❌ Failed to fetch streak profile for ${player_id} (${prop_type}):`,
         error.message
       );
       return { streak_count: 0, streak_type: null };
@@ -214,7 +215,10 @@ export async function getStreaksForPlayer(player_id) {
 
     return data || { streak_count: 0, streak_type: null };
   } catch (err) {
-    console.error(`🔥 Unexpected error fetching streaks:`, err.message);
+    console.error(
+      `🔥 Unexpected error fetching streaks for ${player_id} (${prop_type}):`,
+      err.message
+    );
     return { streak_count: 0, streak_type: null };
   }
 }

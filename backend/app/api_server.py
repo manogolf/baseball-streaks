@@ -25,16 +25,20 @@ app = FastAPI()
 # 🌍 Allowed origins for development and production
 allowed_origins = [
     "http://localhost:3000",  # Local React dev server
-    "https://www.proppadia.com",  # 🔥 Replace with your live domain
+    "https://www.proppadia.com",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=[
+        "http://localhost:3000",
+        "https://baseball-streaks-idcq8g8bq-manogolfs-projects.vercel.app",  # ✅ your Vercel frontend
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Register routes
 app.include_router(predict_router)
