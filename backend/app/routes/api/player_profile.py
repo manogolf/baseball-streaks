@@ -146,7 +146,6 @@ async def get_player_profile(player_id: str):
             .select("data, updated_at")
             .eq("player_id", player_id)
             .limit(1)
-            .single()
             .execute()
         )
 

@@ -18,9 +18,10 @@ export async function updatePropStatus(prop) {
     return { status: "skipped", reason: "invalid line" };
   }
 
-  let statsSource = "boxscore";
   let statBlock = null;
+  let statsSource = "boxscore";
 
+  // 🔍 Try player_stats first
   const { data: playerStats, error: statsError } = await supabase
     .from("player_stats")
     .select("*")
@@ -28,44 +29,31 @@ export async function updatePropStatus(prop) {
     .eq("player_id", prop.player_id)
     .maybeSingle();
 
-  if (statsError || !playerStats) {
-    console.warn(
-      `⚠️ No stats found in player_stats for ${prop.player_name}, trying live feed...`
-    );
+  if (!statsError && playerStats) {
+    statBlock = playerStats;
+  } else {
+    console.warn(`⚠️ No stats in player_stats, trying live feed...`);
     statsSource = "live";
     statBlock = await getStatFromLiveFeed(
       prop.game_id,
       prop.player_id,
       prop.prop_type
     );
-  } else {
-    statBlock = playerStats;
   }
 
   console.log("📊 Stat block keys:", Object.keys(statBlock || {}));
 
-  let gameStatus = "Unknown";
-  try {
-    const res = await fetch(
-      `https://statsapi.mlb.com/api/v1.1/game/${prop.game_id}/feed/live`
-    );
-    const json = await res.json();
-    gameStatus = json?.gameData?.status?.detailedState || "Unknown";
-  } catch (err) {
-    console.warn(
-      `⚠️ Could not fetch game status for ${prop.game_id}: ${err.message}`
-    );
-  }
-
+  // 🧪 Try to extract relevant stat
   const relevantStat = extractStatForPropType(prop.prop_type, statBlock);
 
+  // 🧼 If no stat block or relevant stat is null/undefined, assign DNP
   if (
     statBlock == null ||
     relevantStat === null ||
     relevantStat === undefined
   ) {
     console.warn(
-      `🚷 DNP (no relevant stat): ${prop.player_name} (${prop.prop_type})`
+      `🚷 DNP (no stat found): ${prop.player_name} (${prop.prop_type})`
     );
     await supabase
       .from("player_props")
@@ -74,33 +62,11 @@ export async function updatePropStatus(prop) {
     return { status: "dnp" };
   }
 
-  prop.result = extractStatForPropType(prop.prop_type, statBlock);
+  // ✅ Stat found — extract and evaluate
+  prop.result = relevantStat;
   console.log(
-    `🧪 [DEBUG] Extracted result for ${prop.player_name} (${prop.prop_type}): ${prop.result}`
+    `🧪 Extracted result for ${prop.player_name} (${prop.prop_type}): ${prop.result}`
   );
-
-  if (prop.result === null || prop.result === undefined) {
-    console.warn(
-      `⚠️ Skipped prop (${prop.player_name}, ${prop.prop_type}) — stat missing | Source: ${statsSource} | Game ID: ${prop.game_id}`
-    );
-    return { status: "skipped", reason: "stat not found" };
-  }
-
-  const plateApps = statBlock?.plateAppearances ?? 0;
-
-  if (
-    (relevantStat === null || relevantStat === undefined) &&
-    plateApps === 0
-  ) {
-    console.warn(
-      `🚷 DNP (no stat + 0 PA): ${prop.player_name} (${prop.prop_type})`
-    );
-    await supabase
-      .from("player_props")
-      .update({ status: "dnp" })
-      .eq("id", prop.id);
-    return { status: "dnp" };
-  }
 
   const outcome = determineStatus(
     prop.result,
@@ -110,10 +76,6 @@ export async function updatePropStatus(prop) {
 
   console.log(
     `🎯 Outcome (${statsSource}): ${prop.result} vs ${prop.prop_value} (${prop.over_under}) → ${outcome}`
-  );
-
-  console.log(
-    `🛠️ Writing to Supabase: result=${prop.result}, outcome=${outcome}, status=${outcome}, player_id=${prop.player_id}`
   );
 
   const { error: updateError } = await supabase

@@ -199,6 +199,19 @@ const PlayerPropForm = ({ onPropAdded }) => {
       const { player_id } = preparedData;
       const now = nowET().toISO();
 
+      // 🛡️ Validate critical fields before continuing
+      if (
+        preparedData.prop_value === undefined ||
+        isNaN(preparedData.prop_value) ||
+        !preparedData.over_under
+      ) {
+        console.error("❌ Missing or invalid prop_value or over_under.");
+        setError("Missing required fields for prediction.");
+        setSubmitting(false);
+        return;
+      }
+
+      // ✅ Build payload only if validation passed
       const payload = {
         player_name: preparedData.player_name || formData.player_name,
         team: preparedData.team || formData.team,

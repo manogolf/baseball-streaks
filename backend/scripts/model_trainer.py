@@ -35,7 +35,19 @@ def fetch_data(prop_type):
     min_len = min(len(win_df), len(loss_df))
     df = pd.concat([win_df.sample(min_len), loss_df.sample(min_len)], ignore_index=True)
     df["outcome"] = df["outcome"].str.lower().str.strip()
+
+    if not df.empty:
+        # Log source composition
+        source_counts = df["source"].value_counts(dropna=False).to_dict()
+        print(f"📊 Source breakdown for {prop_type}: {source_counts}")
+
+        # Log latest game_date
+        df["game_date"] = pd.to_datetime(df["game_date"], errors="coerce")
+        latest_date = df["game_date"].max()
+        print(f"📅 Latest game_date in training data for {prop_type}: {latest_date.date() if pd.notnull(latest_date) else 'N/A'}")
+
     return df
+
 
 def upload_model_to_supabase_from_memory(filename, model):
     buffer = BytesIO()
