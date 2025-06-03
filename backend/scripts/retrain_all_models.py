@@ -4,7 +4,7 @@ import os
 import json
 from pathlib import Path
 # New
-from model_trainer import train_and_save_model
+from scripts.model_trainer import train_and_save_model
 
 
 # 🔁 Load canonical prop type keys from prop_types.json

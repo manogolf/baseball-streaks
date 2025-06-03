@@ -17,10 +17,11 @@ supabase = create_client(
 
 def fetch_data(prop_type):
     def fetch_subset(outcome):
-        res = supabase.table("model_training_props") \
+        res = supabase.table("recent_model_training_props") \
             .select("*") \
             .eq("prop_type", prop_type) \
             .eq("outcome", outcome) \
+            .order("game_date", desc=True) \
             .limit(500) \
             .execute()
         return pd.DataFrame(res.data)
@@ -37,16 +38,14 @@ def fetch_data(prop_type):
     df["outcome"] = df["outcome"].str.lower().str.strip()
 
     if not df.empty:
-        # Log source composition
         source_counts = df["source"].value_counts(dropna=False).to_dict()
         print(f"📊 Source breakdown for {prop_type}: {source_counts}")
-
-        # Log latest game_date
         df["game_date"] = pd.to_datetime(df["game_date"], errors="coerce")
         latest_date = df["game_date"].max()
         print(f"📅 Latest game_date in training data for {prop_type}: {latest_date.date() if pd.notnull(latest_date) else 'N/A'}")
 
     return df
+
 
 
 def upload_model_to_supabase_from_memory(filename, model):
@@ -70,15 +69,10 @@ def train_and_save_model(prop_type):
     if df.empty:
         raise ValueError(f"No training data found for: {prop_type}")
 
-    # ✅ Feature engineering
-    df["line_diff"] = (
-        pd.to_numeric(df["rolling_result_avg_7"], errors="coerce").fillna(0)
-        - pd.to_numeric(df["prop_value"], errors="coerce").fillna(0)
-    )
-    df["opponent_encoded"] = pd.to_numeric(df["opponent_avg_win_rate"], errors="coerce").fillna(0.5)
-    df["hit_streak"] = pd.to_numeric(df["hit_streak"], errors="coerce").fillna(0)
-    df["win_streak"] = pd.to_numeric(df["win_streak"], errors="coerce").fillna(0)
-    df["is_home"] = pd.to_numeric(df["is_home"], errors="coerce").fillna(0)
+    feature_cols = ["line_diff", "hit_streak", "win_streak", "is_home", "opponent_avg_win_rate"]
+    df.dropna(subset=feature_cols + ["outcome"], inplace=True)
+    X = df[feature_cols]
+
 
     feature_cols = ["line_diff", "hit_streak", "win_streak", "is_home", "opponent_encoded"]
     df.dropna(subset=feature_cols + ["outcome"], inplace=True)

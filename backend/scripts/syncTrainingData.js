@@ -26,13 +26,19 @@ async function syncTrainingData() {
         game_date: prop.game_date,
         game_id: prop.game_id,
         over_under: prop.over_under,
-        source: "user_added", // ✅ fixed naming to match metric view
+        source: "user_added", // ✅ Matches training/metrics logic
         player_id: prop.player_id ?? null,
         rolling_result_avg_7: prop.rolling_result_avg_7 ?? null,
+        line_diff:
+          prop.rolling_result_avg_7 !== null && prop.prop_value !== null
+            ? parseFloat(
+                (prop.rolling_result_avg_7 - prop.prop_value).toFixed(2)
+              )
+            : null,
         hit_streak: prop.hit_streak ?? null,
         win_streak: prop.win_streak ?? null,
 
-        // ✅ model-specific fields
+        // ✅ Prediction fields
         predicted_outcome: prop.predicted_outcome ?? null,
         confidence_score: prop.confidence_score ?? null,
         prediction_timestamp: prop.prediction_timestamp ?? null,

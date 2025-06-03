@@ -53,13 +53,29 @@ async function processGame(gameId, gameDate) {
         }
         if (typeof value !== "number" || isNaN(value)) continue;
 
+        const playerId = player.person.id.toString();
+
+        // 🔁 Get synthetic prop line for this type
+        const realLineValue = await getSyntheticLine(propType);
+
+        // 📈 Get recent 7-game average
+        const rollingAvg = await getRollingAverage(
+          playerId,
+          propType,
+          gameDate
+        );
+
+        // 🔢 Optionally set streaks (can be null or added later)
+        const hitStreak = null;
+        const winStreak = null;
+
         const payload = {
           id: crypto.randomUUID(),
           player_name: player.person.fullName,
           team: teamInfo?.abbr ?? null,
           position: player.position?.abbreviation || null,
           prop_type: propType,
-          prop_value: null,
+          prop_value: realLineValue,
           result: value,
           outcome: null,
           is_pitcher: !!player.stats?.pitching,
@@ -67,10 +83,14 @@ async function processGame(gameId, gameDate) {
           game_id: gameId,
           over_under: null,
           source: "stat_derived",
-          player_id: player.person.id.toString(),
-          rolling_result_avg_7: null,
-          hit_streak: null,
-          win_streak: null,
+          player_id: playerId,
+          rolling_result_avg_7: rollingAvg,
+          hit_streak: hitStreak,
+          win_streak: winStreak,
+          line_diff:
+            rollingAvg !== null && realLineValue !== null
+              ? rollingAvg - realLineValue
+              : null,
         };
 
         const { error } = await supabase
