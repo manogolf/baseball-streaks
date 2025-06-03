@@ -26,26 +26,37 @@ PROP_TYPES = [
     "strikeouts_pitching", "earned_runs", "hits_allowed", "walks_allowed"
 ]
 
-def download_model_if_missing(model_name):
+import time
+
+def download_model_if_missing(model_name, max_retries=3):
     local_path = os.path.join(MODEL_DIR, model_name)
     if os.path.exists(local_path):
         return local_path
 
     print(f"⬇️ Downloading {model_name} from Supabase...")
-    response = supabase.storage.from_("2025.05.23.mlb-models").create_signed_url(model_name, 60)
-    url = response.get("data", {}).get("signedUrl")
 
-    if not url:
-        print(f"❌ Failed to retrieve signed URL for {model_name}")
-        return None
+    for attempt in range(1, max_retries + 1):
+        response = supabase.storage.from_("2025.05.23.mlb-models").create_signed_url(model_name, 60)
+        url = response.get("data", {}).get("signedUrl")
 
-    r = requests.get(url)
-    r.raise_for_status()
-    with open(local_path, "wb") as f:
-        f.write(r.content)
+        if url:
+            try:
+                r = requests.get(url)
+                r.raise_for_status()
+                with open(local_path, "wb") as f:
+                    f.write(r.content)
+                print(f"✅ Downloaded {model_name}")
+                return local_path
+            except Exception as e:
+                print(f"❌ Download failed on attempt {attempt}: {e}")
+        else:
+            print(f"⚠️ Attempt {attempt} failed for {model_name}: No signed URL returned")
 
-    print(f"✅ Downloaded {model_name}")
-    return local_path
+        time.sleep(2)
+
+    print(f"❌ Error downloading {model_name} after {max_retries} attempts")
+    return None
+
 
 def predict(prop_type, input_data):
     model_filename = f"{prop_type}_model.pkl"
