@@ -32,4 +32,4 @@ jobs:
 
       - name: 🧠 Run Player Streak Profiles Update
         run: |
-          node scripts/generatePlayerStreakProfiles.js
+          node backend/scripts/generatePlayerStreakProfiles.js
