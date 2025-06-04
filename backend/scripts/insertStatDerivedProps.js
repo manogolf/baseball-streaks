@@ -3,7 +3,7 @@ import { supabase } from "./shared/supabaseUtils.js";
 import fetch from "node-fetch";
 import "dotenv/config";
 import { toISODate, yesterdayET } from "./shared/timeUtils.js";
-import { propExtractors, normalizePropType } from "./shared/propUtils.js";
+import { propExtractors, getSyntheticLine } from "./shared/propUtils.js";
 import { getTeamInfoByID } from "./shared/teamNameMap.js";
 
 const MLB_API_URL = "https://statsapi.mlb.com/api/v1";
