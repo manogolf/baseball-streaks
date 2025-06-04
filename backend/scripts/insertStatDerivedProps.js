@@ -34,14 +34,25 @@ async function fetchPlayerStats(gameId) {
     : null;
 }
 
+function getStartingPitchers(teamPlayers) {
+  return Object.entries(teamPlayers)
+    .filter(([_, player]) => {
+      const positionCode = player?.position?.code;
+      const isStarter = player?.gameStatus?.isStarter;
+      return positionCode === "1" && isStarter; // position 1 = pitcher
+    })
+    .map(([_, player]) => player);
+}
+
 async function processGame(gameId, gameDate) {
   const players = await fetchPlayerStats(gameId);
   if (!players) return;
 
   for (const side of ["home", "away"]) {
     const teamPlayers = players[side];
-    for (const key in teamPlayers) {
-      const player = teamPlayers[key];
+    const starters = getStartingPitchers(teamPlayers);
+
+    for (const player of starters) {
       const stats = player?.stats?.batting || player?.stats?.pitching;
       if (!stats) continue;
 

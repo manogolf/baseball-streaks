@@ -7,6 +7,8 @@ from pathlib import Path
 from supabase import create_client
 from collections import defaultdict
 
+
+
 # Load environment variables
 load_dotenv()
 
@@ -88,7 +90,7 @@ def main():
             .eq("prop_type", prop_type) \
             .is_("predicted_outcome", None) \
             .in_("outcome", ["win", "loss"]) \
-            .limit(250) \
+            .limit(5000) \
             .execute()
 
         rows = response.data
@@ -112,6 +114,7 @@ def main():
                         "is_home": row.get("is_home", 0),
                         "opponent_avg_win_rate": row.get("opponent_avg_win_rate", 0.5),
                     }
+                    
 
                     prediction, prob = predict(prop_type, features)
                     if prediction is None:
