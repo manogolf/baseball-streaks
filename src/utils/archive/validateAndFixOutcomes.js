@@ -1,7 +1,7 @@
 // src/utils/validateAndFixOutcomes.js
 
 import { supabase } from "../scripts/shared/supabaseUtils.js";
-import { getPlayerStatsFromBoxscore } from "./fetchBoxscoreStats.js";
+import { getPlayerStatsFromBoxscore } from "../fetchBoxscoreStats.js";
 import { extractStatForPropType } from "../scripts/shared/propUtils.js";
 
 const BATCH_SIZE = 500;

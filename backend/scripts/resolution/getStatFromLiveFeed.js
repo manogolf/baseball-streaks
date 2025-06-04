@@ -1,136 +1,31 @@
 import fetch from "node-fetch";
+import { normalizePropType, extractLiveStat } from "../shared/propUtils.js";
 
-// Extracts stat from live feed JSON based on prop type
+// Extracts stat from live feed JSON based on prop type using shared utility
 export async function getStatFromLiveFeed(gameId, playerId, propType) {
   const url = `https://statsapi.mlb.com/api/v1.1/game/${gameId}/feed/live`;
+
   try {
     const res = await fetch(url);
     const json = await res.json();
-    // ✅ Guard: ensure game is finished
+
+    // ✅ Ensure game is final
     const gameState = json?.gameData?.status?.abstractGameState;
     if (gameState !== "Final") {
       console.warn(`⏳ Game ${gameId} is not final (status = ${gameState})`);
       return null;
     }
-    const allPlays = json?.liveData?.plays?.allPlays || [];
-    const normalizedType = (propType || "")
-      .toLowerCase()
-      .replace(/[\s+_]/g, "")
-      .trim();
 
+    const allPlays = json?.liveData?.plays?.allPlays || [];
+    const normalizedType = normalizePropType(propType);
     console.log("🔍 Normalized propType:", `"${normalizedType}"`);
 
-    let stat = 0;
+    const stat = extractLiveStat(normalizedType, { allPlays, playerId });
 
-    for (const play of allPlays) {
-      const result = play.result;
-      const players = play.matchup;
-      const batter = players?.batter?.id;
-      const pitcher = players?.pitcher?.id;
-      const runners = play.runners || [];
-
-      const isBatter = batter === Number(playerId);
-      const isPitcher = pitcher === Number(playerId);
-
-      if (!isBatter && !isPitcher) continue;
-
-      switch (normalizedType) {
-        case "walksallowed":
-          if (isPitcher && result.eventType === "walk") stat++;
-          break;
-        case "outsrecorded":
-          if (isPitcher && result.outsOnPlay) stat += result.outsOnPlay;
-          break;
-        case "hits":
-          if (isBatter && result.eventType === "hit") stat++;
-          break;
-        case "walks":
-          if (isBatter && result.eventType === "walk") stat++;
-          break;
-        case "singles":
-          if (isBatter && result.event === "Single") stat++;
-          break;
-        case "rbis":
-          if (isBatter) stat += result.rbi ?? 0;
-          break;
-        case "runsscored":
-          if (
-            runners.some(
-              (r) =>
-                r.movement?.end === "score" &&
-                r.details?.runner?.id === Number(playerId)
-            )
-          ) {
-            stat++;
-          }
-          break;
-        case "stolenbases":
-          if (
-            play.eventType === "stolen_base" &&
-            runners.some((r) => r.details?.runner?.id === Number(playerId))
-          ) {
-            stat++;
-          }
-          break;
-        case "strikeoutspitching":
-          if (isPitcher && result.event === "Strikeout") stat++;
-          break;
-        case "strikeoutsbatting":
-          if (isBatter && result.event === "Strikeout") stat++;
-          break;
-        case "hitsallowed":
-          if (isPitcher && result.eventType === "hit") stat++;
-          break;
-        case "earnedruns":
-          if (isPitcher && result.event === "Home Run") stat += result.rbi ?? 0;
-          break;
-        case "totalbases":
-          if (isBatter) {
-            const baseMap = {
-              Single: 1,
-              Double: 2,
-              Triple: 3,
-              HomeRun: 4,
-            };
-            const bases = baseMap[result.event] || 0;
-            stat += bases;
-          }
-          break;
-        case "hitsrunsrbis":
-          if (isBatter) {
-            stat += result.rbi ?? 0;
-            if (result.eventType === "hit") stat++; // count hit
-            if (
-              runners.some(
-                (r) =>
-                  r.movement?.end === "score" &&
-                  r.details?.runner?.id === Number(playerId)
-              )
-            ) {
-              stat++; // count run scored
-            }
-          }
-          break;
-
-        case "runsrbis":
-          if (isBatter) {
-            stat += result.rbi ?? 0;
-            if (
-              runners.some(
-                (r) =>
-                  r.movement?.end === "score" &&
-                  r.details?.runner?.id === Number(playerId)
-              )
-            ) {
-              stat++;
-            }
-          }
-          break;
-
-        default:
-          console.warn(`⚠️ Unknown propType: ${propType}`);
-          return null;
-      }
+    if (stat == null) {
+      console.warn(
+        `⚠️ No stat found for ${normalizedType} (game: ${gameId}, player: ${playerId})`
+      );
     }
 
     return stat;

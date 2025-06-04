@@ -66,12 +66,26 @@ def upload_model_to_supabase_from_memory(filename, model):
 
 def train_and_save_model(prop_type):
     df = fetch_data(prop_type)
+
+    # Compute line_diff if missing
+    if "line_diff" not in df.columns:
+        if "result" in df.columns and "prop_value" in df.columns:
+            df["line_diff"] = df["result"] - df["prop_value"]
+        else:
+            raise ValueError("Missing 'result' or 'prop_value' to compute 'line_diff'")
+
+    # Encode opponent
+    if "opponent_encoded" not in df.columns and "opponent" in df.columns:
+        df["opponent_encoded"] = df["opponent"].astype("category").cat.codes
+
     if df.empty:
         raise ValueError(f"No training data found for: {prop_type}")
 
-    feature_cols = ["line_diff", "hit_streak", "win_streak", "is_home", "opponent_avg_win_rate"]
+    feature_cols = ["line_diff", "hit_streak", "win_streak", "is_home", "opponent_avg_win_rate", "opponent_encoded"]
     df.dropna(subset=feature_cols + ["outcome"], inplace=True)
     X = df[feature_cols]
+
+
 
 
     feature_cols = ["line_diff", "hit_streak", "win_streak", "is_home", "opponent_encoded"]

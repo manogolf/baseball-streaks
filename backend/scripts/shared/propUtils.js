@@ -1,49 +1,9 @@
+// backend/scripts/shared/propUtils.js
+
 import { supabase } from "./supabaseUtils.js";
 import { toISODate, todayET, currentTimeET } from "./timeUtils.js";
 import { STAT_FIELD_MAP } from "../../../src/utils/derivePropValue.js";
-import { validateStatBlock } from "./playerUtils.js"; // adjust path if needed
-
-// 🧠 Extractor map: Maps prop types to stat extraction logic
-export const propExtractors = {
-  hits: (stats) => stats.hits,
-  runs_scored: (stats) => stats.runs,
-  rbis: (stats) => stats.rbi,
-  home_runs: (stats) => stats.home_runs,
-  singles: (stats) =>
-    (stats.hits || 0) -
-    (stats.doubles || 0) -
-    (stats.triples || 0) -
-    (stats.home_runs || 0),
-  doubles: (stats) => stats.doubles,
-  triples: (stats) => stats.triples,
-  walks: (stats) => stats.walks,
-  strikeouts_batting: (stats) => stats.strikeouts,
-  stolen_bases: (stats) => stats.stolen_bases,
-  total_bases: (stats) =>
-    (stats.hits || 0) -
-    (stats.doubles || 0) -
-    (stats.triples || 0) -
-    (stats.home_runs || 0) +
-    2 * (stats.doubles || 0) +
-    3 * (stats.triples || 0) +
-    4 * (stats.home_runs || 0),
-  hits_runs_rbis: (stats) =>
-    (stats.hits || 0) + (stats.runs || 0) + (stats.rbi || 0),
-  runs_rbis: (stats) => (stats.runs || 0) + (stats.rbi || 0),
-
-  // Pitching props
-  outs_recorded: (stats) => stats.outs,
-  strikeouts_pitching: (stats) => stats.strikeOuts,
-  walks_allowed: (stats) => stats.baseOnBalls,
-  earned_runs: (stats) => stats.earnedRuns,
-  hits_allowed: (stats) => stats.hits,
-};
-
-// ✅ Returns whether the stat value is a number
-export function isStatEligibleForPropType(stats, propType) {
-  const value = propExtractors[propType]?.(stats);
-  return typeof value === "number" && !isNaN(value);
-}
+import { validateStatBlock } from "./playerUtils.js";
 
 // ✅ Converts prop types like "Strikeouts (Batting)" -> "strikeouts_batting"
 export function normalizePropType(label) {
@@ -76,21 +36,19 @@ export function getPropDisplayLabel(propType) {
   return DISPLAY_LABELS[propType] || propType;
 }
 
-// ✅ Used by PlayerPropForm.js
 export function getPropTypeOptions() {
   return Object.keys(STAT_FIELD_MAP)
     .map((propType) => ({
       value: propType,
       label: getPropDisplayLabel(propType),
     }))
-    .sort((a, b) => a.label.localeCompare(b.label)); // ✅ Alphabetical order
+    .sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export function expireOldPendingProps(props = []) {
   const todayISO = toISODate(todayET());
-
   return props.map((prop) => {
-    const propDate = toISODate(prop.game_date); // normalize to ISO
+    const propDate = toISODate(prop.game_date);
     if (prop.status === "pending" && propDate < todayISO) {
       return { ...prop, status: "expired" };
     }
@@ -107,7 +65,6 @@ export function determineStatus(actual, line, overUnder) {
     : "loss";
 }
 
-// 🔍 Determine if the team was home or away
 export async function determineHomeAway(team, gameId) {
   const { data, error } = await supabase
     .from("player_props")
@@ -116,11 +73,9 @@ export async function determineHomeAway(team, gameId) {
     .eq("game_id", gameId)
     .limit(1)
     .maybeSingle();
-
   return error || !data ? null : data.is_home;
 }
 
-// 🔍 Determine the opponent for a given team and game
 export async function determineOpponent(team, gameId) {
   const { data, error } = await supabase
     .from("player_props")
@@ -129,11 +84,9 @@ export async function determineOpponent(team, gameId) {
     .neq("team", team)
     .limit(1)
     .maybeSingle();
-
   return error || !data ? null : data.team;
 }
 
-// 🔁 Calculate rolling 7-game average for this player and prop type
 export async function getRollingAverage(playerId, propType, gameDate) {
   const { data, error } = await supabase
     .from("model_training_props")
@@ -156,7 +109,7 @@ export async function getRollingAverage(playerId, propType, gameDate) {
 }
 
 export async function getSyntheticLine(propType, daysBack = 60) {
-  const cutoffDate = toISODate(new Date(Date.now() - daysBack * 86400000)); // 'YYYY-MM-DD'
+  const cutoffDate = toISODate(new Date(Date.now() - daysBack * 86400000));
 
   const { data, error } = await supabase
     .from("player_props")
@@ -165,7 +118,7 @@ export async function getSyntheticLine(propType, daysBack = 60) {
     .eq("source", "user_added")
     .gte("game_date", cutoffDate)
     .order("game_date", { ascending: false })
-    .limit(1000); // fetch up to 1000 recent props
+    .limit(1000);
 
   if (error || !data || data.length === 0) {
     console.warn(`⚠️ No real lines found for ${propType}, using fallback.`);
@@ -180,7 +133,6 @@ export async function getSyntheticLine(propType, daysBack = 60) {
     return getStaticFallbackLine(propType);
   }
 
-  // Compute median
   values.sort((a, b) => a - b);
   const mid = Math.floor(values.length / 2);
   const median =
@@ -212,3 +164,200 @@ export function getStaticFallbackLine(propType) {
   };
   return defaultLines[propType] ?? 1.0;
 }
+
+export function extractLiveStat(propType, { allPlays, playerId }) {
+  const normalized = propType
+    .toLowerCase()
+    .replace(/[()]/g, "")
+    .replace(/\s+/g, "_");
+
+  let battingPlays = allPlays.filter(
+    (p) => p.matchup?.batter?.id === Number(playerId)
+  );
+
+  let pitchingPlays = allPlays.filter(
+    (p) => p.matchup?.pitcher?.id === Number(playerId)
+  );
+
+  switch (normalized) {
+    // ✅ Hitting stats (batter-based)
+    case "hits":
+      return battingPlays.filter((p) => p.result.hitType).length;
+
+    case "walks":
+      return battingPlays.filter((p) => p.result.eventType === "walk").length;
+
+    case "singles":
+      return battingPlays.filter((p) => p.result.hitType === "single").length;
+
+    case "doubles":
+      return battingPlays.filter((p) => p.result.hitType === "double").length;
+
+    case "triples":
+      return battingPlays.filter((p) => p.result.hitType === "triple").length;
+
+    case "home_runs":
+      return battingPlays.filter((p) => p.result.hitType === "home_run").length;
+
+    case "total_bases":
+      return battingPlays.reduce((sum, p) => {
+        switch (p.result.hitType) {
+          case "single":
+            return sum + 1;
+          case "double":
+            return sum + 2;
+          case "triple":
+            return sum + 3;
+          case "home_run":
+            return sum + 4;
+          default:
+            return sum;
+        }
+      }, 0);
+
+    case "rbis":
+      return battingPlays.reduce((sum, p) => sum + (p.result.rbi || 0), 0);
+
+    case "runs_scored":
+      return battingPlays.filter((p) =>
+        p.runners?.some(
+          (r) =>
+            r.movement?.end === "score" &&
+            r.details?.runner?.id === Number(playerId)
+        )
+      ).length;
+
+    case "stolen_bases":
+      return allPlays.filter(
+        (p) =>
+          p.runner?.id === Number(playerId) &&
+          p.details?.event === "Stolen Base"
+      ).length;
+
+    case "strikeouts_batting":
+      return battingPlays.filter((p) => p.result.eventType === "strikeout")
+        .length;
+
+    // ✅ Pitching stats (pitcher-based)
+    case "strikeouts_pitching":
+      return pitchingPlays.filter((p) => p.result.eventType === "strikeout")
+        .length;
+
+    case "walks_allowed":
+      return pitchingPlays.filter((p) => p.result.eventType === "walk").length;
+
+    case "hits_allowed":
+      return pitchingPlays.filter((p) => p.result.hitType).length;
+
+    case "earned_runs":
+      return pitchingPlays.reduce((sum, p) => sum + (p.result.rbi || 0), 0);
+
+    case "outs_recorded":
+      return pitchingPlays.reduce((sum, p) => {
+        const isOut =
+          p.result.eventType?.includes("out") &&
+          !p.result.eventType?.includes("walk");
+        return sum + (isOut ? 1 : 0);
+      }, 0);
+
+    // ✅ Combo stats
+    case "hits_runs_rbis":
+      const hits = battingPlays.filter((p) => p.result.hitType).length;
+      const runs = battingPlays.filter((p) =>
+        p.runners?.some(
+          (r) =>
+            r.movement?.end === "score" &&
+            r.details?.runner?.id === Number(playerId)
+        )
+      ).length;
+      const rbis = battingPlays.reduce(
+        (sum, p) => sum + (p.result.rbi || 0),
+        0
+      );
+      return hits + runs + rbis;
+
+    case "runs_rbis":
+      const rrRuns = battingPlays.filter((p) =>
+        p.runners?.some(
+          (r) =>
+            r.movement?.end === "score" &&
+            r.details?.runner?.id === Number(playerId)
+        )
+      ).length;
+      const rrRBIs = battingPlays.reduce(
+        (sum, p) => sum + (p.result.rbi || 0),
+        0
+      );
+      return rrRuns + rrRBIs;
+
+    default:
+      return null;
+  }
+}
+
+// ✅ For Supabase stat blocks (flat JSON)
+export const supabaseStatExtractors = {
+  hits: (stats) => stats.hits,
+  runs_scored: (stats) => stats.runs,
+  rbis: (stats) => stats.rbi,
+  home_runs: (stats) => stats.home_runs,
+  singles: (stats) =>
+    (stats.hits || 0) -
+    (stats.doubles || 0) -
+    (stats.triples || 0) -
+    (stats.home_runs || 0),
+  doubles: (stats) => stats.doubles,
+  triples: (stats) => stats.triples,
+  walks: (stats) => stats.walks,
+  strikeouts_batting: (stats) => stats.strikeouts,
+  stolen_bases: (stats) => stats.stolen_bases,
+  total_bases: (stats) =>
+    (stats.hits || 0) -
+    (stats.doubles || 0) -
+    (stats.triples || 0) -
+    (stats.home_runs || 0) +
+    2 * (stats.doubles || 0) +
+    3 * (stats.triples || 0) +
+    4 * (stats.home_runs || 0),
+  hits_runs_rbis: (stats) =>
+    (stats.hits || 0) + (stats.runs || 0) + (stats.rbi || 0),
+  runs_rbis: (stats) => (stats.runs || 0) + (stats.rbi || 0),
+  outs_recorded: (stats) => stats.outs,
+  strikeouts_pitching: (stats) => stats.strikeOuts,
+  walks_allowed: (stats) => stats.baseOnBalls,
+  earned_runs: (stats) => stats.earnedRuns,
+  hits_allowed: (stats) => stats.hits,
+};
+
+// ✅ For use with mixed or normalized blocks (boxscore, live, player_stats, etc.)
+export const propExtractors = {
+  hits: (s) => s?.hits,
+  walks: (s) => s?.baseOnBalls ?? s?.walks,
+  singles: (s) =>
+    (s?.hits ?? 0) - (s?.doubles ?? 0) - (s?.triples ?? 0) - (s?.homeRuns ?? 0),
+  doubles: (s) => s?.doubles,
+  triples: (s) => s?.triples,
+  home_runs: (s) => s?.homeRuns ?? s?.home_runs,
+  total_bases: (s) =>
+    (s?.singles ?? 0) +
+    2 * (s?.doubles ?? 0) +
+    3 * (s?.triples ?? 0) +
+    4 * (s?.homeRuns ?? 0),
+  rbis: (s) => s?.rbi,
+  runs_scored: (s) => s?.runs,
+  stolen_bases: (s) => s?.stolenBases ?? s?.stolen_bases,
+  strikeouts_batting: (s) => s?.strikeOuts ?? s?.strikeouts,
+  strikeouts_pitching: (s) => s?.strikeOuts,
+  walks_allowed: (s) => s?.baseOnBalls ?? s?.walks,
+  hits_allowed: (s) => s?.hits,
+  earned_runs: (s) => s?.earnedRuns,
+  outs_recorded: (s) =>
+    s?.outs ??
+    (typeof s?.inningsPitched === "string"
+      ? parseFloat(s.inningsPitched) * 3
+      : null),
+  hits_runs_rbis: (s) => (s?.hits ?? 0) + (s?.rbi ?? 0) + (s?.runs ?? 0),
+  runs_rbis: (s) => (s?.rbi ?? 0) + (s?.runs ?? 0),
+};
+
+// ✅ Only one export line — at the very end

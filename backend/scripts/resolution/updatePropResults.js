@@ -4,7 +4,7 @@ import { todayET, yesterdayET } from "../shared/timeUtils.js";
 import { expireOldPendingProps } from "../shared/propUtils.js";
 import { getPendingProps } from "../shared/supabaseUtils.js";
 import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
-import { extractStatForPropType } from "./statExtractors.js";
+import { propExtractors } from "../shared/propUtils.js";
 import { determineStatus } from "../shared/propUtils.js";
 import fs from "fs";
 
@@ -44,7 +44,18 @@ export async function updatePropStatus(prop) {
   console.log("📊 Stat block keys:", Object.keys(statBlock || {}));
 
   // 🧪 Try to extract relevant stat
-  const relevantStat = extractStatForPropType(prop.prop_type, statBlock);
+  let relevantStat = null;
+
+  if (statsSource === "boxscore") {
+    const extractor = propExtractors[prop.prop_type];
+    if (!extractor) {
+      console.warn(`⚠️ Unknown propType: ${prop.prop_type}`);
+    }
+    relevantStat = extractor ? extractor(statBlock) : null;
+  } else {
+    // Live feed already returns the stat directly
+    relevantStat = statBlock;
+  }
 
   // 🧼 If no stat block or relevant stat is null/undefined, assign DNP
   if (

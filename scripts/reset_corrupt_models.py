@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from supabase import create_client
-from model_trainer import train_and_save_model
+from backend.scripts.model_trainer import train_and_save_model
 
 
 # Load environment variables

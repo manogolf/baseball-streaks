@@ -1,3 +1,5 @@
+// ⚠️ DEPRECATED: use propExtractors in propUtils.js instead.
+
 // src/scripts/resolution/statExtractors.js
 
 /**
