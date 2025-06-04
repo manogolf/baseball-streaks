@@ -202,18 +202,31 @@ export async function getStreaksForPlayer(player_id, prop_type) {
       .from("player_streak_profiles")
       .select("streak_count, streak_type")
       .eq("player_id", player_id)
-      .eq("prop_type", prop_type)
-      .maybeSingle();
+      .eq("prop_type", prop_type);
 
     if (error) {
       console.error(
-        `❌ Failed to fetch streak profile for ${player_id} (${prop_type}):`,
+        `❌ Supabase error for ${player_id} (${prop_type}):`,
         error.message
       );
       return { streak_count: 0, streak_type: null };
     }
 
-    return data || { streak_count: 0, streak_type: null };
+    if (!data || data.length === 0) {
+      console.warn(
+        `⚠️ No streak profile found for ${player_id} (${prop_type})`
+      );
+      return { streak_count: 0, streak_type: null };
+    }
+
+    if (data.length > 1) {
+      console.error(
+        `❌ Multiple streak profiles returned for ${player_id} (${prop_type}) — expected 1. Count: ${data.length}`
+      );
+    }
+
+    // Return the first (and ideally only) row
+    return data[0] || { streak_count: 0, streak_type: null };
   } catch (err) {
     console.error(
       `🔥 Unexpected error fetching streaks for ${player_id} (${prop_type}):`,
