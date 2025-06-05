@@ -5,7 +5,7 @@ import { expireOldPendingProps } from "../shared/propUtils.js";
 import { getPendingProps } from "../shared/supabaseUtils.js";
 import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
 import { propExtractors } from "../shared/propUtils.js";
-import { determineStatus } from "../shared/propUtils.js";
+import { determineStatus, normalizePropType } from "../shared/propUtils.js";
 import fs from "fs";
 
 const affectedPlayerIds = new Set();
@@ -47,17 +47,66 @@ export async function updatePropStatus(prop) {
   let relevantStat = null;
 
   if (statsSource === "boxscore") {
-    const extractor = propExtractors[prop.prop_type];
-    if (!extractor) {
-      console.warn(`⚠️ Unknown propType: ${prop.prop_type}`);
+    const nonMetaKeys = Object.keys(statBlock).filter(
+      (key) =>
+        ![
+          "player_id",
+          "game_id",
+          "game_date",
+          "team",
+          "opponent",
+          "is_home",
+          "position",
+        ].includes(key)
+    );
+
+    const isAllStatFieldsNull = nonMetaKeys.every((key) => {
+      const val = statBlock[key];
+      return val === null || val === undefined;
+    });
+
+    if (isAllStatFieldsNull) {
+      console.warn(
+        `🚷 DNP (no stat values present): ${prop.player_name} (${prop.prop_type})`
+      );
+      await supabase
+        .from("player_props")
+        .update({ status: "dnp" })
+        .eq("id", prop.id);
+      return { status: "dnp" };
     }
+
+    const isTrueDNP =
+      nonMetaKeys.length > 0 &&
+      nonMetaKeys.every((k) => {
+        const v = statBlock[k];
+        return v === null || v === undefined || v === 0;
+      });
+
+    if (isTrueDNP) {
+      console.warn(
+        `🚷 DNP (no stat activity): ${prop.player_name} (${prop.prop_type})`
+      );
+      await supabase
+        .from("player_props")
+        .update({ status: "dnp" })
+        .eq("id", prop.id);
+      return { status: "dnp" };
+    }
+
+    const normalizedType = normalizePropType(prop.prop_type);
+    const extractor = propExtractors[normalizedType];
+
+    if (!extractor) {
+      console.warn(`⚠️ Unknown propType: ${normalizedType}`);
+    }
+
     relevantStat = extractor ? extractor(statBlock) : null;
   } else {
-    // Live feed already returns the stat directly
     relevantStat = statBlock;
   }
 
-  // 🧼 If no stat block or relevant stat is null/undefined, assign DNP
+  // 🧼 Original fallback if no stat or result
   if (
     statBlock == null ||
     relevantStat === null ||
