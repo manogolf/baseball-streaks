@@ -1,6 +1,6 @@
 // backend/scripts/shared/gameStatusUtils.js
 
-import { formatGameTime } from "@shared/timeUtils.js";
+import { formatGameTime } from "./timeUtils.js";
 
 /**
  * Returns a human-readable game status string.

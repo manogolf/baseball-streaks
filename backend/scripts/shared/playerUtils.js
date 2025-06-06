@@ -9,6 +9,23 @@ import { getPropDisplayLabel } from "./propUtils.js";
  * Prepares a full prop payload with resolved IDs and normalized fields.
  */
 
+// 🧠 Flatten boxscore player stats (converts nested MLB format to simpler object)
+export function flattenPlayerBoxscore(player) {
+  if (!player || typeof player !== "object") return {};
+
+  const stats = {};
+
+  if (player.stats?.batting) {
+    stats.batting = { ...player.stats.batting };
+  }
+
+  if (player.stats?.pitching) {
+    stats.pitching = { ...player.stats.pitching };
+  }
+
+  return stats;
+}
+
 export function didPlayerParticipate(stats) {
   if (!stats || typeof stats !== "object") return false;
 

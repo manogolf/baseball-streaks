@@ -1,9 +1,9 @@
 // scripts/backfillRunsRBIs.js
 import { DateTime } from "luxon";
-import { fetchSchedule } from "../src/utils/fetchSchedule.js";
-import { fetchBoxscoreStatsForGame } from "../src/utils/fetchBoxscoreStats.js";
-import { derivePropValue } from "../src/utils/derivePropValue.js";
-import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
+import { fetchSchedule } from "../../src/utils/fetchSchedule.js";
+import { fetchBoxscoreStatsForGame } from "../../src/utils/fetchBoxscoreStats.js";
+import { derivePropValue } from "../../src/utils/derivePropValue.js";
+import { supabase } from "../../backend/scripts/shared/supabaseUtils.js";
 
 const DAYS_BACK = 5;
 const propType = "runs_rbis"; // ✅ correct normalized name

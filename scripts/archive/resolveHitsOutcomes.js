@@ -1,5 +1,5 @@
 // scripts/resolveHitsOutcomes.js
-import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
+import { supabase } from "../../backend/scripts/shared/supabaseUtils.js";
 
 const BATCH_SIZE = 500;
 

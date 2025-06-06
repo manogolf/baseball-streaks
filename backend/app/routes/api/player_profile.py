@@ -149,13 +149,15 @@ async def get_player_profile(player_id: str):
             .execute()
         )
 
-        if cached.data:
-            updated_str = cached.data.get("updated_at")
-            if updated_str:
-                updated = datetime.fromisoformat(updated_str.replace("Z", "+00:00"))
-                if datetime.now(timezone.utc) - updated < timedelta(minutes=CACHE_TTL_MINUTES):
-                    print("📦 Returning cached profile")
-                    return cached.data["data"]
+        if cached.data and isinstance(cached.data, list) and len(cached.data) > 0:
+            cached_row = cached.data[0]
+            updated_str = cached_row.get("updated_at")
+        if updated_str:
+           updated = datetime.fromisoformat(updated_str.replace("Z", "+00:00"))
+        if datetime.now(timezone.utc) - updated < timedelta(minutes=CACHE_TTL_MINUTES):
+            print("📦 Returning cached profile")
+            return cached_row["data"]
+
     except Exception as e:
         print(f"⚠️ Cache fetch error for {player_id}: {e}")
 

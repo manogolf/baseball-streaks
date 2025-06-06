@@ -295,7 +295,7 @@ export function extractLiveStat(propType, { allPlays, playerId }) {
   }
 }
 
-// ✅ For Supabase stat blocks (flat JSON)
+// ✅ For Supabase stat blocks
 export const supabaseStatExtractors = {
   hits: (stats) => stats.hits,
   runs_scored: (stats) => stats.runs,
@@ -329,35 +329,41 @@ export const supabaseStatExtractors = {
   hits_allowed: (stats) => stats.hits,
 };
 
-// ✅ For use with mixed or normalized blocks (boxscore, live, player_stats, etc.)
 export const propExtractors = {
-  hits: (s) => s?.hits,
-  walks: (s) => s?.baseOnBalls ?? s?.walks,
+  // Batting props
+  hits: (s) => s?.hits ?? null,
+  walks: (s) => s?.walks ?? null,
   singles: (s) =>
-    (s?.hits ?? 0) - (s?.doubles ?? 0) - (s?.triples ?? 0) - (s?.homeRuns ?? 0),
-  doubles: (s) => s?.doubles,
-  triples: (s) => s?.triples,
-  home_runs: (s) => s?.homeRuns ?? s?.home_runs,
+    s?.hits != null &&
+    s?.doubles != null &&
+    s?.triples != null &&
+    s?.home_runs != null
+      ? s.hits - s.doubles - s.triples - s.home_runs
+      : null,
+  doubles: (s) => s?.doubles ?? null,
+  triples: (s) => s?.triples ?? null,
+  home_runs: (s) => s?.home_runs ?? null,
   total_bases: (s) =>
-    (s?.singles ?? 0) +
-    2 * (s?.doubles ?? 0) +
-    3 * (s?.triples ?? 0) +
-    4 * (s?.homeRuns ?? 0),
-  rbis: (s) => s?.rbi,
-  runs_scored: (s) => s?.runs,
-  stolen_bases: (s) => s?.stolenBases ?? s?.stolen_bases,
-  strikeouts_batting: (s) => s?.strikeOuts ?? s?.strikeouts,
-  strikeouts_pitching: (s) => s?.strikeOuts,
-  walks_allowed: (s) => s?.baseOnBalls ?? s?.walks,
-  hits_allowed: (s) => s?.hits,
-  earned_runs: (s) => s?.earnedRuns,
-  outs_recorded: (s) =>
-    s?.outs ??
-    (typeof s?.inningsPitched === "string"
-      ? parseFloat(s.inningsPitched) * 3
-      : null),
-  hits_runs_rbis: (s) => (s?.hits ?? 0) + (s?.rbi ?? 0) + (s?.runs ?? 0),
-  runs_rbis: (s) => (s?.rbi ?? 0) + (s?.runs ?? 0),
-};
+    [s?.singles, s?.doubles, s?.triples, s?.home_runs].every((v) => v != null)
+      ? s.singles + 2 * s.doubles + 3 * s.triples + 4 * s.home_runs
+      : null,
+  rbis: (s) => s?.rbis ?? null,
+  runs_scored: (s) => s?.runs ?? null,
+  stolen_bases: (s) => s?.stolen_bases ?? null,
+  strikeouts_batting: (s) => s?.strikeouts_batting ?? null,
 
-// ✅ Only one export line — at the very end
+  // Pitching props
+  strikeouts_pitching: (s) => s?.strikeouts_pitching ?? null,
+  walks_allowed: (s) => s?.walks_allowed ?? null,
+  hits_allowed: (s) => s?.hits_allowed ?? null,
+  earned_runs: (s) => s?.earned_runs ?? null,
+  outs_recorded: (s) => s?.outs_recorded ?? null,
+
+  // Combo props
+  hits_runs_rbis: (s) =>
+    [s?.hits, s?.runs, s?.rbis].every((v) => v != null)
+      ? s.hits + s.runs + s.rbis
+      : null,
+  runs_rbis: (s) =>
+    [s?.runs, s?.rbis].every((v) => v != null) ? s.runs + s.rbis : null,
+};

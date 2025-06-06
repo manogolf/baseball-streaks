@@ -1,14 +1,11 @@
 import "dotenv/config";
-import { supabase } from "../shared/index.js";
-import { expireOldPendingProps } from "../shared/propUtils.js";
-import {
-  didPlayerParticipate,
-  validateStatBlock,
-  flattenPlayerBoxscore,
-} from "../shared/playerUtils.js";
-import { getPendingProps } from "../shared/supabaseUtils.js";
-import { determineStatus } from "../shared/propUtils.js";
-import { resolveStatForPlayer } from "../shared/statResolvers.js";
+import { supabase } from "../../shared/index.js";
+import { todayET, yesterdayET } from "../../shared/timeUtils.js";
+import { expireOldPendingProps } from "../../shared/propUtils.js";
+import { getPendingProps } from "../../shared/supabaseUtils.js";
+import { getStatFromLiveFeed } from "../getStatFromLiveFeed.js";
+import { propExtractors } from "../../shared/propUtils.js";
+import { determineStatus, normalizePropType } from "../../shared/propUtils.js";
 import fs from "fs";
 
 const affectedPlayerIds = new Set();
@@ -21,89 +18,117 @@ export async function updatePropStatus(prop) {
     return { status: "skipped", reason: "invalid line" };
   }
 
-  const { result, source, rawStats } = await resolveStatForPlayer({
-    player_id: prop.player_id,
-    player_name: prop.player_name,
-    game_id: prop.game_id,
-    team: prop.team,
-    prop_type: prop.prop_type,
-  });
+  let statBlock = null;
+  let statsSource = "boxscore";
 
-  // 🧪 DEBUG: Show rawStats for inspection
-  console.log(
-    `📊 Raw stats for ${prop.player_name} (${prop.prop_type}):`,
-    rawStats
+  // 🔍 Try player_stats first
+  const { data: playerStats, error: statsError } = await supabase
+    .from("player_stats")
+    .select("*")
+    .eq("game_id", prop.game_id)
+    .eq("player_id", prop.player_id)
+    .maybeSingle();
+
+  if (!statsError && playerStats) {
+    statBlock = playerStats;
+  } else {
+    console.warn(`⚠️ No stats in player_stats, trying live feed...`);
+    statsSource = "live";
+    statBlock = await getStatFromLiveFeed(
+      prop.game_id,
+      prop.player_id,
+      prop.prop_type
+    );
+  }
+
+  console.log("📊 Stat block keys:", Object.keys(statBlock || {}));
+
+  // 🧪 Try to extract relevant stat
+  let relevantStat = null;
+
+  // 🧪 Check statBlock validity before proceeding
+  if (!statBlock || typeof statBlock !== "object") {
+    console.warn(
+      `🚷 DNP (no statBlock): ${prop.player_name} (${prop.prop_type})`
+    );
+    await supabase
+      .from("player_props")
+      .update({ status: "dnp" })
+      .eq("id", prop.id);
+    return { status: "dnp" };
+  }
+
+  // 🧼 Filter out non-stat fields
+  const statKeys = Object.keys(statBlock).filter(
+    (key) =>
+      ![
+        "player_id",
+        "game_id",
+        "game_date",
+        "team",
+        "opponent",
+        "is_home",
+        "position",
+      ].includes(key)
   );
 
-  // ✅ Smarter DNP check: Only mark DNP if *all* raw stat values are null
-  if (!validateStatBlock(rawStats)) {
-    const allValues = rawStats ? Object.values(rawStats) : [];
-    const allNull = allValues.length && allValues.every((v) => v === null);
-
-    if (allNull) {
-      console.warn(
-        `🚷 Marking DNP: ${prop.player_name} (${prop.prop_type}) — all stats null`
-      );
-      await supabase
-        .from("player_props")
-        .update({ status: "dnp" })
-        .eq("id", prop.id);
-      return { status: "dnp", reason: "all stats null" };
-    }
-
+  // 🚫 If no stat fields remain
+  if (statKeys.length === 0) {
     console.warn(
-      `⚠️ Skipping update: ${prop.player_name} (${prop.prop_type}) — partial stats present`
-    );
-    return { status: "skipped", reason: "partial stats present" };
-  }
-
-  if (!didPlayerParticipate(rawStats)) {
-    console.log(
-      `🚷 DNP (no meaningful stats): ${prop.player_name} (${prop.prop_type})`
+      `🚷 DNP (only meta fields): ${prop.player_name} (${prop.prop_type})`
     );
     await supabase
       .from("player_props")
       .update({ status: "dnp" })
       .eq("id", prop.id);
-    return { status: "dnp", reason: "no participation" };
+    return { status: "dnp" };
   }
 
-  // ✅ Still allow null result from valid stat block (e.g. 0 total bases)
-  if (result == null) {
+  // ⚠️ If all stat fields are null, undefined, or 0
+  const isTrulyEmpty = statKeys.every((key) => {
+    const val = statBlock[key];
+    return val === null || val === undefined || val === 0;
+  });
+
+  if (isTrulyEmpty) {
     console.warn(
-      `🚷 DNP (no result found): ${prop.player_name} (${prop.prop_type})`
+      `🚷 DNP (all stat fields empty): ${prop.player_name} (${prop.prop_type})`
     );
     await supabase
       .from("player_props")
       .update({ status: "dnp" })
       .eq("id", prop.id);
-    return { status: "dnp", reason: "no result" };
+    return { status: "dnp" };
   }
 
-  if (!didPlayerParticipate(rawStats)) {
-    console.log(
-      `🚷 DNP (no meaningful stats): ${prop.player_name} (${prop.prop_type})`
-    );
-    await supabase
-      .from("player_props")
-      .update({ status: "dnp" })
-      .eq("id", prop.id);
-    return { status: "dnp", reason: "no participation" };
+  // ✅ Extract stat if not a DNP
+  const normalizedType = normalizePropType(prop.prop_type);
+  const extractor = propExtractors[normalizedType];
+
+  if (!extractor) {
+    console.warn(`⚠️ Unknown propType: ${normalizedType}`);
   }
 
-  // ✅ Still allow null result from valid stat block (e.g. 0 total bases)
-  if (result == null) {
+  relevantStat = extractor ? extractor(statBlock) : null;
+
+  // 🧼 Original fallback if no stat or result
+  if (
+    statBlock == null ||
+    relevantStat === null ||
+    relevantStat === undefined
+  ) {
     console.warn(
-      `🚷 DNP (no result found): ${prop.player_name} (${prop.prop_type})`
+      `🚷 DNP (no stat found): ${prop.player_name} (${prop.prop_type})`
     );
     await supabase
       .from("player_props")
       .update({ status: "dnp" })
       .eq("id", prop.id);
-    return { status: "dnp", reason: "no result" };
+    return { status: "dnp" };
   }
 
-  prop.result = result;
+  // ✅ Stat found — extract and evaluate
+  prop.result = relevantStat;
   console.log(
     `🧪 Extracted result for ${prop.player_name} (${prop.prop_type}): ${prop.result}`
   );
@@ -115,7 +140,7 @@ export async function updatePropStatus(prop) {
   );
 
   console.log(
-    `🎯 Outcome (${source}): ${prop.result} vs ${prop.prop_value} (${prop.over_under}) → ${outcome}`
+    `🎯 Outcome (${statsSource}): ${prop.result} vs ${prop.prop_value} (${prop.over_under}) → ${outcome}`
   );
 
   const { error: updateError } = await supabase
@@ -136,7 +161,7 @@ export async function updatePropStatus(prop) {
     );
     return { status: "error" };
   } else {
-    affectedPlayerIds.add(prop.player_id);
+    affectedPlayerIds.add(prop.player_id); // ✅ track affected
     console.log(
       `✅ Updated prop ${prop.id} (${prop.player_name}) → ${outcome}`
     );
@@ -192,6 +217,7 @@ export async function updatePropStatuses() {
     `🏁 Update Summary → ✅ Updated: ${updated} | ⏭️ Skipped: ${skipped} | 🚷 DNP: ${dnps} | ❌ Errors: ${errors}`
   );
 
+  // ✅ Invalidate cache for affected players
   if (affectedPlayerIds.size > 0) {
     const { error: cacheError } = await supabase
       .from("player_profiles_cache")
