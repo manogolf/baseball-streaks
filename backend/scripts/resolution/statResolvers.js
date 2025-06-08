@@ -6,22 +6,7 @@ import {
   getPlayerStatsFromBoxscore,
   validateStatBlock,
 } from "../shared/playerUtils.js";
-import { extractStatForPropType } from "../shared/propUtils.js";
-
-async function shouldAttemptResolution(gameId) {
-  const url = `https://statsapi.mlb.com/api/v1.1/game/${gameId}/feed/live`;
-
-  try {
-    const res = await fetch(url);
-    const json = await res.json();
-    const status = json?.gameData?.status?.abstractGameState;
-
-    return status === "Final";
-  } catch (err) {
-    console.error(`❌ Failed to check game status for ${gameId}:`, err.message);
-    return false;
-  }
-}
+import { derivePropValue } from "../shared/derivePropValue.js";
 
 /**
  * Resolves a stat value using boxscore first, then allPlays as fallback.
@@ -40,9 +25,6 @@ export async function resolveStatForPlayer({
     team,
     prop_type,
   });
-
-  const canResolve = await shouldAttemptResolution(game_id);
-  if (!canResolve) return { result: null, source: "not_final", rawStats: null };
 
   console.log(
     `📡 Resolving stat for ${player_name} (${prop_type}) — Game ID: ${game_id}`
@@ -81,7 +63,7 @@ export async function resolveStatForPlayer({
 
   if (rawStats && validateStatBlock(rawStats)) {
     try {
-      const extracted = extractStatForPropType(prop_type, rawStats);
+      const extracted = derivePropValue(rawStats, prop_type);
 
       if (extracted == null) {
         console.warn(

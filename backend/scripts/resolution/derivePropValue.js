@@ -24,10 +24,11 @@ export const STAT_FIELD_MAP = {
   doubles: (s) => s?.doubles ?? null,
   triples: (s) => s?.triples ?? null,
   home_runs: (s) => s?.homeRuns ?? null,
+
+  // ✅ Always use full walks (baseOnBalls), includes intentional
   walks: (s) => {
-    console.log("🧪 WALK EXTRACTOR CALLED WITH:", s && s.baseOnBalls);
-    if (!s || typeof s.baseOnBalls !== "number") return null;
-    return s.baseOnBalls;
+    const walks = s?.baseOnBalls;
+    return typeof walks === "number" && !isNaN(walks) ? walks : null;
   },
 
   strikeouts_batting: (s) => s?.strikeOuts ?? null,
@@ -36,6 +37,9 @@ export const STAT_FIELD_MAP = {
   runs_scored: (s) => s?.runs ?? null,
 
   total_bases: (s) => {
+    const tb = s?.totalBases;
+    if (typeof tb === "number" && !isNaN(tb)) return tb;
+
     const hits = s?.hits ?? null;
     const doubles = s?.doubles ?? null;
     const triples = s?.triples ?? null;
