@@ -88,44 +88,58 @@ export async function fetchBoxscoreStatsForGame(gamePk) {
 
 export async function getPlayerStatsFromBoxscore({ game_id, player_id }) {
   const url = `https://statsapi.mlb.com/api/v1/game/${game_id}/boxscore`;
+  console.log(`📡 Fetching boxscore for game ${game_id}`);
+  console.log(`🆔 Looking for player ID: ${player_id}`);
 
   try {
     const res = await fetch(url);
     if (!res.ok) {
+      console.error(`❌ Failed to fetch boxscore: ${res.status}`);
       return null;
     }
 
     const data = await res.json();
-    const { teams } = data;
+    const allPlayers = {
+      ...data.teams?.home?.players,
+      ...data.teams?.away?.players,
+    };
 
-    if (!teams?.home?.players || !teams?.away?.players) {
-      return null;
-    }
+    const allPlayerEntries = Object.entries(allPlayers);
+    const idsInBoxscore = allPlayerEntries
+      .map(([key, val]) => val?.person?.id)
+      .filter(Boolean);
+    console.log("📋 All player IDs in boxscore:", idsInBoxscore);
+    console.log("🧩 Total players found:", idsInBoxscore.length);
+    console.log(`🔎 Searching for player_id: ${player_id}`);
 
-    const allPlayers = [
-      ...Object.values(teams.home.players),
-      ...Object.values(teams.away.players),
-    ];
-
-    const playerMatch = allPlayers.find(
+    const match = Object.values(allPlayers).find(
       (p) => String(p.person?.id) === String(player_id)
     );
 
-    if (!playerMatch) {
+    if (!match) {
+      console.warn(`🚫 Player ${player_id} not found in boxscore`);
+      console.warn(
+        "🧨 Available player keys in boxscore:",
+        Object.keys(allPlayers)
+      );
+      console.warn("🧾 Sample player object:", Object.values(allPlayers)[0]);
       return null;
     }
 
-    const stats = playerMatch.stats || {};
-    const batting = stats.batting ?? null;
-    const pitching = stats.pitching ?? null;
+    console.log(`👤 Matched player ${player_id}`);
+    console.log("📂 match.stats:", match.stats);
 
-    if (!batting && !pitching) {
+    const stats = match.stats || {};
+    if (!stats || (!stats.batting && !stats.pitching)) {
+      console.warn(`📭 No relevant stats found in boxscore for ${player_id}`);
       return null;
     }
 
-    const merged = { ...batting, ...pitching };
+    const merged = { ...stats.batting, ...stats.pitching };
+    console.log(`🧪 Final merged stats for ${player_id}:`, merged);
     return merged;
   } catch (err) {
+    console.error("❌ Error during fetch:", err.message);
     return null;
   }
 }

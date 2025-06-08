@@ -1,33 +1,26 @@
-// backend/scripts/shared/statResolvers.js
+// statResolvers.js
 
-import { fetchGameStatusById } from "./gameStatusUtils.js";
-import { getPlayerStatsFromBoxscore } from "../../../src/utils/fetchBoxscoreStats.js";
-import { getStatFromLiveFeed } from "../resolution/getStatFromLiveFeed.js";
-import { nowET } from "./timeUtils.js";
+import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
+import {
+  flattenPlayerBoxscore,
+  getPlayerStatsFromBoxscore,
+  validateStatBlock,
+} from "../shared/playerUtils.js";
+import { extractStatForPropType } from "../shared/propUtils.js";
 
-const LAG_MINUTES_AFTER_FINAL = 15;
+async function shouldAttemptResolution(gameId) {
+  const url = `https://statsapi.mlb.com/api/v1.1/game/${gameId}/feed/live`;
 
-/**
- * Returns true if game is final and lag window has passed.
- */
-export async function shouldAttemptResolution(gameId) {
-  const status = await fetchGameStatusById(gameId);
+  try {
+    const res = await fetch(url);
+    const json = await res.json();
+    const status = json?.gameData?.status?.abstractGameState;
 
-  if (status?.detailedState !== "Final") return false;
-
-  const endTime = DateTime.fromISO(status.endTime);
-  const now = nowET(); // ✅ from timeUtils, not Luxon
-
-  // 📍 Log game state and timing info
-  console.log(
-    "🕒 Game status:",
-    status?.detailedState,
-    "End time:",
-    status?.endTime
-  );
-  console.log("🧮 Minutes since end:", now.diff(endTime, "minutes").minutes);
-
-  return now.diff(endTime, "minutes").minutes >= LAG_MINUTES_AFTER_FINAL;
+    return status === "Final";
+  } catch (err) {
+    console.error(`❌ Failed to check game status for ${gameId}:`, err.message);
+    return false;
+  }
 }
 
 /**
@@ -40,6 +33,14 @@ export async function resolveStatForPlayer({
   team,
   prop_type,
 }) {
+  console.log("🧪 Calling resolveStatForPlayer with:", {
+    player_id,
+    player_name,
+    game_id,
+    team,
+    prop_type,
+  });
+
   const canResolve = await shouldAttemptResolution(game_id);
   if (!canResolve) return { result: null, source: "not_final", rawStats: null };
 
@@ -55,7 +56,11 @@ export async function resolveStatForPlayer({
     prop_type,
   });
 
-  // 🔁 Flatten the raw stats using the shared util
+  if (!boxscoreData) {
+    console.warn(`📭 No boxscore data found for ${player_name} (${prop_type})`);
+    return { result: null, source: "no_boxscore", rawStats: null };
+  }
+
   const rawStats = flattenPlayerBoxscore(boxscoreData);
 
   if (rawStats === null) {
@@ -74,14 +79,15 @@ export async function resolveStatForPlayer({
     );
   }
 
-  if (rawStats) {
+  if (rawStats && validateStatBlock(rawStats)) {
     try {
-      const extractor = statExtractors[prop_type];
-      if (!extractor) {
-        console.warn(`⚠️ No extractor found for prop type: ${prop_type}`);
-      }
+      const extracted = extractStatForPropType(prop_type, rawStats);
 
-      const extracted = extractor?.(rawStats);
+      if (extracted == null) {
+        console.warn(
+          `⚠️ Could not extract value for ${player_name} (${prop_type})`
+        );
+      }
 
       console.log(`🎯 Extracted value from boxscore: ${extracted}`);
 
@@ -100,18 +106,12 @@ export async function resolveStatForPlayer({
     }
   } else {
     console.warn(
-      `⚠️ Boxscore stats were null for ${player_name} (${prop_type})`
+      `⚠️ Boxscore stats were invalid for ${player_name} (${prop_type})`
     );
   }
 
-  // fallback
-  const liveResult = await getStatFromLiveFeed({
-    player_id,
-    player_name,
-    game_id,
-    team,
-    prop_type,
-  });
+  // fallback to live
+  const liveResult = await getStatFromLiveFeed(game_id, player_id, prop_type);
 
   console.log(`📺 Live fallback result for ${player_name}:`, liveResult);
   console.log(

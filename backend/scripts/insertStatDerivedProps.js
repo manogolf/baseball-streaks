@@ -54,7 +54,12 @@ async function processGame(gameId, gameDate) {
 
     for (const player of starters) {
       const stats = player?.stats?.batting || player?.stats?.pitching;
-      if (!stats) continue;
+      if (!stats || Object.keys(stats).length === 0) {
+        console.warn(
+          `🚫 Skipping ${player.person.fullName} — no meaningful stats`
+        );
+        continue;
+      }
 
       const teamId = player.parentTeamId?.toString() ?? null;
       const teamInfo = getTeamInfoByID(teamId);

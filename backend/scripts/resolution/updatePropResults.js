@@ -1,15 +1,14 @@
 import "dotenv/config";
+import fs from "fs";
 import { supabase } from "../shared/index.js";
-import { expireOldPendingProps } from "../shared/propUtils.js";
+import { expireOldPendingProps, determineStatus } from "../shared/propUtils.js";
 import {
   didPlayerParticipate,
   validateStatBlock,
   flattenPlayerBoxscore,
 } from "../shared/playerUtils.js";
 import { getPendingProps } from "../shared/supabaseUtils.js";
-import { determineStatus } from "../shared/propUtils.js";
-import { resolveStatForPlayer } from "../shared/statResolvers.js";
-import fs from "fs";
+import { resolveStatForPlayer } from "./statResolvers.js";
 
 const affectedPlayerIds = new Set();
 
@@ -24,26 +23,46 @@ export async function updatePropStatus(prop) {
   const { result, source, rawStats } = await resolveStatForPlayer({
     player_id: prop.player_id,
     player_name: prop.player_name,
-    game_id: prop.game_id,
     team: prop.team,
+    game_id: prop.game_id,
     prop_type: prop.prop_type,
   });
 
-  // 🧪 DEBUG: Show rawStats for inspection
+  if (!rawStats || typeof rawStats !== "object") {
+    console.warn(`🚷 Marking DNP: no rawStats found for ${prop.player_name}`);
+    await supabase
+      .from("player_props")
+      .update({ status: "dnp" })
+      .eq("id", prop.id);
+    return { status: "dnp", reason: "missing rawStats" };
+  }
+
   console.log(
     `📊 Raw stats for ${prop.player_name} (${prop.prop_type}):`,
     rawStats
   );
 
-  // ✅ Smarter DNP check: Only mark DNP if *all* raw stat values are null
-  if (!validateStatBlock(rawStats)) {
+  // ✅ ADD THIS BLOCK NEXT:
+  if (typeof result !== "number" || isNaN(result)) {
+    console.warn(
+      `🚷 Marking DNP: result not a valid number for ${prop.player_name}`
+    );
+    await supabase
+      .from("player_props")
+      .update({ status: "dnp" })
+      .eq("id", prop.id);
+    return { status: "dnp", reason: "invalid result type" };
+  }
+
+  const isValid = validateStatBlock(rawStats);
+  const didPlay = didPlayerParticipate(rawStats);
+
+  if (!isValid) {
     const allValues = rawStats ? Object.values(rawStats) : [];
     const allNull = allValues.length && allValues.every((v) => v === null);
 
     if (allNull) {
-      console.warn(
-        `🚷 Marking DNP: ${prop.player_name} (${prop.prop_type}) — all stats null`
-      );
+      console.warn(`🚷 Marking DNP: all stats null`);
       await supabase
         .from("player_props")
         .update({ status: "dnp" })
@@ -52,15 +71,14 @@ export async function updatePropStatus(prop) {
     }
 
     console.warn(
-      `⚠️ Skipping update: ${prop.player_name} (${prop.prop_type}) — partial stats present`
+      `⚠️ Proceeding despite partial stats — found: ${Object.keys(
+        rawStats
+      ).join(", ")}`
     );
-    return { status: "skipped", reason: "partial stats present" };
   }
 
-  if (!didPlayerParticipate(rawStats)) {
-    console.log(
-      `🚷 DNP (no meaningful stats): ${prop.player_name} (${prop.prop_type})`
-    );
+  if (!didPlay) {
+    console.warn(`🚷 Marking DNP: no meaningful stats`);
     await supabase
       .from("player_props")
       .update({ status: "dnp" })
@@ -68,34 +86,8 @@ export async function updatePropStatus(prop) {
     return { status: "dnp", reason: "no participation" };
   }
 
-  // ✅ Still allow null result from valid stat block (e.g. 0 total bases)
   if (result == null) {
-    console.warn(
-      `🚷 DNP (no result found): ${prop.player_name} (${prop.prop_type})`
-    );
-    await supabase
-      .from("player_props")
-      .update({ status: "dnp" })
-      .eq("id", prop.id);
-    return { status: "dnp", reason: "no result" };
-  }
-
-  if (!didPlayerParticipate(rawStats)) {
-    console.log(
-      `🚷 DNP (no meaningful stats): ${prop.player_name} (${prop.prop_type})`
-    );
-    await supabase
-      .from("player_props")
-      .update({ status: "dnp" })
-      .eq("id", prop.id);
-    return { status: "dnp", reason: "no participation" };
-  }
-
-  // ✅ Still allow null result from valid stat block (e.g. 0 total bases)
-  if (result == null) {
-    console.warn(
-      `🚷 DNP (no result found): ${prop.player_name} (${prop.prop_type})`
-    );
+    console.warn(`🚷 Marking DNP: no result extracted`);
     await supabase
       .from("player_props")
       .update({ status: "dnp" })
@@ -114,9 +106,8 @@ export async function updatePropStatus(prop) {
     prop.over_under
   );
 
-  console.log(
-    `🎯 Outcome (${source}): ${prop.result} vs ${prop.prop_value} (${prop.over_under}) → ${outcome}`
-  );
+  const was_correct =
+    prop.predicted_outcome != null ? outcome === prop.predicted_outcome : null;
 
   const { error: updateError } = await supabase
     .from("player_props")
@@ -124,24 +115,21 @@ export async function updatePropStatus(prop) {
       result: prop.result,
       outcome,
       status: outcome,
-      was_correct: prop.predicted_outcome
-        ? outcome === prop.predicted_outcome
-        : null,
+      was_correct,
     })
     .eq("id", prop.id);
 
   if (updateError) {
     console.error(
-      `❌ Supabase update failed for ${prop.player_name} (ID: ${prop.id}): ${updateError.message}`
+      `❌ Supabase update failed for ${prop.player_name}:`,
+      updateError.message
     );
     return { status: "error" };
-  } else {
-    affectedPlayerIds.add(prop.player_id);
-    console.log(
-      `✅ Updated prop ${prop.id} (${prop.player_name}) → ${outcome}`
-    );
-    return { status: "updated" };
   }
+
+  affectedPlayerIds.add(prop.player_id);
+  console.log(`✅ Updated prop ${prop.id} → ${outcome}`);
+  return { status: "updated" };
 }
 
 export async function updatePropStatuses() {
@@ -176,6 +164,25 @@ export async function updatePropStatuses() {
     } catch (err) {
       console.error(`🔥 Error processing ${prop.player_name}:`, err.message);
       errors++;
+
+      // Log to JSON file for later inspection
+      const errorLog = {
+        id: prop.id,
+        player_name: prop.player_name,
+        game_date: prop.game_date,
+        prop_type: prop.prop_type,
+        player_id: prop.player_id,
+        game_id: prop.game_id,
+        error: err.message,
+        timestamp: new Date().toISOString(),
+      };
+
+      const path = "./update_errors.json";
+      const existing = fs.existsSync(path)
+        ? JSON.parse(fs.readFileSync(path, "utf8"))
+        : [];
+      existing.push(errorLog);
+      fs.writeFileSync(path, JSON.stringify(existing, null, 2));
     }
   }
 
@@ -189,7 +196,7 @@ export async function updatePropStatuses() {
   await expireOldPendingProps();
 
   console.log(
-    `🏁 Update Summary → ✅ Updated: ${updated} | ⏭️ Skipped: ${skipped} | 🚷 DNP: ${dnps} | ❌ Errors: ${errors}`
+    `🏁 Summary → ✅ ${updated} | ⏭️ ${skipped} | 🚷 ${dnps} | ❌ ${errors}`
   );
 
   if (affectedPlayerIds.size > 0) {

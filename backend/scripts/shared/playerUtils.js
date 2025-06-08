@@ -5,10 +5,6 @@ import { toISODate } from "./timeUtils.js";
 import { STAT_FIELD_MAP } from "../../../src/utils/derivePropValue.js";
 import { getPropDisplayLabel } from "./propUtils.js";
 
-/**
- * Prepares a full prop payload with resolved IDs and normalized fields.
- */
-
 // 🧠 Flatten boxscore player stats (converts nested MLB format to simpler object)
 export function flattenPlayerBoxscore(player) {
   if (!player || typeof player !== "object") return {};
@@ -46,8 +42,41 @@ export function validateStatBlock(stats) {
   const validBatting = stats.batting && typeof stats.batting === "object";
   const validPitching = stats.pitching && typeof stats.pitching === "object";
 
-  // You can expand this with more rules if needed later
   return validBatting || validPitching;
+}
+
+export async function getPlayerStatsFromBoxscore({ game_id, player_id }) {
+  const url = `https://statsapi.mlb.com/api/v1/game/${game_id}/boxscore`;
+  console.log(`📡 Fetching boxscore for game ${game_id}`);
+  console.log(`🆔 Looking for player ID: ${player_id}`);
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.error(`❌ Failed to fetch boxscore: ${res.status}`);
+      return null;
+    }
+
+    const data = await res.json();
+    const allPlayers = {
+      ...data.teams?.home?.players,
+      ...data.teams?.away?.players,
+    };
+
+    const match = Object.values(allPlayers).find(
+      (p) => String(p.person?.id) === String(player_id)
+    );
+
+    if (!match) {
+      console.warn(`📭 No boxscore data found for player ID ${player_id}`);
+      return null;
+    }
+
+    return match;
+  } catch (err) {
+    console.error("❌ Error during boxscore fetch:", err.message);
+    return null;
+  }
 }
 
 export async function preparePropSubmission({
@@ -67,17 +96,17 @@ export async function preparePropSubmission({
   return {
     player_name,
     team,
-    prop_type: normalizedPropType, // ✅ Normalized at the data layer
+    prop_type: normalizedPropType,
     prop_value: parseFloat(prop_value),
-    over_under: over_under.toLowerCase(), // ✅ Also normalized to lowercase
+    over_under: over_under.toLowerCase(),
     game_date: dateISO,
     game_time,
     game_id,
-    player_id: String(player_id), // ✅ Ensure this is explicitly converted to a string
+    player_id: String(player_id),
+    source: "user_added",
   };
 }
 
-// ✅ This is correct
 export async function checkIfHome(team, game_id) {
   try {
     const res = await fetch(
@@ -95,28 +124,19 @@ export async function checkIfHome(team, game_id) {
   }
 }
 
-/**
- * Attempts to resolve a player ID using:
- * 1. Local DB match (normalized)
- * 2. Boxscore fallback (if game_id present)
- * 3. Active roster search (as last resort)
- * Auto-inserts resolved ID into Supabase if not already present.
- */
 export async function getPlayerID(player_name, team_abbr, game_id) {
   if (!player_name || !team_abbr) return null;
 
-  // ✅ Normalize names: remove accents, punctuation, trim/space
   const normalize = (name) =>
     name
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "") // Remove accents (í → i)
-      .replace(/[.,]/g, "") // Remove periods, commas
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[.,]/g, "")
       .toLowerCase()
       .trim();
 
   const normalizedTarget = normalize(player_name);
 
-  // ✅ Step 1: Search Supabase for any matching player on the team
   const { data: dbResults, error: dbError } = await supabase
     .from("player_ids")
     .select("player_id, player_name")
@@ -131,7 +151,6 @@ export async function getPlayerID(player_name, team_abbr, game_id) {
     if (match) return match.player_id;
   }
 
-  // ✅ Step 2: Try resolving via boxscore
   if (game_id) {
     const boxscoreUrl = `https://statsapi.mlb.com/api/v1/game/${game_id}/boxscore`;
     try {
@@ -147,7 +166,6 @@ export async function getPlayerID(player_name, team_abbr, game_id) {
           if (normalize(fullName) === normalizedTarget) {
             const resolvedId = player.person.id;
 
-            // ✅ Cache in Supabase
             await supabase.from("player_ids").upsert({
               player_name: fullName,
               team: team_abbr,
@@ -169,7 +187,6 @@ export async function getPlayerID(player_name, team_abbr, game_id) {
     }
   }
 
-  // ✅ Step 3: Try resolving via team’s active roster
   try {
     const teamListRes = await fetch(
       "https://statsapi.mlb.com/api/v1/teams?sportId=1"
@@ -210,7 +227,6 @@ export async function getPlayerID(player_name, team_abbr, game_id) {
   return null;
 }
 
-// 📊 Retrieve streaks for a given player_id and prop_type from Supabase
 export async function getStreaksForPlayer(player_id, prop_type) {
   if (!player_id || !prop_type) return { streak_count: 0, streak_type: null };
 
@@ -219,7 +235,8 @@ export async function getStreaksForPlayer(player_id, prop_type) {
       .from("player_streak_profiles")
       .select("streak_count, streak_type")
       .eq("player_id", player_id)
-      .eq("prop_type", prop_type);
+      .eq("prop_type", prop_type)
+      .single(); // ⬅️ This is missing
 
     if (error) {
       console.error(
@@ -242,7 +259,6 @@ export async function getStreaksForPlayer(player_id, prop_type) {
       );
     }
 
-    // Return the first (and ideally only) row
     return data[0] || { streak_count: 0, streak_type: null };
   } catch (err) {
     console.error(
