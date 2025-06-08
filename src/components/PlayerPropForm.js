@@ -7,8 +7,6 @@ import { requiredFeatures } from "../config/predictionSchema.js";
 import { normalizeFeatureKeys } from "../utils/normalizeFeatureKeys.js";
 import { preparePropSubmission } from "@shared/playerUtils.js";
 import { getPropTypeOptions } from "@shared/propUtils.js";
-import { STAT_FIELD_MAP } from "../utils/derivePropValue.js"; // adjust if needed
-import { getPropDisplayLabel, normalizePropType } from "@shared/propUtils.js";
 import { getGamePkForTeamOnDate } from "@shared/fetchGameID.js";
 
 const apiUrl = `${

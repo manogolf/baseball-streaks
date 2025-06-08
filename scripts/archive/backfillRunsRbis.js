@@ -2,7 +2,7 @@
 import { DateTime } from "luxon";
 import { fetchSchedule } from "../../src/utils/fetchSchedule.js";
 import { fetchBoxscoreStatsForGame } from "../../src/utils/fetchBoxscoreStats.js";
-import { derivePropValue } from "../../src/utils/derivePropValue.js";
+import { derivePropValue } from "../../backend/scripts/resolution/derivePropValue.js";
 import { supabase } from "../../backend/scripts/shared/supabaseUtils.js";
 
 const DAYS_BACK = 5;

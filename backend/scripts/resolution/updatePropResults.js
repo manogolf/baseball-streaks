@@ -5,12 +5,41 @@ import { expireOldPendingProps, determineStatus } from "../shared/propUtils.js";
 import {
   didPlayerParticipate,
   validateStatBlock,
-  flattenPlayerBoxscore,
 } from "../shared/playerUtils.js";
 import { getPendingProps } from "../shared/supabaseUtils.js";
 import { resolveStatForPlayer } from "./statResolvers.js";
 
+// 📝 Append console output to log file while still printing to terminal
+// ✅ Save the original console methods to avoid recursion
+const originalConsole = {
+  log: console.log,
+  error: console.error,
+  warn: console.warn,
+};
+
+// ✅ Log to both file and console without recursion
+function logToFileAndConsole(level = "log", ...args) {
+  const method = originalConsole[level] ?? originalConsole.log;
+  const timestamp = new Date().toISOString();
+
+  const message = args
+    .map((arg) =>
+      typeof arg === "string" ? arg : JSON.stringify(arg, null, 2)
+    )
+    .join(" ");
+
+  const logLine = `[${timestamp}] ${message}\n`;
+  fs.appendFileSync("update_log.txt", logLine);
+  method(...args);
+}
+
+// ✅ Override the console methods safely
+console.log = (...args) => logToFileAndConsole("log", ...args);
+console.error = (...args) => logToFileAndConsole("error", ...args);
+console.warn = (...args) => logToFileAndConsole("warn", ...args);
+
 const affectedPlayerIds = new Set();
+const resultsLog = [];
 
 export async function updatePropStatus(prop) {
   console.log(`📡 Checking prop: ${prop.player_name} - ${prop.prop_type}`);
@@ -146,6 +175,21 @@ export async function updatePropStatuses() {
   for (const prop of props) {
     try {
       const result = await updatePropStatus(prop);
+      resultsLog.push({
+        id: prop.id,
+        player_name: prop.player_name,
+        team: prop.team,
+        prop_type: prop.prop_type,
+        prop_value: prop.prop_value,
+        over_under: prop.over_under,
+        game_date: prop.game_date,
+        game_id: prop.game_id,
+        player_id: prop.player_id,
+        status: result.status,
+        reason: result.reason || null,
+        timestamp: new Date().toISOString(),
+      });
+
       switch (result.status) {
         case "updated":
           updated++;
@@ -198,6 +242,10 @@ export async function updatePropStatuses() {
   console.log(
     `🏁 Summary → ✅ ${updated} | ⏭️ ${skipped} | 🚷 ${dnps} | ❌ ${errors}`
   );
+
+  const logPath = `./prop_results_log_${Date.now()}.json`;
+  fs.writeFileSync(logPath, JSON.stringify(resultsLog, null, 2));
+  console.log(`📝 Saved results log to ${logPath}`);
 
   if (affectedPlayerIds.size > 0) {
     const { error: cacheError } = await supabase

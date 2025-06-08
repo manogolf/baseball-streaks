@@ -5,7 +5,7 @@ import { toISODate, todayET } from "./timeUtils.js";
 import {
   STAT_FIELD_MAP,
   derivePropValue,
-} from "../../../src/utils/derivePropValue.js";
+} from "../resolution/derivePropValue.js";
 
 // ✅ Converts prop types like "Strikeouts (Batting)" -> "strikeouts_batting"
 export function normalizePropType(label) {

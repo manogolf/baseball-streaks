@@ -1,4 +1,4 @@
-import { getPlayerStatsFromBoxscore } from "../src/utils/fetchBoxscoreStats.js";
+import { getPlayerStatsFromBoxscore } from "../../src/utils/fetchBoxscoreStats.js";
 
 const test = async () => {
   const stats = await getPlayerStatsFromBoxscore({
