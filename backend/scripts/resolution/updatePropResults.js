@@ -2,12 +2,9 @@ import "dotenv/config";
 import fs from "fs";
 import { supabase } from "../shared/index.js";
 import { expireOldPendingProps, determineStatus } from "../shared/propUtils.js";
-import {
-  didPlayerParticipate,
-  validateStatBlock,
-} from "../shared/playerUtils.js";
+import { didPlayerParticipate } from "../shared/playerUtils.js";
 import { getPendingProps } from "../shared/supabaseUtils.js";
-import { resolveStatForPlayer } from "./statResolvers.js";
+import { resolveStatForPlayer, hasMeaningfulStats } from "./statResolvers.js";
 
 // 📝 Append console output to log file while still printing to terminal
 // ✅ Save the original console methods to avoid recursion
@@ -83,7 +80,7 @@ export async function updatePropStatus(prop) {
     return { status: "dnp", reason: "invalid result type" };
   }
 
-  const isValid = validateStatBlock(rawStats);
+  const isValid = hasMeaningfulStats(rawStats);
   const didPlay = didPlayerParticipate(rawStats);
 
   if (!isValid) {

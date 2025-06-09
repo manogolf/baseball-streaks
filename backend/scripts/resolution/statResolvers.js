@@ -10,6 +10,34 @@ import { derivePropValue } from "./derivePropValue.js";
 /**
  * Resolves a stat value using boxscore first, then allPlays as fallback.
  */
+
+export function hasMeaningfulStats(stats) {
+  if (!stats || typeof stats !== "object") return false;
+
+  const { batting = {}, pitching = {} } = stats;
+
+  const hasBatting =
+    typeof batting.hits === "number" ||
+    typeof batting.runs === "number" ||
+    typeof batting.rbi === "number" ||
+    typeof batting.totalBases === "number" ||
+    typeof batting.baseOnBalls === "number" ||
+    typeof batting.strikeOuts === "number" ||
+    typeof batting.homeRuns === "number" ||
+    typeof batting.doubles === "number" ||
+    typeof batting.triples === "number" ||
+    typeof batting.stolenBases === "number";
+
+  const hasPitching =
+    typeof pitching.strikeOuts === "number" ||
+    typeof pitching.baseOnBalls === "number" ||
+    typeof pitching.hits === "number" ||
+    typeof pitching.earnedRuns === "number" ||
+    typeof pitching.outs === "number";
+
+  return hasBatting || hasPitching;
+}
+
 export async function resolveStatForPlayer({
   player_id,
   player_name,
@@ -28,33 +56,6 @@ export async function resolveStatForPlayer({
   console.log(
     `📡 Resolving stat for ${player_name} (${prop_type}) — Game ID: ${game_id}`
   );
-
-  function hasMeaningfulStats(stats) {
-    if (!stats || typeof stats !== "object") return false;
-
-    const { batting = {}, pitching = {} } = stats;
-
-    const hasBatting =
-      typeof batting.hits === "number" ||
-      typeof batting.runs === "number" ||
-      typeof batting.rbi === "number" ||
-      typeof batting.totalBases === "number" ||
-      typeof batting.baseOnBalls === "number" ||
-      typeof batting.strikeOuts === "number" ||
-      typeof batting.homeRuns === "number" ||
-      typeof batting.doubles === "number" ||
-      typeof batting.triples === "number" ||
-      typeof batting.stolenBases === "number";
-
-    const hasPitching =
-      typeof pitching.strikeOuts === "number" ||
-      typeof pitching.baseOnBalls === "number" ||
-      typeof pitching.hits === "number" ||
-      typeof pitching.earnedRuns === "number" ||
-      typeof pitching.outs === "number";
-
-    return hasBatting || hasPitching;
-  }
 
   const boxscoreData = await getPlayerStatsFromBoxscore({
     game_id,
