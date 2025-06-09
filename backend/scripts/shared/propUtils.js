@@ -2,15 +2,29 @@
 
 import { supabase } from "./supabaseUtils.js";
 import { toISODate, todayET } from "./timeUtils.js";
-import {
-  STAT_FIELD_MAP,
-  derivePropValue,
-} from "../resolution/derivePropValue.js";
+import { derivePropValue } from "../resolution/derivePropValue.js";
 
-// ✅ Converts prop types like "Strikeouts (Batting)" -> "strikeouts_batting"
-export function normalizePropType(label) {
-  return label.toLowerCase().replace(/[()]/g, "").replace(/\s+/g, "_");
-}
+// ✅ Canonical list of supported prop types
+export const VALID_PROP_TYPES = [
+  "hits",
+  "runs_scored",
+  "rbis",
+  "home_runs",
+  "singles",
+  "doubles",
+  "triples",
+  "walks",
+  "strikeouts_batting",
+  "stolen_bases",
+  "total_bases",
+  "hits_runs_rbis",
+  "runs_rbis",
+  "outs_recorded",
+  "strikeouts_pitching",
+  "walks_allowed",
+  "earned_runs",
+  "hits_allowed",
+];
 
 // ✅ Human-readable labels for prop types
 const DISPLAY_LABELS = {
@@ -34,17 +48,19 @@ const DISPLAY_LABELS = {
   hits_allowed: "Hits Allowed",
 };
 
+export function normalizePropType(label) {
+  return label.toLowerCase().replace(/[()]/g, "").replace(/\s+/g, "_");
+}
+
 export function getPropDisplayLabel(propType) {
   return DISPLAY_LABELS[propType] || propType;
 }
 
 export function getPropTypeOptions() {
-  return Object.keys(STAT_FIELD_MAP)
-    .map((propType) => ({
-      value: propType,
-      label: getPropDisplayLabel(propType),
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label));
+  return VALID_PROP_TYPES.map((propType) => ({
+    value: propType,
+    label: getPropDisplayLabel(propType),
+  })).sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export function expireOldPendingProps(props = []) {
@@ -61,7 +77,6 @@ export function expireOldPendingProps(props = []) {
 export function determineStatus(actual, line, overUnder) {
   const direction = overUnder?.toLowerCase?.();
 
-  // Defensive: Ensure valid input
   if (typeof actual !== "number" || typeof line !== "number" || !direction) {
     return "invalid";
   }
@@ -176,5 +191,6 @@ export function getStaticFallbackLine(propType) {
 }
 
 export function extractStatForPropType(propType, stats) {
-  return derivePropValue(stats, normalizePropType(propType));
+  return derivePropValue(propType, stats);
 }
+export { derivePropValue };

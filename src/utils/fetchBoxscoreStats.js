@@ -1,31 +1,7 @@
 // fetchBoxscoreStats.js
 
 import fetch from "node-fetch";
-
-// 🧠 Flatten and normalize boxscore player stats
-export function flattenPlayerBoxscore(player) {
-  const batting = player.stats?.batting || {};
-  const pitching = player.stats?.pitching || {};
-
-  return {
-    hits: batting.hits ?? null,
-    runs: batting.runs ?? null,
-    rbis: batting.rbi ?? null,
-    doubles: batting.doubles ?? null,
-    triples: batting.triples ?? null,
-    home_runs: batting.homeRuns ?? null,
-    walks: batting.baseOnBalls ?? null,
-    strikeouts_batting: batting.strikeOuts ?? null,
-    stolen_bases: batting.stolenBases ?? null,
-    total_bases: batting.totalBases ?? null,
-
-    outs_recorded: pitching.outs ?? null,
-    strikeouts_pitching: pitching.strikeOuts ?? null,
-    walks_allowed: pitching.baseOnBalls ?? null,
-    earned_runs: pitching.earnedRuns ?? null,
-    hits_allowed: pitching.hits ?? null,
-  };
-}
+import { flattenPlayerBoxscore } from "../shared/playerUtils.js"; // adjust path as needed
 
 // 🔍 Fetch entire boxscore and flatten all players
 export async function fetchBoxscoreStatsForGame(gamePk) {

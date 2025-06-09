@@ -34,15 +34,6 @@ export function didPlayerParticipate(stats) {
   return hasBattingStats || hasPitchingStats;
 }
 
-export function validateStatBlock(stats) {
-  if (!stats || typeof stats !== "object") return false;
-
-  const validBatting = stats.batting && typeof stats.batting === "object";
-  const validPitching = stats.pitching && typeof stats.pitching === "object";
-
-  return validBatting || validPitching;
-}
-
 export async function getPlayerStatsFromBoxscore({ game_id, player_id }) {
   const url = `https://statsapi.mlb.com/api/v1/game/${game_id}/boxscore`;
   console.log(`📡 Fetching boxscore for game ${game_id}`);

@@ -4,9 +4,8 @@ import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
 import {
   flattenPlayerBoxscore,
   getPlayerStatsFromBoxscore,
-  validateStatBlock,
 } from "../shared/playerUtils.js";
-import { derivePropValue } from "../shared/derivePropValue.js";
+import { derivePropValue } from "./derivePropValue.js";
 
 /**
  * Resolves a stat value using boxscore first, then allPlays as fallback.
@@ -30,6 +29,33 @@ export async function resolveStatForPlayer({
     `📡 Resolving stat for ${player_name} (${prop_type}) — Game ID: ${game_id}`
   );
 
+  function hasMeaningfulStats(stats) {
+    if (!stats || typeof stats !== "object") return false;
+
+    const { batting = {}, pitching = {} } = stats;
+
+    const hasBatting =
+      typeof batting.hits === "number" ||
+      typeof batting.runs === "number" ||
+      typeof batting.rbi === "number" ||
+      typeof batting.totalBases === "number" ||
+      typeof batting.baseOnBalls === "number" ||
+      typeof batting.strikeOuts === "number" ||
+      typeof batting.homeRuns === "number" ||
+      typeof batting.doubles === "number" ||
+      typeof batting.triples === "number" ||
+      typeof batting.stolenBases === "number";
+
+    const hasPitching =
+      typeof pitching.strikeOuts === "number" ||
+      typeof pitching.baseOnBalls === "number" ||
+      typeof pitching.hits === "number" ||
+      typeof pitching.earnedRuns === "number" ||
+      typeof pitching.outs === "number";
+
+    return hasBatting || hasPitching;
+  }
+
   const boxscoreData = await getPlayerStatsFromBoxscore({
     game_id,
     player_id,
@@ -40,7 +66,7 @@ export async function resolveStatForPlayer({
 
   if (!boxscoreData) {
     console.warn(`📭 No boxscore data found for ${player_name} (${prop_type})`);
-    return { result: null, source: "no_boxscore", rawStats: null };
+    return { result: undefined, source: "no_boxscore", rawStats: undefined };
   }
 
   const rawStats = flattenPlayerBoxscore(boxscoreData);
@@ -61,9 +87,9 @@ export async function resolveStatForPlayer({
     );
   }
 
-  if (rawStats && validateStatBlock(rawStats)) {
+  if (rawStats && hasMeaningfulStats(rawStats)) {
     try {
-      const extracted = derivePropValue(rawStats, prop_type);
+      const extracted = derivePropValue(prop_type, rawStats);
 
       if (extracted == null) {
         console.warn(
@@ -103,8 +129,8 @@ export async function resolveStatForPlayer({
   );
 
   return {
-    result: liveResult,
-    source: liveResult != null ? "live" : "missing",
+    result: typeof liveResult === "number" ? liveResult : undefined,
+    source: typeof liveResult === "number" ? "live" : "missing",
     rawStats,
   };
 }
