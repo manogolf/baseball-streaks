@@ -4,19 +4,31 @@ import path from "path";
 import fs from "fs";
 import { yesterdayET } from "../backend/scripts/shared/timeUtils.js";
 import { updatePropStatuses } from "../backend/scripts/resolution/updatePropResults.js";
-// import { syncStatsForDate } from "../backend/scripts/resolution/syncPlayerStats.js";
-// import { downloadModelFromSupabase } from "../backend/scripts/shared/downloadModelFromSupabase.js";
-// import { runTrainingBackfillIfNeeded } from "./backfillTrainingFieldsExtended.js";
+//import { syncStatsForDate } from "../backend/scripts/resolution/syncPlayerStats.js";
+import { downloadModelFromSupabase } from "../backend/scripts/shared/downloadModelFromSupabase.js";
+import { runTrainingBackfillIfNeeded } from "./backfillTrainingFieldsExtended.js";
 
 console.log("⏳ Cron runner starting...");
 
-// const modelDir = "./models";
-// const modelFiles = [
-// "hits_model.pkl",
-// "runs_scored_model.pkl",
-// "total_bases_model.pkl",
-// Add other model filenames as needed
-//;
+const modelDir = "./models";
+const modelFiles = [
+  "hits_model.pkl",
+  "runs_scored_model.pkl",
+  "total_bases_model.pkl",
+  "rbis_model.pkl",
+  "walks_model.pkl",
+  "strikeouts_batting_model.pkl",
+  "strikeouts_pitching_model.pkl",
+  "walks_allowed_model.pkl",
+  "hits_allowed_model.pkl",
+  "home_runs_model.pkl",
+  "doubles_model.pkl",
+  "triples_model.pkl",
+  "singles_model.pkl",
+  "stolen_bases_model.pkl",
+  "runs_rbis_model.pkl",
+  "hits_runs_rbis_model.pkl",
+];
 
 const month = new Date().getUTCMonth();
 const inSeason = month >= 2 && month <= 9;
@@ -53,7 +65,7 @@ const safelyRun = async (label) => {
   try {
     console.log(`🔁 ${label}: Starting scheduled tasks...`);
     await ensureModelsExist();
-    await syncStatsForDate(yesterdayET());
+    //await syncStatsForDate(yesterdayET());
     console.log(`🚀 ${label}: Running updatePropStatuses...`);
     await updatePropStatuses(); // Already logs summary internally
     console.log(`📊 ${label}: Running conditional training backfill...`);

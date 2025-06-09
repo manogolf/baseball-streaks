@@ -216,46 +216,30 @@ export async function getPlayerID(player_name, team_abbr, game_id) {
   return null;
 }
 
+const missingStreakCache = new Set();
+
 export async function getStreaksForPlayer(player_id, prop_type) {
-  if (!player_id || !prop_type) return { streak_count: 0, streak_type: null };
+  const key = `${player_id}:${prop_type}`;
+  if (missingStreakCache.has(key)) return null;
 
-  try {
-    const { data, error } = await supabase
-      .from("player_streak_profiles")
-      .select("streak_count, streak_type")
-      .eq("player_id", player_id)
-      .eq("prop_type", prop_type)
-      .single(); // ⬅️ This is missing
+  const { data, error } = await supabase
+    .from("player_streak_profiles")
+    .select("streak_count, streak_type")
+    .eq("player_id", player_id)
+    .eq("prop_type", prop_type)
+    .single();
 
-    if (error) {
-      console.error(
-        `❌ Supabase error for ${player_id} (${prop_type}):`,
-        error.message
-      );
-      return { streak_count: 0, streak_type: null };
-    }
-
-    if (!data || data.length === 0) {
-      console.warn(
-        `⚠️ No streak profile found for ${player_id} (${prop_type})`
-      );
-      return { streak_count: 0, streak_type: null };
-    }
-
-    if (data.length > 1) {
-      console.error(
-        `❌ Multiple streak profiles returned for ${player_id} (${prop_type}) — expected 1. Count: ${data.length}`
-      );
-    }
-
-    return data[0] || { streak_count: 0, streak_type: null };
-  } catch (err) {
-    console.error(
-      `🔥 Unexpected error fetching streaks for ${player_id} (${prop_type}):`,
-      err.message
-    );
-    return { streak_count: 0, streak_type: null };
+  if (error || !data) {
+    // Log only the first time we see this (per session)
+    missingStreakCache.add(key);
+    console.warn(`⚠️ No streak profile found for ${player_id} (${prop_type})`);
+    return null;
   }
+
+  return {
+    streak_count: data.streak_count,
+    streak_type: data.streak_type,
+  };
 }
 
 export async function upsertPlayerID({ player_id, player_name, team = null }) {
