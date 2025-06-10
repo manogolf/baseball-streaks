@@ -53,7 +53,7 @@ def upload_model_to_supabase_from_memory(filename, model):
     joblib.dump(model, buffer)
     buffer.seek(0)
 
-    response = supabase.storage.from_("2025.05.23.mlb-models").upload(
+    response = supabase.storage.from_("models").upload(
         path=filename,
         file=buffer.read(),
         file_options={"content-type": "application/octet-stream", "upsert": "true"},

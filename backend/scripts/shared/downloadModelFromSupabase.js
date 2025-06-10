@@ -16,7 +16,7 @@ export async function downloadModelFromSupabase(filename, localPath) {
   while (attempts < MAX_RETRIES) {
     try {
       const { data, error } = await supabase.storage
-        .from("2025.05.23.mlb-models")
+        .from("models")
         .createSignedUrl(filename, 60);
 
       const signedUrl = data?.signedUrl;

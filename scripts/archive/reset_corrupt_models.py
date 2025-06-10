@@ -24,7 +24,7 @@ corrupt_models = [
 # Delete them from Supabase storage
 def delete_old_models():
     print("🧹 Deleting corrupt model files from Supabase...")
-    response = supabase.storage.from_("2025.05.23.mlb-models").remove(corrupt_models)
+    response = supabase.storage.from_("models").remove(corrupt_models)
     if hasattr(response, "error") and response.error:
         print(f"❌ Error during deletion: {response.error.message}")
     else:
