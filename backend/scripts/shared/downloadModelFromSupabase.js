@@ -24,6 +24,8 @@ export async function downloadModelFromSupabase(filename, localPath) {
         );
       }
 
+      let downloadSuccessful = false;
+
       await new Promise((resolve, reject) => {
         const file = fs.createWriteStream(localPath);
         https
@@ -35,13 +37,22 @@ export async function downloadModelFromSupabase(filename, localPath) {
               return;
             }
             response.pipe(file);
-            file.on("finish", () => file.close(resolve));
+            file.on("finish", () => {
+              file.close(() => {
+                downloadSuccessful = true;
+                resolve();
+              });
+            });
           })
           .on("error", reject);
       });
 
-      console.log(`✅ Downloaded ${filename}`);
-      return;
+      if (downloadSuccessful && fs.existsSync(localPath)) {
+        console.log(`✅ Successfully downloaded ${filename}`);
+        return;
+      } else {
+        throw new Error(`Download incomplete or file missing for ${filename}`);
+      }
     } catch (err) {
       attempts += 1;
       console.warn(

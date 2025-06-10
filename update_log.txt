@@ -1,0 +1,6229 @@
+[2025-06-10T01:17:42.551Z] 🚀 Starting extended backfill for training fields...
+[2025-06-10T01:17:42.554Z] ⏳ Cron runner starting...
+[2025-06-10T01:22:08.427Z] 🚀 Starting extended backfill for training fields...
+[2025-06-10T01:22:08.430Z] ⏳ Cron runner starting...
+[2025-06-10T01:22:08.726Z] 📡 Checking prop: Dustin May - strikeouts_pitching
+[2025-06-10T01:22:08.726Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "669160",
+  "player_name": "Dustin May",
+  "game_id": 777579,
+  "team": "LAD",
+  "prop_type": "strikeouts_pitching"
+}
+[2025-06-10T01:22:08.728Z] 📡 Resolving stat for Dustin May (strikeouts_pitching) — Game ID: 777579
+[2025-06-10T01:22:08.728Z] 📡 Fetching boxscore for game 777579
+[2025-06-10T01:22:08.728Z] 🆔 Looking for player ID: 669160
+[2025-06-10T01:22:08.828Z] 📊 Raw stats for Dustin May (strikeouts_pitching): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {
+    "summary": "0.0 IP, 0 ER, 0 K, 0 BB",
+    "gamesPlayed": 0,
+    "gamesStarted": 0,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "numberOfPitches": 0,
+    "inningsPitched": "0.0",
+    "wins": 0,
+    "losses": 0,
+    "saves": 0,
+    "saveOpportunities": 0,
+    "holds": 0,
+    "blownSaves": 0,
+    "earnedRuns": 0,
+    "battersFaced": 0,
+    "outs": 0,
+    "gamesPitched": 0,
+    "completeGames": 0,
+    "shutouts": 0,
+    "balls": 0,
+    "strikes": 0,
+    "strikePercentage": "-.--",
+    "hitBatsmen": 0,
+    "balks": 0,
+    "wildPitches": 0,
+    "pickoffs": 0,
+    "rbi": 0,
+    "gamesFinished": 0,
+    "runsScoredPer9": "-.--",
+    "homeRunsPer9": "-.--",
+    "inheritedRunners": 0,
+    "inheritedRunnersScored": 0,
+    "catchersInterference": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "passedBall": 0,
+    "popOuts": 0,
+    "lineOuts": 0
+  }
+}
+[2025-06-10T01:22:08.829Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:08.830Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:08.830Z] 📊 Raw stats for Dustin May (strikeouts_pitching): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {
+    "summary": "0.0 IP, 0 ER, 0 K, 0 BB",
+    "gamesPlayed": 0,
+    "gamesStarted": 0,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "numberOfPitches": 0,
+    "inningsPitched": "0.0",
+    "wins": 0,
+    "losses": 0,
+    "saves": 0,
+    "saveOpportunities": 0,
+    "holds": 0,
+    "blownSaves": 0,
+    "earnedRuns": 0,
+    "battersFaced": 0,
+    "outs": 0,
+    "gamesPitched": 0,
+    "completeGames": 0,
+    "shutouts": 0,
+    "balls": 0,
+    "strikes": 0,
+    "strikePercentage": "-.--",
+    "hitBatsmen": 0,
+    "balks": 0,
+    "wildPitches": 0,
+    "pickoffs": 0,
+    "rbi": 0,
+    "gamesFinished": 0,
+    "runsScoredPer9": "-.--",
+    "homeRunsPer9": "-.--",
+    "inheritedRunners": 0,
+    "inheritedRunnersScored": 0,
+    "catchersInterference": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "passedBall": 0,
+    "popOuts": 0,
+    "lineOuts": 0
+  }
+}
+[2025-06-10T01:22:08.830Z] 🧪 Extracted result for Dustin May (strikeouts_pitching): 0
+[2025-06-10T01:22:08.935Z] ✅ Updated prop d3458276-baeb-467f-8680-aad8d6bec5fc → loss
+[2025-06-10T01:22:08.935Z] 📡 Checking prop: Fernando Tatis Jr. - total_bases
+[2025-06-10T01:22:08.935Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "665487",
+  "player_name": "Fernando Tatis Jr.",
+  "game_id": 777579,
+  "team": "SD",
+  "prop_type": "total_bases"
+}
+[2025-06-10T01:22:08.935Z] 📡 Resolving stat for Fernando Tatis Jr. (total_bases) — Game ID: 777579
+[2025-06-10T01:22:08.936Z] 📡 Fetching boxscore for game 777579
+[2025-06-10T01:22:08.936Z] 🆔 Looking for player ID: 665487
+[2025-06-10T01:22:08.956Z] 📊 Raw stats for Fernando Tatis Jr. (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:08.956Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:08.956Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:08.956Z] 📊 Raw stats for Fernando Tatis Jr. (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:08.957Z] 🧪 Extracted result for Fernando Tatis Jr. (total_bases): 0
+[2025-06-10T01:22:09.048Z] ✅ Updated prop 68852cfe-c8c0-404f-8bd6-abd070c77886 → win
+[2025-06-10T01:22:09.048Z] 📡 Checking prop: Manny Machado - total_bases
+[2025-06-10T01:22:09.048Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "592518",
+  "player_name": "Manny Machado",
+  "game_id": 777579,
+  "team": "SD",
+  "prop_type": "total_bases"
+}
+[2025-06-10T01:22:09.049Z] 📡 Resolving stat for Manny Machado (total_bases) — Game ID: 777579
+[2025-06-10T01:22:09.049Z] 📡 Fetching boxscore for game 777579
+[2025-06-10T01:22:09.049Z] 🆔 Looking for player ID: 592518
+[2025-06-10T01:22:09.065Z] 📊 Raw stats for Manny Machado (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:09.066Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:09.066Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:09.066Z] 📊 Raw stats for Manny Machado (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:09.066Z] 🧪 Extracted result for Manny Machado (total_bases): 0
+[2025-06-10T01:22:09.164Z] ✅ Updated prop a4a794d0-37d7-4e47-9cf7-207257360c95 → loss
+[2025-06-10T01:22:09.165Z] 📡 Checking prop: Manny Machado - hits_runs_rbis
+[2025-06-10T01:22:09.166Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "592518",
+  "player_name": "Manny Machado",
+  "game_id": 777579,
+  "team": "SD",
+  "prop_type": "hits_runs_rbis"
+}
+[2025-06-10T01:22:09.166Z] 📡 Resolving stat for Manny Machado (hits_runs_rbis) — Game ID: 777579
+[2025-06-10T01:22:09.166Z] 📡 Fetching boxscore for game 777579
+[2025-06-10T01:22:09.167Z] 🆔 Looking for player ID: 592518
+[2025-06-10T01:22:09.183Z] 📊 Raw stats for Manny Machado (hits_runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:09.183Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:09.184Z] [COMBO] hits_runs_rbis input: {
+  "hits": 0,
+  "runs": 0,
+  "rbi": 0
+}
+[2025-06-10T01:22:09.184Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:09.184Z] 📊 Raw stats for Manny Machado (hits_runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:09.185Z] 🧪 Extracted result for Manny Machado (hits_runs_rbis): 0
+[2025-06-10T01:22:09.253Z] ✅ Updated prop 796ecbee-ad6d-4990-9f09-9897e5d259b8 → loss
+[2025-06-10T01:22:09.253Z] 📡 Checking prop: Logan Davidson - total_bases
+[2025-06-10T01:22:09.253Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "669722",
+  "player_name": "Logan Davidson",
+  "game_id": 777576,
+  "team": "ATH",
+  "prop_type": "total_bases"
+}
+[2025-06-10T01:22:09.253Z] 📡 Resolving stat for Logan Davidson (total_bases) — Game ID: 777576
+[2025-06-10T01:22:09.253Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:09.254Z] 🆔 Looking for player ID: 669722
+[2025-06-10T01:22:09.321Z] 📭 No boxscore data found for player ID 669722
+[2025-06-10T01:22:09.321Z] 📭 No boxscore data found for Logan Davidson (total_bases)
+[2025-06-10T01:22:09.321Z] 🚷 Marking DNP: no rawStats found for Logan Davidson
+[2025-06-10T01:22:09.391Z] 📡 Checking prop: Logan Davidson - hits
+[2025-06-10T01:22:09.391Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "669722",
+  "player_name": "Logan Davidson",
+  "game_id": 777576,
+  "team": "ATH",
+  "prop_type": "hits"
+}
+[2025-06-10T01:22:09.392Z] 📡 Resolving stat for Logan Davidson (hits) — Game ID: 777576
+[2025-06-10T01:22:09.392Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:09.392Z] 🆔 Looking for player ID: 669722
+[2025-06-10T01:22:09.461Z] 📭 No boxscore data found for player ID 669722
+[2025-06-10T01:22:09.462Z] 📭 No boxscore data found for Logan Davidson (hits)
+[2025-06-10T01:22:09.462Z] 🚷 Marking DNP: no rawStats found for Logan Davidson
+[2025-06-10T01:22:09.520Z] 📡 Checking prop: Scott Kingery - runs_rbis
+[2025-06-10T01:22:09.520Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "664068",
+  "player_name": "Scott Kingery",
+  "game_id": 777576,
+  "team": "LAA",
+  "prop_type": "runs_rbis"
+}
+[2025-06-10T01:22:09.521Z] 📡 Resolving stat for Scott Kingery (runs_rbis) — Game ID: 777576
+[2025-06-10T01:22:09.521Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:09.521Z] 🆔 Looking for player ID: 664068
+[2025-06-10T01:22:09.543Z] 📊 Raw stats for Scott Kingery (runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:09.543Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:09.544Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:09.544Z] 📊 Raw stats for Scott Kingery (runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:09.544Z] 🧪 Extracted result for Scott Kingery (runs_rbis): 0
+[2025-06-10T01:22:09.639Z] ✅ Updated prop 192a25ea-b497-4362-90fa-f69f6c43acd2 → win
+[2025-06-10T01:22:09.639Z] 📡 Checking prop: Scott Kingery - hits_runs_rbis
+[2025-06-10T01:22:09.639Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "664068",
+  "player_name": "Scott Kingery",
+  "game_id": 777576,
+  "team": "LAA",
+  "prop_type": "hits_runs_rbis"
+}
+[2025-06-10T01:22:09.640Z] 📡 Resolving stat for Scott Kingery (hits_runs_rbis) — Game ID: 777576
+[2025-06-10T01:22:09.640Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:09.640Z] 🆔 Looking for player ID: 664068
+[2025-06-10T01:22:09.657Z] 📊 Raw stats for Scott Kingery (hits_runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:09.657Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:09.657Z] [COMBO] hits_runs_rbis input: {
+  "hits": 0,
+  "runs": 0,
+  "rbi": 0
+}
+[2025-06-10T01:22:09.657Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:09.657Z] 📊 Raw stats for Scott Kingery (hits_runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:09.658Z] 🧪 Extracted result for Scott Kingery (hits_runs_rbis): 0
+[2025-06-10T01:22:09.750Z] ✅ Updated prop 9abea26a-c5a5-401b-b83b-5bf215160cf4 → win
+[2025-06-10T01:22:09.750Z] 📡 Checking prop: Scott Kingery - runs_scored
+[2025-06-10T01:22:09.750Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "664068",
+  "player_name": "Scott Kingery",
+  "game_id": 777576,
+  "team": "LAA",
+  "prop_type": "runs_scored"
+}
+[2025-06-10T01:22:09.751Z] 📡 Resolving stat for Scott Kingery (runs_scored) — Game ID: 777576
+[2025-06-10T01:22:09.751Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:09.751Z] 🆔 Looking for player ID: 664068
+[2025-06-10T01:22:09.781Z] 📊 Raw stats for Scott Kingery (runs_scored): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:09.782Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:09.782Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:09.782Z] 📊 Raw stats for Scott Kingery (runs_scored): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:09.782Z] 🧪 Extracted result for Scott Kingery (runs_scored): 0
+[2025-06-10T01:22:09.872Z] ✅ Updated prop 653ba6fc-613c-467f-a178-868a5426382e → win
+[2025-06-10T01:22:09.873Z] 📡 Checking prop: Lawrence Butler - hits_runs_rbis
+[2025-06-10T01:22:09.873Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "671732",
+  "player_name": "Lawrence Butler",
+  "game_id": 777576,
+  "team": "ATH",
+  "prop_type": "hits_runs_rbis"
+}
+[2025-06-10T01:22:09.873Z] 📡 Resolving stat for Lawrence Butler (hits_runs_rbis) — Game ID: 777576
+[2025-06-10T01:22:09.873Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:09.874Z] 🆔 Looking for player ID: 671732
+[2025-06-10T01:22:09.890Z] 📊 Raw stats for Lawrence Butler (hits_runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:09.891Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:09.891Z] [COMBO] hits_runs_rbis input: {
+  "hits": 0,
+  "runs": 0,
+  "rbi": 0
+}
+[2025-06-10T01:22:09.891Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:09.891Z] 📊 Raw stats for Lawrence Butler (hits_runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:09.891Z] 🧪 Extracted result for Lawrence Butler (hits_runs_rbis): 0
+[2025-06-10T01:22:09.954Z] ✅ Updated prop aa5df047-bb7b-498f-b9b1-b0b4a8c44b01 → win
+[2025-06-10T01:22:09.954Z] 📡 Checking prop: Lawrence Butler - total_bases
+[2025-06-10T01:22:09.954Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "671732",
+  "player_name": "Lawrence Butler",
+  "game_id": 777576,
+  "team": "ATH",
+  "prop_type": "total_bases"
+}
+[2025-06-10T01:22:09.954Z] 📡 Resolving stat for Lawrence Butler (total_bases) — Game ID: 777576
+[2025-06-10T01:22:09.954Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:09.954Z] 🆔 Looking for player ID: 671732
+[2025-06-10T01:22:09.971Z] 📊 Raw stats for Lawrence Butler (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:09.972Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:09.972Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:09.972Z] 📊 Raw stats for Lawrence Butler (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:09.972Z] 🧪 Extracted result for Lawrence Butler (total_bases): 0
+[2025-06-10T01:22:10.085Z] ✅ Updated prop ed7ee442-34ab-453f-9623-8586e2b6b81f → loss
+[2025-06-10T01:22:10.086Z] 📡 Checking prop: Jacob Wilson - hits
+[2025-06-10T01:22:10.087Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "805779",
+  "player_name": "Jacob Wilson",
+  "game_id": 777576,
+  "team": "ATH",
+  "prop_type": "hits"
+}
+[2025-06-10T01:22:10.087Z] 📡 Resolving stat for Jacob Wilson (hits) — Game ID: 777576
+[2025-06-10T01:22:10.087Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:10.088Z] 🆔 Looking for player ID: 805779
+[2025-06-10T01:22:10.107Z] 📊 Raw stats for Jacob Wilson (hits): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:10.108Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:10.108Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:10.108Z] 📊 Raw stats for Jacob Wilson (hits): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:10.108Z] 🧪 Extracted result for Jacob Wilson (hits): 0
+[2025-06-10T01:22:10.181Z] ✅ Updated prop 77a6d383-444d-4b6e-88ee-b9350cabfdb2 → loss
+[2025-06-10T01:22:10.181Z] 📡 Checking prop: Jacob Wilson - hits_runs_rbis
+[2025-06-10T01:22:10.181Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "805779",
+  "player_name": "Jacob Wilson",
+  "game_id": 777576,
+  "team": "ATH",
+  "prop_type": "hits_runs_rbis"
+}
+[2025-06-10T01:22:10.182Z] 📡 Resolving stat for Jacob Wilson (hits_runs_rbis) — Game ID: 777576
+[2025-06-10T01:22:10.182Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:10.182Z] 🆔 Looking for player ID: 805779
+[2025-06-10T01:22:10.202Z] 📊 Raw stats for Jacob Wilson (hits_runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:10.202Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:10.203Z] [COMBO] hits_runs_rbis input: {
+  "hits": 0,
+  "runs": 0,
+  "rbi": 0
+}
+[2025-06-10T01:22:10.203Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:10.203Z] 📊 Raw stats for Jacob Wilson (hits_runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:10.203Z] 🧪 Extracted result for Jacob Wilson (hits_runs_rbis): 0
+[2025-06-10T01:22:10.262Z] ✅ Updated prop 20345e85-975b-4fd0-ba23-abd1eb6cd2c6 → loss
+[2025-06-10T01:22:10.263Z] 📡 Checking prop: Willie MacIver - runs_rbis
+[2025-06-10T01:22:10.263Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "680862",
+  "player_name": "Willie MacIver",
+  "game_id": 777576,
+  "team": "ATH",
+  "prop_type": "runs_rbis"
+}
+[2025-06-10T01:22:10.264Z] 📡 Resolving stat for Willie MacIver (runs_rbis) — Game ID: 777576
+[2025-06-10T01:22:10.264Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:10.264Z] 🆔 Looking for player ID: 680862
+[2025-06-10T01:22:10.293Z] 📊 Raw stats for Willie MacIver (runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:10.293Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:10.293Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:10.294Z] 📊 Raw stats for Willie MacIver (runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:10.294Z] 🧪 Extracted result for Willie MacIver (runs_rbis): 0
+[2025-06-10T01:22:10.389Z] ✅ Updated prop c8eab3c6-9080-40f4-a732-de779be0f3e3 → loss
+[2025-06-10T01:22:10.389Z] 📡 Checking prop: Dustin May - walks_allowed
+[2025-06-10T01:22:10.390Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "669160",
+  "player_name": "Dustin May",
+  "game_id": 777579,
+  "team": "LAD",
+  "prop_type": "walks_allowed"
+}
+[2025-06-10T01:22:10.390Z] 📡 Resolving stat for Dustin May (walks_allowed) — Game ID: 777579
+[2025-06-10T01:22:10.390Z] 📡 Fetching boxscore for game 777579
+[2025-06-10T01:22:10.390Z] 🆔 Looking for player ID: 669160
+[2025-06-10T01:22:10.408Z] 📊 Raw stats for Dustin May (walks_allowed): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {
+    "summary": "0.0 IP, 0 ER, 0 K, 0 BB",
+    "gamesPlayed": 0,
+    "gamesStarted": 0,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "numberOfPitches": 0,
+    "inningsPitched": "0.0",
+    "wins": 0,
+    "losses": 0,
+    "saves": 0,
+    "saveOpportunities": 0,
+    "holds": 0,
+    "blownSaves": 0,
+    "earnedRuns": 0,
+    "battersFaced": 0,
+    "outs": 0,
+    "gamesPitched": 0,
+    "completeGames": 0,
+    "shutouts": 0,
+    "balls": 0,
+    "strikes": 0,
+    "strikePercentage": "-.--",
+    "hitBatsmen": 0,
+    "balks": 0,
+    "wildPitches": 0,
+    "pickoffs": 0,
+    "rbi": 0,
+    "gamesFinished": 0,
+    "runsScoredPer9": "-.--",
+    "homeRunsPer9": "-.--",
+    "inheritedRunners": 0,
+    "inheritedRunnersScored": 0,
+    "catchersInterference": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "passedBall": 0,
+    "popOuts": 0,
+    "lineOuts": 0
+  }
+}
+[2025-06-10T01:22:10.408Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:10.409Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:10.409Z] 📊 Raw stats for Dustin May (walks_allowed): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {
+    "summary": "0.0 IP, 0 ER, 0 K, 0 BB",
+    "gamesPlayed": 0,
+    "gamesStarted": 0,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "numberOfPitches": 0,
+    "inningsPitched": "0.0",
+    "wins": 0,
+    "losses": 0,
+    "saves": 0,
+    "saveOpportunities": 0,
+    "holds": 0,
+    "blownSaves": 0,
+    "earnedRuns": 0,
+    "battersFaced": 0,
+    "outs": 0,
+    "gamesPitched": 0,
+    "completeGames": 0,
+    "shutouts": 0,
+    "balls": 0,
+    "strikes": 0,
+    "strikePercentage": "-.--",
+    "hitBatsmen": 0,
+    "balks": 0,
+    "wildPitches": 0,
+    "pickoffs": 0,
+    "rbi": 0,
+    "gamesFinished": 0,
+    "runsScoredPer9": "-.--",
+    "homeRunsPer9": "-.--",
+    "inheritedRunners": 0,
+    "inheritedRunnersScored": 0,
+    "catchersInterference": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "passedBall": 0,
+    "popOuts": 0,
+    "lineOuts": 0
+  }
+}
+[2025-06-10T01:22:10.409Z] 🧪 Extracted result for Dustin May (walks_allowed): 0
+[2025-06-10T01:22:10.501Z] ✅ Updated prop 467d610a-2dd1-4146-be97-df2154dd30fd → loss
+[2025-06-10T01:22:10.502Z] 📡 Checking prop: Andy Pages - strikeouts_batting
+[2025-06-10T01:22:10.502Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "681624",
+  "player_name": "Andy Pages",
+  "game_id": 777579,
+  "team": "LAD",
+  "prop_type": "strikeouts_batting"
+}
+[2025-06-10T01:22:10.503Z] 📡 Resolving stat for Andy Pages (strikeouts_batting) — Game ID: 777579
+[2025-06-10T01:22:10.503Z] 📡 Fetching boxscore for game 777579
+[2025-06-10T01:22:10.503Z] 🆔 Looking for player ID: 681624
+[2025-06-10T01:22:10.528Z] 📊 Raw stats for Andy Pages (strikeouts_batting): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:10.528Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:10.528Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:10.528Z] 📊 Raw stats for Andy Pages (strikeouts_batting): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:10.528Z] 🧪 Extracted result for Andy Pages (strikeouts_batting): 0
+[2025-06-10T01:22:10.617Z] ✅ Updated prop 63874827-11db-414b-8e75-0ca1d19f6fac → win
+[2025-06-10T01:22:10.618Z] 📡 Checking prop: Fernando Tatis Jr. - hits_runs_rbis
+[2025-06-10T01:22:10.618Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "665487",
+  "player_name": "Fernando Tatis Jr.",
+  "game_id": 777579,
+  "team": "SD",
+  "prop_type": "hits_runs_rbis"
+}
+[2025-06-10T01:22:10.619Z] 📡 Resolving stat for Fernando Tatis Jr. (hits_runs_rbis) — Game ID: 777579
+[2025-06-10T01:22:10.619Z] 📡 Fetching boxscore for game 777579
+[2025-06-10T01:22:10.619Z] 🆔 Looking for player ID: 665487
+[2025-06-10T01:22:10.645Z] 📊 Raw stats for Fernando Tatis Jr. (hits_runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:10.646Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:10.646Z] [COMBO] hits_runs_rbis input: {
+  "hits": 0,
+  "runs": 0,
+  "rbi": 0
+}
+[2025-06-10T01:22:10.646Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:10.646Z] 📊 Raw stats for Fernando Tatis Jr. (hits_runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:10.646Z] 🧪 Extracted result for Fernando Tatis Jr. (hits_runs_rbis): 0
+[2025-06-10T01:22:10.704Z] ✅ Updated prop 10fae8bc-9def-4240-847d-616de239b5d1 → win
+[2025-06-10T01:22:10.705Z] 📡 Checking prop: Nick Pivetta - walks_allowed
+[2025-06-10T01:22:10.706Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "601713",
+  "player_name": "Nick Pivetta",
+  "game_id": 777579,
+  "team": "SD",
+  "prop_type": "walks_allowed"
+}
+[2025-06-10T01:22:10.706Z] 📡 Resolving stat for Nick Pivetta (walks_allowed) — Game ID: 777579
+[2025-06-10T01:22:10.706Z] 📡 Fetching boxscore for game 777579
+[2025-06-10T01:22:10.706Z] 🆔 Looking for player ID: 601713
+[2025-06-10T01:22:10.720Z] 📊 Raw stats for Nick Pivetta (walks_allowed): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {
+    "summary": "0.0 IP, 0 ER, 0 K, 0 BB",
+    "gamesPlayed": 0,
+    "gamesStarted": 0,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "numberOfPitches": 0,
+    "inningsPitched": "0.0",
+    "wins": 0,
+    "losses": 0,
+    "saves": 0,
+    "saveOpportunities": 0,
+    "holds": 0,
+    "blownSaves": 0,
+    "earnedRuns": 0,
+    "battersFaced": 0,
+    "outs": 0,
+    "gamesPitched": 0,
+    "completeGames": 0,
+    "shutouts": 0,
+    "balls": 0,
+    "strikes": 0,
+    "strikePercentage": "-.--",
+    "hitBatsmen": 0,
+    "balks": 0,
+    "wildPitches": 0,
+    "pickoffs": 0,
+    "rbi": 0,
+    "gamesFinished": 0,
+    "runsScoredPer9": "-.--",
+    "homeRunsPer9": "-.--",
+    "inheritedRunners": 0,
+    "inheritedRunnersScored": 0,
+    "catchersInterference": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "passedBall": 0,
+    "popOuts": 0,
+    "lineOuts": 0
+  }
+}
+[2025-06-10T01:22:10.720Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:10.720Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:10.720Z] 📊 Raw stats for Nick Pivetta (walks_allowed): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {
+    "summary": "0.0 IP, 0 ER, 0 K, 0 BB",
+    "gamesPlayed": 0,
+    "gamesStarted": 0,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "numberOfPitches": 0,
+    "inningsPitched": "0.0",
+    "wins": 0,
+    "losses": 0,
+    "saves": 0,
+    "saveOpportunities": 0,
+    "holds": 0,
+    "blownSaves": 0,
+    "earnedRuns": 0,
+    "battersFaced": 0,
+    "outs": 0,
+    "gamesPitched": 0,
+    "completeGames": 0,
+    "shutouts": 0,
+    "balls": 0,
+    "strikes": 0,
+    "strikePercentage": "-.--",
+    "hitBatsmen": 0,
+    "balks": 0,
+    "wildPitches": 0,
+    "pickoffs": 0,
+    "rbi": 0,
+    "gamesFinished": 0,
+    "runsScoredPer9": "-.--",
+    "homeRunsPer9": "-.--",
+    "inheritedRunners": 0,
+    "inheritedRunnersScored": 0,
+    "catchersInterference": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "passedBall": 0,
+    "popOuts": 0,
+    "lineOuts": 0
+  }
+}
+[2025-06-10T01:22:10.720Z] 🧪 Extracted result for Nick Pivetta (walks_allowed): 0
+[2025-06-10T01:22:10.779Z] ✅ Updated prop 0325c421-c444-4baf-bad4-11b2edb9c71c → win
+[2025-06-10T01:22:10.780Z] 📡 Checking prop: Scott Kingery - hits
+[2025-06-10T01:22:10.780Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "664068",
+  "player_name": "Scott Kingery",
+  "game_id": 777576,
+  "team": "LAA",
+  "prop_type": "hits"
+}
+[2025-06-10T01:22:10.781Z] 📡 Resolving stat for Scott Kingery (hits) — Game ID: 777576
+[2025-06-10T01:22:10.781Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:10.781Z] 🆔 Looking for player ID: 664068
+[2025-06-10T01:22:10.803Z] 📊 Raw stats for Scott Kingery (hits): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:10.804Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:10.804Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:10.805Z] 📊 Raw stats for Scott Kingery (hits): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:10.805Z] 🧪 Extracted result for Scott Kingery (hits): 0
+[2025-06-10T01:22:10.870Z] ✅ Updated prop 09e7e8bf-3c15-44a9-bee6-57769c1956fe → win
+[2025-06-10T01:22:10.871Z] 📡 Checking prop: Scott Kingery - total_bases
+[2025-06-10T01:22:10.871Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "664068",
+  "player_name": "Scott Kingery",
+  "game_id": 777576,
+  "team": "LAA",
+  "prop_type": "total_bases"
+}
+[2025-06-10T01:22:10.871Z] 📡 Resolving stat for Scott Kingery (total_bases) — Game ID: 777576
+[2025-06-10T01:22:10.871Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:10.872Z] 🆔 Looking for player ID: 664068
+[2025-06-10T01:22:10.889Z] 📊 Raw stats for Scott Kingery (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:10.889Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:10.889Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:10.889Z] 📊 Raw stats for Scott Kingery (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:10.890Z] 🧪 Extracted result for Scott Kingery (total_bases): 0
+[2025-06-10T01:22:10.978Z] ✅ Updated prop fbed4d1b-a3d6-4037-b048-44052802a4d1 → win
+[2025-06-10T01:22:10.979Z] 📡 Checking prop: Lawrence Butler - hits
+[2025-06-10T01:22:10.979Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "671732",
+  "player_name": "Lawrence Butler",
+  "game_id": 777576,
+  "team": "ATH",
+  "prop_type": "hits"
+}
+[2025-06-10T01:22:10.979Z] 📡 Resolving stat for Lawrence Butler (hits) — Game ID: 777576
+[2025-06-10T01:22:10.980Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:10.980Z] 🆔 Looking for player ID: 671732
+[2025-06-10T01:22:11.005Z] 📊 Raw stats for Lawrence Butler (hits): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:11.005Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:11.005Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:11.006Z] 📊 Raw stats for Lawrence Butler (hits): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:11.006Z] 🧪 Extracted result for Lawrence Butler (hits): 0
+[2025-06-10T01:22:11.093Z] ✅ Updated prop 2f2c22d6-731e-4058-bf11-37d753be5b3d → loss
+[2025-06-10T01:22:11.094Z] 📡 Checking prop: Lawrence Butler - runs_rbis
+[2025-06-10T01:22:11.094Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "671732",
+  "player_name": "Lawrence Butler",
+  "game_id": 777576,
+  "team": "ATH",
+  "prop_type": "runs_rbis"
+}
+[2025-06-10T01:22:11.094Z] 📡 Resolving stat for Lawrence Butler (runs_rbis) — Game ID: 777576
+[2025-06-10T01:22:11.095Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:11.095Z] 🆔 Looking for player ID: 671732
+[2025-06-10T01:22:11.112Z] 📊 Raw stats for Lawrence Butler (runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:11.113Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:11.113Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:11.113Z] 📊 Raw stats for Lawrence Butler (runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:11.114Z] 🧪 Extracted result for Lawrence Butler (runs_rbis): 0
+[2025-06-10T01:22:11.178Z] ✅ Updated prop 15a243d2-a90d-453e-bc43-1801c5fd0e3e → loss
+[2025-06-10T01:22:11.179Z] 📡 Checking prop: Lawrence Butler - runs_scored
+[2025-06-10T01:22:11.179Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "671732",
+  "player_name": "Lawrence Butler",
+  "game_id": 777576,
+  "team": "ATH",
+  "prop_type": "runs_scored"
+}
+[2025-06-10T01:22:11.179Z] 📡 Resolving stat for Lawrence Butler (runs_scored) — Game ID: 777576
+[2025-06-10T01:22:11.180Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:11.180Z] 🆔 Looking for player ID: 671732
+[2025-06-10T01:22:11.209Z] 📊 Raw stats for Lawrence Butler (runs_scored): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:11.209Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:11.209Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:11.209Z] 📊 Raw stats for Lawrence Butler (runs_scored): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:11.210Z] 🧪 Extracted result for Lawrence Butler (runs_scored): 0
+[2025-06-10T01:22:11.269Z] ✅ Updated prop dc1fcb67-a8c0-41ae-9523-6f919d3d497a → loss
+[2025-06-10T01:22:11.269Z] 📡 Checking prop: Logan O'Hoppe - runs_scored
+[2025-06-10T01:22:11.269Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "681351",
+  "player_name": "Logan O'Hoppe",
+  "game_id": 777576,
+  "team": "LAA",
+  "prop_type": "runs_scored"
+}
+[2025-06-10T01:22:11.270Z] 📡 Resolving stat for Logan O'Hoppe (runs_scored) — Game ID: 777576
+[2025-06-10T01:22:11.270Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:11.270Z] 🆔 Looking for player ID: 681351
+[2025-06-10T01:22:11.293Z] 📊 Raw stats for Logan O'Hoppe (runs_scored): {
+  "batting": {},
+  "pitching": {}
+}
+[2025-06-10T01:22:11.293Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:11.293Z] ⚠️ Boxscore stats were invalid for Logan O'Hoppe (runs_scored)
+[2025-06-10T01:22:11.425Z] 🎯 Final derived value for runs_scored (681351) in game 777576: 
+[2025-06-10T01:22:11.425Z] 📺 Live fallback result for Logan O'Hoppe: 
+[2025-06-10T01:22:11.425Z] 🧪 Final result for Logan O'Hoppe (runs_scored) → null
+[2025-06-10T01:22:11.425Z] 📊 Raw stats for Logan O'Hoppe (runs_scored): {
+  "batting": {},
+  "pitching": {}
+}
+[2025-06-10T01:22:11.426Z] 🚷 Marking DNP: result not a valid number for Logan O'Hoppe
+[2025-06-10T01:22:11.490Z] 📡 Checking prop: Willie MacIver - hits_runs_rbis
+[2025-06-10T01:22:11.490Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "680862",
+  "player_name": "Willie MacIver",
+  "game_id": 777576,
+  "team": "ATH",
+  "prop_type": "hits_runs_rbis"
+}
+[2025-06-10T01:22:11.491Z] 📡 Resolving stat for Willie MacIver (hits_runs_rbis) — Game ID: 777576
+[2025-06-10T01:22:11.491Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:11.491Z] 🆔 Looking for player ID: 680862
+[2025-06-10T01:22:11.509Z] 📊 Raw stats for Willie MacIver (hits_runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:11.509Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:11.509Z] [COMBO] hits_runs_rbis input: {
+  "hits": 0,
+  "runs": 0,
+  "rbi": 0
+}
+[2025-06-10T01:22:11.509Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:11.509Z] 📊 Raw stats for Willie MacIver (hits_runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:11.509Z] 🧪 Extracted result for Willie MacIver (hits_runs_rbis): 0
+[2025-06-10T01:22:11.563Z] ✅ Updated prop 0cdfa43e-281e-46fe-81e6-131ee0abdb1a → loss
+[2025-06-10T01:22:11.563Z] 📡 Checking prop: Mike Trout - total_bases
+[2025-06-10T01:22:11.563Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "545361",
+  "player_name": "Mike Trout",
+  "game_id": 777576,
+  "team": "LAA",
+  "prop_type": "total_bases"
+}
+[2025-06-10T01:22:11.563Z] 📡 Resolving stat for Mike Trout (total_bases) — Game ID: 777576
+[2025-06-10T01:22:11.563Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:11.563Z] 🆔 Looking for player ID: 545361
+[2025-06-10T01:22:11.582Z] 📊 Raw stats for Mike Trout (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:11.582Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:11.583Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:11.583Z] 📊 Raw stats for Mike Trout (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:11.583Z] 🧪 Extracted result for Mike Trout (total_bases): 0
+[2025-06-10T01:22:11.646Z] ✅ Updated prop 81c0f42f-4622-4102-ab88-a37f861b8ddc → win
+[2025-06-10T01:22:11.646Z] 📡 Checking prop: Kevin Newman - total_bases
+[2025-06-10T01:22:11.646Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "621028",
+  "player_name": "Kevin Newman",
+  "game_id": 777576,
+  "team": "LAA",
+  "prop_type": "total_bases"
+}
+[2025-06-10T01:22:11.647Z] 📡 Resolving stat for Kevin Newman (total_bases) — Game ID: 777576
+[2025-06-10T01:22:11.647Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:11.647Z] 🆔 Looking for player ID: 621028
+[2025-06-10T01:22:11.664Z] 📊 Raw stats for Kevin Newman (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:11.665Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:11.665Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:11.665Z] 📊 Raw stats for Kevin Newman (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:11.665Z] 🧪 Extracted result for Kevin Newman (total_bases): 0
+[2025-06-10T01:22:11.724Z] ✅ Updated prop 8172320d-38ce-4e55-9d59-6ab4eed36068 → win
+[2025-06-10T01:22:11.724Z] 📡 Checking prop: Yusei Kikuchi - strikeouts_pitching
+[2025-06-10T01:22:11.724Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "579328",
+  "player_name": "Yusei Kikuchi",
+  "game_id": 777576,
+  "team": "LAA",
+  "prop_type": "strikeouts_pitching"
+}
+[2025-06-10T01:22:11.725Z] 📡 Resolving stat for Yusei Kikuchi (strikeouts_pitching) — Game ID: 777576
+[2025-06-10T01:22:11.725Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:11.725Z] 🆔 Looking for player ID: 579328
+[2025-06-10T01:22:11.741Z] 📊 Raw stats for Yusei Kikuchi (strikeouts_pitching): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {
+    "summary": "0.0 IP, 0 ER, 0 K, 0 BB",
+    "gamesPlayed": 0,
+    "gamesStarted": 0,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "numberOfPitches": 0,
+    "inningsPitched": "0.0",
+    "wins": 0,
+    "losses": 0,
+    "saves": 0,
+    "saveOpportunities": 0,
+    "holds": 0,
+    "blownSaves": 0,
+    "earnedRuns": 0,
+    "battersFaced": 0,
+    "outs": 0,
+    "gamesPitched": 0,
+    "completeGames": 0,
+    "shutouts": 0,
+    "balls": 0,
+    "strikes": 0,
+    "strikePercentage": "-.--",
+    "hitBatsmen": 0,
+    "balks": 0,
+    "wildPitches": 0,
+    "pickoffs": 0,
+    "rbi": 0,
+    "gamesFinished": 0,
+    "runsScoredPer9": "-.--",
+    "homeRunsPer9": "-.--",
+    "inheritedRunners": 0,
+    "inheritedRunnersScored": 0,
+    "catchersInterference": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "passedBall": 0,
+    "popOuts": 0,
+    "lineOuts": 0
+  }
+}
+[2025-06-10T01:22:11.742Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:11.742Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:11.742Z] 📊 Raw stats for Yusei Kikuchi (strikeouts_pitching): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {
+    "summary": "0.0 IP, 0 ER, 0 K, 0 BB",
+    "gamesPlayed": 0,
+    "gamesStarted": 0,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "numberOfPitches": 0,
+    "inningsPitched": "0.0",
+    "wins": 0,
+    "losses": 0,
+    "saves": 0,
+    "saveOpportunities": 0,
+    "holds": 0,
+    "blownSaves": 0,
+    "earnedRuns": 0,
+    "battersFaced": 0,
+    "outs": 0,
+    "gamesPitched": 0,
+    "completeGames": 0,
+    "shutouts": 0,
+    "balls": 0,
+    "strikes": 0,
+    "strikePercentage": "-.--",
+    "hitBatsmen": 0,
+    "balks": 0,
+    "wildPitches": 0,
+    "pickoffs": 0,
+    "rbi": 0,
+    "gamesFinished": 0,
+    "runsScoredPer9": "-.--",
+    "homeRunsPer9": "-.--",
+    "inheritedRunners": 0,
+    "inheritedRunnersScored": 0,
+    "catchersInterference": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "passedBall": 0,
+    "popOuts": 0,
+    "lineOuts": 0
+  }
+}
+[2025-06-10T01:22:11.743Z] 🧪 Extracted result for Yusei Kikuchi (strikeouts_pitching): 0
+[2025-06-10T01:22:11.801Z] ✅ Updated prop 424889ab-d3b6-4d77-a981-1593516e6b8f → win
+[2025-06-10T01:22:11.801Z] 📡 Checking prop: Emerson Hancock - earned_runs
+[2025-06-10T01:22:11.801Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "676106",
+  "player_name": "Emerson Hancock",
+  "game_id": 777577,
+  "team": "SEA",
+  "prop_type": "earned_runs"
+}
+[2025-06-10T01:22:11.801Z] 📡 Resolving stat for Emerson Hancock (earned_runs) — Game ID: 777577
+[2025-06-10T01:22:11.801Z] 📡 Fetching boxscore for game 777577
+[2025-06-10T01:22:11.801Z] 🆔 Looking for player ID: 676106
+[2025-06-10T01:22:11.870Z] 📊 Raw stats for Emerson Hancock (earned_runs): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {
+    "summary": "0.0 IP, 0 ER, 0 K, 0 BB",
+    "gamesPlayed": 0,
+    "gamesStarted": 0,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "numberOfPitches": 0,
+    "inningsPitched": "0.0",
+    "wins": 0,
+    "losses": 0,
+    "saves": 0,
+    "saveOpportunities": 0,
+    "holds": 0,
+    "blownSaves": 0,
+    "earnedRuns": 0,
+    "battersFaced": 0,
+    "outs": 0,
+    "gamesPitched": 0,
+    "completeGames": 0,
+    "shutouts": 0,
+    "balls": 0,
+    "strikes": 0,
+    "strikePercentage": "-.--",
+    "hitBatsmen": 0,
+    "balks": 0,
+    "wildPitches": 0,
+    "pickoffs": 0,
+    "rbi": 0,
+    "gamesFinished": 0,
+    "runsScoredPer9": "-.--",
+    "homeRunsPer9": "-.--",
+    "inheritedRunners": 0,
+    "inheritedRunnersScored": 0,
+    "catchersInterference": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "passedBall": 0,
+    "popOuts": 0,
+    "lineOuts": 0
+  }
+}
+[2025-06-10T01:22:11.871Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:11.871Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:11.871Z] 📊 Raw stats for Emerson Hancock (earned_runs): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {
+    "summary": "0.0 IP, 0 ER, 0 K, 0 BB",
+    "gamesPlayed": 0,
+    "gamesStarted": 0,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "numberOfPitches": 0,
+    "inningsPitched": "0.0",
+    "wins": 0,
+    "losses": 0,
+    "saves": 0,
+    "saveOpportunities": 0,
+    "holds": 0,
+    "blownSaves": 0,
+    "earnedRuns": 0,
+    "battersFaced": 0,
+    "outs": 0,
+    "gamesPitched": 0,
+    "completeGames": 0,
+    "shutouts": 0,
+    "balls": 0,
+    "strikes": 0,
+    "strikePercentage": "-.--",
+    "hitBatsmen": 0,
+    "balks": 0,
+    "wildPitches": 0,
+    "pickoffs": 0,
+    "rbi": 0,
+    "gamesFinished": 0,
+    "runsScoredPer9": "-.--",
+    "homeRunsPer9": "-.--",
+    "inheritedRunners": 0,
+    "inheritedRunnersScored": 0,
+    "catchersInterference": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "passedBall": 0,
+    "popOuts": 0,
+    "lineOuts": 0
+  }
+}
+[2025-06-10T01:22:11.872Z] 🧪 Extracted result for Emerson Hancock (earned_runs): 0
+[2025-06-10T01:22:11.922Z] ✅ Updated prop 7f8838aa-921f-443f-a58c-b2ab33d11cb0 → win
+[2025-06-10T01:22:11.922Z] 📡 Checking prop: Emerson Hancock - outs_recorded
+[2025-06-10T01:22:11.923Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "676106",
+  "player_name": "Emerson Hancock",
+  "game_id": 777577,
+  "team": "SEA",
+  "prop_type": "outs_recorded"
+}
+[2025-06-10T01:22:11.923Z] 📡 Resolving stat for Emerson Hancock (outs_recorded) — Game ID: 777577
+[2025-06-10T01:22:11.923Z] 📡 Fetching boxscore for game 777577
+[2025-06-10T01:22:11.923Z] 🆔 Looking for player ID: 676106
+[2025-06-10T01:22:11.942Z] 📊 Raw stats for Emerson Hancock (outs_recorded): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {
+    "summary": "0.0 IP, 0 ER, 0 K, 0 BB",
+    "gamesPlayed": 0,
+    "gamesStarted": 0,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "numberOfPitches": 0,
+    "inningsPitched": "0.0",
+    "wins": 0,
+    "losses": 0,
+    "saves": 0,
+    "saveOpportunities": 0,
+    "holds": 0,
+    "blownSaves": 0,
+    "earnedRuns": 0,
+    "battersFaced": 0,
+    "outs": 0,
+    "gamesPitched": 0,
+    "completeGames": 0,
+    "shutouts": 0,
+    "balls": 0,
+    "strikes": 0,
+    "strikePercentage": "-.--",
+    "hitBatsmen": 0,
+    "balks": 0,
+    "wildPitches": 0,
+    "pickoffs": 0,
+    "rbi": 0,
+    "gamesFinished": 0,
+    "runsScoredPer9": "-.--",
+    "homeRunsPer9": "-.--",
+    "inheritedRunners": 0,
+    "inheritedRunnersScored": 0,
+    "catchersInterference": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "passedBall": 0,
+    "popOuts": 0,
+    "lineOuts": 0
+  }
+}
+[2025-06-10T01:22:11.943Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:11.943Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:11.943Z] 📊 Raw stats for Emerson Hancock (outs_recorded): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {
+    "summary": "0.0 IP, 0 ER, 0 K, 0 BB",
+    "gamesPlayed": 0,
+    "gamesStarted": 0,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "numberOfPitches": 0,
+    "inningsPitched": "0.0",
+    "wins": 0,
+    "losses": 0,
+    "saves": 0,
+    "saveOpportunities": 0,
+    "holds": 0,
+    "blownSaves": 0,
+    "earnedRuns": 0,
+    "battersFaced": 0,
+    "outs": 0,
+    "gamesPitched": 0,
+    "completeGames": 0,
+    "shutouts": 0,
+    "balls": 0,
+    "strikes": 0,
+    "strikePercentage": "-.--",
+    "hitBatsmen": 0,
+    "balks": 0,
+    "wildPitches": 0,
+    "pickoffs": 0,
+    "rbi": 0,
+    "gamesFinished": 0,
+    "runsScoredPer9": "-.--",
+    "homeRunsPer9": "-.--",
+    "inheritedRunners": 0,
+    "inheritedRunnersScored": 0,
+    "catchersInterference": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "passedBall": 0,
+    "popOuts": 0,
+    "lineOuts": 0
+  }
+}
+[2025-06-10T01:22:11.943Z] 🧪 Extracted result for Emerson Hancock (outs_recorded): 0
+[2025-06-10T01:22:11.999Z] ✅ Updated prop b6013a83-3e7e-40ae-8cd1-409c5d44f83f → loss
+[2025-06-10T01:22:12.000Z] 📡 Checking prop: Kevin Newman - hits
+[2025-06-10T01:22:12.000Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "621028",
+  "player_name": "Kevin Newman",
+  "game_id": 777576,
+  "team": "LAA",
+  "prop_type": "hits"
+}
+[2025-06-10T01:22:12.000Z] 📡 Resolving stat for Kevin Newman (hits) — Game ID: 777576
+[2025-06-10T01:22:12.000Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:12.000Z] 🆔 Looking for player ID: 621028
+[2025-06-10T01:22:12.020Z] 📊 Raw stats for Kevin Newman (hits): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.020Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:12.021Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:12.021Z] 📊 Raw stats for Kevin Newman (hits): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.021Z] 🧪 Extracted result for Kevin Newman (hits): 0
+[2025-06-10T01:22:12.083Z] ✅ Updated prop 6876159e-bbc8-414e-870f-f4548468b88f → win
+[2025-06-10T01:22:12.083Z] 📡 Checking prop: Taylor Ward - strikeouts_batting
+[2025-06-10T01:22:12.084Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "621493",
+  "player_name": "Taylor Ward",
+  "game_id": 777576,
+  "team": "LAA",
+  "prop_type": "strikeouts_batting"
+}
+[2025-06-10T01:22:12.084Z] 📡 Resolving stat for Taylor Ward (strikeouts_batting) — Game ID: 777576
+[2025-06-10T01:22:12.084Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:12.084Z] 🆔 Looking for player ID: 621493
+[2025-06-10T01:22:12.106Z] 📊 Raw stats for Taylor Ward (strikeouts_batting): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.106Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:12.107Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:12.107Z] 📊 Raw stats for Taylor Ward (strikeouts_batting): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.107Z] 🧪 Extracted result for Taylor Ward (strikeouts_batting): 0
+[2025-06-10T01:22:12.172Z] ✅ Updated prop c96da5d2-8754-4b09-bd1c-0bb08af54fd2 → loss
+[2025-06-10T01:22:12.173Z] 📡 Checking prop: Taylor Ward - singles
+[2025-06-10T01:22:12.173Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "621493",
+  "player_name": "Taylor Ward",
+  "game_id": 777576,
+  "team": "LAA",
+  "prop_type": "singles"
+}
+[2025-06-10T01:22:12.173Z] 📡 Resolving stat for Taylor Ward (singles) — Game ID: 777576
+[2025-06-10T01:22:12.173Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:12.173Z] 🆔 Looking for player ID: 621493
+[2025-06-10T01:22:12.191Z] 📊 Raw stats for Taylor Ward (singles): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.191Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:12.192Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:12.192Z] 📊 Raw stats for Taylor Ward (singles): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.192Z] 🧪 Extracted result for Taylor Ward (singles): 0
+[2025-06-10T01:22:12.248Z] ✅ Updated prop 74829dee-5f3a-445f-a40b-89d112ae6bea → win
+[2025-06-10T01:22:12.248Z] 📡 Checking prop: Denzel Clarke - hits
+[2025-06-10T01:22:12.249Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "672016",
+  "player_name": "Denzel Clarke",
+  "game_id": 777576,
+  "team": "ATH",
+  "prop_type": "hits"
+}
+[2025-06-10T01:22:12.249Z] 📡 Resolving stat for Denzel Clarke (hits) — Game ID: 777576
+[2025-06-10T01:22:12.249Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:12.249Z] 🆔 Looking for player ID: 672016
+[2025-06-10T01:22:12.273Z] 📊 Raw stats for Denzel Clarke (hits): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.274Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:12.274Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:12.274Z] 📊 Raw stats for Denzel Clarke (hits): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.274Z] 🧪 Extracted result for Denzel Clarke (hits): 0
+[2025-06-10T01:22:12.333Z] ✅ Updated prop 772cad4b-5be5-4849-926f-2eb100323e02 → loss
+[2025-06-10T01:22:12.333Z] 📡 Checking prop: Emerson Hancock - strikeouts_pitching
+[2025-06-10T01:22:12.333Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "676106",
+  "player_name": "Emerson Hancock",
+  "game_id": 777577,
+  "team": "SEA",
+  "prop_type": "strikeouts_pitching"
+}
+[2025-06-10T01:22:12.334Z] 📡 Resolving stat for Emerson Hancock (strikeouts_pitching) — Game ID: 777577
+[2025-06-10T01:22:12.334Z] 📡 Fetching boxscore for game 777577
+[2025-06-10T01:22:12.334Z] 🆔 Looking for player ID: 676106
+[2025-06-10T01:22:12.352Z] 📊 Raw stats for Emerson Hancock (strikeouts_pitching): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {
+    "summary": "0.0 IP, 0 ER, 0 K, 0 BB",
+    "gamesPlayed": 0,
+    "gamesStarted": 0,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "numberOfPitches": 0,
+    "inningsPitched": "0.0",
+    "wins": 0,
+    "losses": 0,
+    "saves": 0,
+    "saveOpportunities": 0,
+    "holds": 0,
+    "blownSaves": 0,
+    "earnedRuns": 0,
+    "battersFaced": 0,
+    "outs": 0,
+    "gamesPitched": 0,
+    "completeGames": 0,
+    "shutouts": 0,
+    "balls": 0,
+    "strikes": 0,
+    "strikePercentage": "-.--",
+    "hitBatsmen": 0,
+    "balks": 0,
+    "wildPitches": 0,
+    "pickoffs": 0,
+    "rbi": 0,
+    "gamesFinished": 0,
+    "runsScoredPer9": "-.--",
+    "homeRunsPer9": "-.--",
+    "inheritedRunners": 0,
+    "inheritedRunnersScored": 0,
+    "catchersInterference": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "passedBall": 0,
+    "popOuts": 0,
+    "lineOuts": 0
+  }
+}
+[2025-06-10T01:22:12.353Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:12.353Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:12.353Z] 📊 Raw stats for Emerson Hancock (strikeouts_pitching): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {
+    "summary": "0.0 IP, 0 ER, 0 K, 0 BB",
+    "gamesPlayed": 0,
+    "gamesStarted": 0,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "numberOfPitches": 0,
+    "inningsPitched": "0.0",
+    "wins": 0,
+    "losses": 0,
+    "saves": 0,
+    "saveOpportunities": 0,
+    "holds": 0,
+    "blownSaves": 0,
+    "earnedRuns": 0,
+    "battersFaced": 0,
+    "outs": 0,
+    "gamesPitched": 0,
+    "completeGames": 0,
+    "shutouts": 0,
+    "balls": 0,
+    "strikes": 0,
+    "strikePercentage": "-.--",
+    "hitBatsmen": 0,
+    "balks": 0,
+    "wildPitches": 0,
+    "pickoffs": 0,
+    "rbi": 0,
+    "gamesFinished": 0,
+    "runsScoredPer9": "-.--",
+    "homeRunsPer9": "-.--",
+    "inheritedRunners": 0,
+    "inheritedRunnersScored": 0,
+    "catchersInterference": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "passedBall": 0,
+    "popOuts": 0,
+    "lineOuts": 0
+  }
+}
+[2025-06-10T01:22:12.353Z] 🧪 Extracted result for Emerson Hancock (strikeouts_pitching): 0
+[2025-06-10T01:22:12.449Z] ✅ Updated prop ab0d293d-ee1b-43ed-80e4-46cd034f7a51 → loss
+[2025-06-10T01:22:12.450Z] 📡 Checking prop: Corbin Carroll - runs_scored
+[2025-06-10T01:22:12.450Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "682998",
+  "player_name": "Corbin Carroll",
+  "game_id": 777577,
+  "team": "AZ",
+  "prop_type": "runs_scored"
+}
+[2025-06-10T01:22:12.451Z] 📡 Resolving stat for Corbin Carroll (runs_scored) — Game ID: 777577
+[2025-06-10T01:22:12.451Z] 📡 Fetching boxscore for game 777577
+[2025-06-10T01:22:12.451Z] 🆔 Looking for player ID: 682998
+[2025-06-10T01:22:12.468Z] 📊 Raw stats for Corbin Carroll (runs_scored): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.468Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:12.469Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:12.469Z] 📊 Raw stats for Corbin Carroll (runs_scored): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.469Z] 🧪 Extracted result for Corbin Carroll (runs_scored): 0
+[2025-06-10T01:22:12.526Z] ✅ Updated prop 2a884a79-493b-4d25-9566-c06c79503267 → win
+[2025-06-10T01:22:12.526Z] 📡 Checking prop: Jose Herrera - hits_runs_rbis
+[2025-06-10T01:22:12.527Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "645444",
+  "player_name": "Jose Herrera",
+  "game_id": 777577,
+  "team": "AZ",
+  "prop_type": "hits_runs_rbis"
+}
+[2025-06-10T01:22:12.527Z] 📡 Resolving stat for Jose Herrera (hits_runs_rbis) — Game ID: 777577
+[2025-06-10T01:22:12.527Z] 📡 Fetching boxscore for game 777577
+[2025-06-10T01:22:12.527Z] 🆔 Looking for player ID: 645444
+[2025-06-10T01:22:12.545Z] 📊 Raw stats for Jose Herrera (hits_runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.545Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:12.545Z] [COMBO] hits_runs_rbis input: {
+  "hits": 0,
+  "runs": 0,
+  "rbi": 0
+}
+[2025-06-10T01:22:12.545Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:12.545Z] 📊 Raw stats for Jose Herrera (hits_runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.546Z] 🧪 Extracted result for Jose Herrera (hits_runs_rbis): 0
+[2025-06-10T01:22:12.606Z] ✅ Updated prop 77fc8f70-99f6-4871-98b3-b09ddef017b0 → win
+[2025-06-10T01:22:12.606Z] 📡 Checking prop: Cal Raleigh - hits
+[2025-06-10T01:22:12.606Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "663728",
+  "player_name": "Cal Raleigh",
+  "game_id": 777577,
+  "team": "SEA",
+  "prop_type": "hits"
+}
+[2025-06-10T01:22:12.607Z] 📡 Resolving stat for Cal Raleigh (hits) — Game ID: 777577
+[2025-06-10T01:22:12.607Z] 📡 Fetching boxscore for game 777577
+[2025-06-10T01:22:12.607Z] 🆔 Looking for player ID: 663728
+[2025-06-10T01:22:12.625Z] 📊 Raw stats for Cal Raleigh (hits): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.625Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:12.626Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:12.626Z] 📊 Raw stats for Cal Raleigh (hits): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.626Z] 🧪 Extracted result for Cal Raleigh (hits): 0
+[2025-06-10T01:22:12.693Z] ✅ Updated prop 112af46c-7271-44c3-b2d0-348e097d17a8 → loss
+[2025-06-10T01:22:12.694Z] 📡 Checking prop: Pavin Smith - hits_runs_rbis
+[2025-06-10T01:22:12.694Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "656976",
+  "player_name": "Pavin Smith",
+  "game_id": 777577,
+  "team": "AZ",
+  "prop_type": "hits_runs_rbis"
+}
+[2025-06-10T01:22:12.695Z] 📡 Resolving stat for Pavin Smith (hits_runs_rbis) — Game ID: 777577
+[2025-06-10T01:22:12.695Z] 📡 Fetching boxscore for game 777577
+[2025-06-10T01:22:12.695Z] 🆔 Looking for player ID: 656976
+[2025-06-10T01:22:12.712Z] 📊 Raw stats for Pavin Smith (hits_runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.712Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:12.713Z] [COMBO] hits_runs_rbis input: {
+  "hits": 0,
+  "runs": 0,
+  "rbi": 0
+}
+[2025-06-10T01:22:12.713Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:12.713Z] 📊 Raw stats for Pavin Smith (hits_runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.713Z] 🧪 Extracted result for Pavin Smith (hits_runs_rbis): 0
+[2025-06-10T01:22:12.857Z] ✅ Updated prop 7fdf31eb-3f98-48c3-adbe-71f53fd2bcfc → win
+[2025-06-10T01:22:12.858Z] 📡 Checking prop: Max Muncy - strikeouts_batting
+[2025-06-10T01:22:12.858Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "571970",
+  "player_name": "Max Muncy",
+  "game_id": 777579,
+  "team": "LAD",
+  "prop_type": "strikeouts_batting"
+}
+[2025-06-10T01:22:12.858Z] 📡 Resolving stat for Max Muncy (strikeouts_batting) — Game ID: 777579
+[2025-06-10T01:22:12.859Z] 📡 Fetching boxscore for game 777579
+[2025-06-10T01:22:12.859Z] 🆔 Looking for player ID: 571970
+[2025-06-10T01:22:12.878Z] 📊 Raw stats for Max Muncy (strikeouts_batting): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.879Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:12.879Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:12.879Z] 📊 Raw stats for Max Muncy (strikeouts_batting): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.879Z] 🧪 Extracted result for Max Muncy (strikeouts_batting): 0
+[2025-06-10T01:22:12.945Z] ✅ Updated prop 4b96740d-7a81-42fb-9633-27d68469ee05 → win
+[2025-06-10T01:22:12.946Z] 📡 Checking prop: Manny Machado - runs_scored
+[2025-06-10T01:22:12.946Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "592518",
+  "player_name": "Manny Machado",
+  "game_id": 777579,
+  "team": "SD",
+  "prop_type": "runs_scored"
+}
+[2025-06-10T01:22:12.947Z] 📡 Resolving stat for Manny Machado (runs_scored) — Game ID: 777579
+[2025-06-10T01:22:12.947Z] 📡 Fetching boxscore for game 777579
+[2025-06-10T01:22:12.947Z] 🆔 Looking for player ID: 592518
+[2025-06-10T01:22:12.966Z] 📊 Raw stats for Manny Machado (runs_scored): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.967Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:12.967Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:12.967Z] 📊 Raw stats for Manny Machado (runs_scored): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:12.967Z] 🧪 Extracted result for Manny Machado (runs_scored): 0
+[2025-06-10T01:22:13.034Z] ✅ Updated prop cee97a01-2afd-4681-9af4-2430c6dfcaef → loss
+[2025-06-10T01:22:13.035Z] 📡 Checking prop: Fernando Tatis Jr. - runs_scored
+[2025-06-10T01:22:13.035Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "665487",
+  "player_name": "Fernando Tatis Jr.",
+  "game_id": 777579,
+  "team": "SD",
+  "prop_type": "runs_scored"
+}
+[2025-06-10T01:22:13.035Z] 📡 Resolving stat for Fernando Tatis Jr. (runs_scored) — Game ID: 777579
+[2025-06-10T01:22:13.036Z] 📡 Fetching boxscore for game 777579
+[2025-06-10T01:22:13.036Z] 🆔 Looking for player ID: 665487
+[2025-06-10T01:22:13.052Z] 📊 Raw stats for Fernando Tatis Jr. (runs_scored): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.054Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:13.054Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:13.054Z] 📊 Raw stats for Fernando Tatis Jr. (runs_scored): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.054Z] 🧪 Extracted result for Fernando Tatis Jr. (runs_scored): 0
+[2025-06-10T01:22:13.130Z] ✅ Updated prop 2073ece6-b997-48a2-b6c5-2b367d430e54 → win
+[2025-06-10T01:22:13.131Z] 📡 Checking prop: Fernando Tatis Jr. - runs_rbis
+[2025-06-10T01:22:13.131Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "665487",
+  "player_name": "Fernando Tatis Jr.",
+  "game_id": 777579,
+  "team": "SD",
+  "prop_type": "runs_rbis"
+}
+[2025-06-10T01:22:13.131Z] 📡 Resolving stat for Fernando Tatis Jr. (runs_rbis) — Game ID: 777579
+[2025-06-10T01:22:13.131Z] 📡 Fetching boxscore for game 777579
+[2025-06-10T01:22:13.131Z] 🆔 Looking for player ID: 665487
+[2025-06-10T01:22:13.147Z] 📊 Raw stats for Fernando Tatis Jr. (runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.148Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:13.148Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:13.148Z] 📊 Raw stats for Fernando Tatis Jr. (runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.148Z] 🧪 Extracted result for Fernando Tatis Jr. (runs_rbis): 0
+[2025-06-10T01:22:13.206Z] ✅ Updated prop 8a1792f8-aa1d-4f92-bd2d-0a9f42c41f28 → win
+[2025-06-10T01:22:13.207Z] 📡 Checking prop: Gavin Sheets - hits
+[2025-06-10T01:22:13.207Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "657757",
+  "player_name": "Gavin Sheets",
+  "game_id": 777579,
+  "team": "SD",
+  "prop_type": "hits"
+}
+[2025-06-10T01:22:13.207Z] 📡 Resolving stat for Gavin Sheets (hits) — Game ID: 777579
+[2025-06-10T01:22:13.208Z] 📡 Fetching boxscore for game 777579
+[2025-06-10T01:22:13.208Z] 🆔 Looking for player ID: 657757
+[2025-06-10T01:22:13.231Z] 📊 Raw stats for Gavin Sheets (hits): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.232Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:13.232Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:13.232Z] 📊 Raw stats for Gavin Sheets (hits): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.232Z] 🧪 Extracted result for Gavin Sheets (hits): 0
+[2025-06-10T01:22:13.294Z] ✅ Updated prop ec4c4206-d268-410a-842f-8f142fc6f2f1 → win
+[2025-06-10T01:22:13.294Z] 📡 Checking prop: Xander Bogaerts - total_bases
+[2025-06-10T01:22:13.295Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "593428",
+  "player_name": "Xander Bogaerts",
+  "game_id": 777579,
+  "team": "SD",
+  "prop_type": "total_bases"
+}
+[2025-06-10T01:22:13.295Z] 📡 Resolving stat for Xander Bogaerts (total_bases) — Game ID: 777579
+[2025-06-10T01:22:13.295Z] 📡 Fetching boxscore for game 777579
+[2025-06-10T01:22:13.295Z] 🆔 Looking for player ID: 593428
+[2025-06-10T01:22:13.314Z] 📊 Raw stats for Xander Bogaerts (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.314Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:13.314Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:13.314Z] 📊 Raw stats for Xander Bogaerts (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.314Z] 🧪 Extracted result for Xander Bogaerts (total_bases): 0
+[2025-06-10T01:22:13.375Z] ✅ Updated prop a25ff778-5a09-4a7a-823a-c68c5a9e63b5 → win
+[2025-06-10T01:22:13.376Z] 📡 Checking prop: Corbin Carroll - hits_runs_rbis
+[2025-06-10T01:22:13.376Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "682998",
+  "player_name": "Corbin Carroll",
+  "game_id": 777577,
+  "team": "AZ",
+  "prop_type": "hits_runs_rbis"
+}
+[2025-06-10T01:22:13.376Z] 📡 Resolving stat for Corbin Carroll (hits_runs_rbis) — Game ID: 777577
+[2025-06-10T01:22:13.376Z] 📡 Fetching boxscore for game 777577
+[2025-06-10T01:22:13.376Z] 🆔 Looking for player ID: 682998
+[2025-06-10T01:22:13.395Z] 📊 Raw stats for Corbin Carroll (hits_runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.396Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:13.396Z] [COMBO] hits_runs_rbis input: {
+  "hits": 0,
+  "runs": 0,
+  "rbi": 0
+}
+[2025-06-10T01:22:13.396Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:13.396Z] 📊 Raw stats for Corbin Carroll (hits_runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.396Z] 🧪 Extracted result for Corbin Carroll (hits_runs_rbis): 0
+[2025-06-10T01:22:13.459Z] ✅ Updated prop 8e9ef5b2-344f-4ad1-8d54-4169f8707702 → win
+[2025-06-10T01:22:13.460Z] 📡 Checking prop: Corbin Carroll - hits
+[2025-06-10T01:22:13.461Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "682998",
+  "player_name": "Corbin Carroll",
+  "game_id": 777577,
+  "team": "AZ",
+  "prop_type": "hits"
+}
+[2025-06-10T01:22:13.461Z] 📡 Resolving stat for Corbin Carroll (hits) — Game ID: 777577
+[2025-06-10T01:22:13.461Z] 📡 Fetching boxscore for game 777577
+[2025-06-10T01:22:13.461Z] 🆔 Looking for player ID: 682998
+[2025-06-10T01:22:13.480Z] 📊 Raw stats for Corbin Carroll (hits): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.481Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:13.481Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:13.481Z] 📊 Raw stats for Corbin Carroll (hits): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.481Z] 🧪 Extracted result for Corbin Carroll (hits): 0
+[2025-06-10T01:22:13.540Z] ✅ Updated prop 8a7d41e3-cb44-4632-8f74-303c77001a1f → win
+[2025-06-10T01:22:13.540Z] 📡 Checking prop: Corbin Carroll - total_bases
+[2025-06-10T01:22:13.540Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "682998",
+  "player_name": "Corbin Carroll",
+  "game_id": 777577,
+  "team": "AZ",
+  "prop_type": "total_bases"
+}
+[2025-06-10T01:22:13.541Z] 📡 Resolving stat for Corbin Carroll (total_bases) — Game ID: 777577
+[2025-06-10T01:22:13.541Z] 📡 Fetching boxscore for game 777577
+[2025-06-10T01:22:13.541Z] 🆔 Looking for player ID: 682998
+[2025-06-10T01:22:13.557Z] 📊 Raw stats for Corbin Carroll (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.558Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:13.558Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:13.558Z] 📊 Raw stats for Corbin Carroll (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.558Z] 🧪 Extracted result for Corbin Carroll (total_bases): 0
+[2025-06-10T01:22:13.614Z] ✅ Updated prop ceba1264-2297-4019-abcb-48101947d1ff → win
+[2025-06-10T01:22:13.615Z] 📡 Checking prop: Pavin Smith - runs_rbis
+[2025-06-10T01:22:13.615Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "656976",
+  "player_name": "Pavin Smith",
+  "game_id": 777577,
+  "team": "AZ",
+  "prop_type": "runs_rbis"
+}
+[2025-06-10T01:22:13.616Z] 📡 Resolving stat for Pavin Smith (runs_rbis) — Game ID: 777577
+[2025-06-10T01:22:13.616Z] 📡 Fetching boxscore for game 777577
+[2025-06-10T01:22:13.616Z] 🆔 Looking for player ID: 656976
+[2025-06-10T01:22:13.636Z] 📊 Raw stats for Pavin Smith (runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.637Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:13.638Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:13.638Z] 📊 Raw stats for Pavin Smith (runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.638Z] 🧪 Extracted result for Pavin Smith (runs_rbis): 0
+[2025-06-10T01:22:13.700Z] ✅ Updated prop d52fb5c2-97bb-46d2-a8e4-4403b617aec7 → win
+[2025-06-10T01:22:13.701Z] 📡 Checking prop: Cal Raleigh - runs_scored
+[2025-06-10T01:22:13.701Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "663728",
+  "player_name": "Cal Raleigh",
+  "game_id": 777577,
+  "team": "SEA",
+  "prop_type": "runs_scored"
+}
+[2025-06-10T01:22:13.701Z] 📡 Resolving stat for Cal Raleigh (runs_scored) — Game ID: 777577
+[2025-06-10T01:22:13.701Z] 📡 Fetching boxscore for game 777577
+[2025-06-10T01:22:13.702Z] 🆔 Looking for player ID: 663728
+[2025-06-10T01:22:13.722Z] 📊 Raw stats for Cal Raleigh (runs_scored): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.722Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:13.722Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:13.723Z] 📊 Raw stats for Cal Raleigh (runs_scored): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.723Z] 🧪 Extracted result for Cal Raleigh (runs_scored): 0
+[2025-06-10T01:22:13.783Z] ✅ Updated prop 7c0b4361-d7dd-43fc-8b97-e45b40e539de → loss
+[2025-06-10T01:22:13.784Z] 📡 Checking prop: Jacob Wilson - total_bases
+[2025-06-10T01:22:13.784Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "805779",
+  "player_name": "Jacob Wilson",
+  "game_id": 777576,
+  "team": "ATH",
+  "prop_type": "total_bases"
+}
+[2025-06-10T01:22:13.785Z] 📡 Resolving stat for Jacob Wilson (total_bases) — Game ID: 777576
+[2025-06-10T01:22:13.786Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:13.786Z] 🆔 Looking for player ID: 805779
+[2025-06-10T01:22:13.802Z] 📊 Raw stats for Jacob Wilson (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.803Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:13.803Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:13.803Z] 📊 Raw stats for Jacob Wilson (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.804Z] 🧪 Extracted result for Jacob Wilson (total_bases): 0
+[2025-06-10T01:22:13.863Z] ✅ Updated prop 5e4f0031-ff23-4bdb-b0fa-5e1f85cc4a1a → loss
+[2025-06-10T01:22:13.864Z] 📡 Checking prop: Cal Raleigh - total_bases
+[2025-06-10T01:22:13.865Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "663728",
+  "player_name": "Cal Raleigh",
+  "game_id": 777577,
+  "team": "SEA",
+  "prop_type": "total_bases"
+}
+[2025-06-10T01:22:13.865Z] 📡 Resolving stat for Cal Raleigh (total_bases) — Game ID: 777577
+[2025-06-10T01:22:13.865Z] 📡 Fetching boxscore for game 777577
+[2025-06-10T01:22:13.865Z] 🆔 Looking for player ID: 663728
+[2025-06-10T01:22:13.885Z] 📊 Raw stats for Cal Raleigh (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.886Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:13.886Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:13.886Z] 📊 Raw stats for Cal Raleigh (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.886Z] 🧪 Extracted result for Cal Raleigh (total_bases): 0
+[2025-06-10T01:22:13.947Z] ✅ Updated prop 59f675ac-ce69-470e-9024-505afd19f029 → loss
+[2025-06-10T01:22:13.948Z] 📡 Checking prop: Alek Thomas - total_bases
+[2025-06-10T01:22:13.949Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "677950",
+  "player_name": "Alek Thomas",
+  "game_id": 777577,
+  "team": "AZ",
+  "prop_type": "total_bases"
+}
+[2025-06-10T01:22:13.949Z] 📡 Resolving stat for Alek Thomas (total_bases) — Game ID: 777577
+[2025-06-10T01:22:13.949Z] 📡 Fetching boxscore for game 777577
+[2025-06-10T01:22:13.949Z] 🆔 Looking for player ID: 677950
+[2025-06-10T01:22:13.970Z] 📊 Raw stats for Alek Thomas (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.971Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:13.972Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:13.972Z] 📊 Raw stats for Alek Thomas (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:13.972Z] 🧪 Extracted result for Alek Thomas (total_bases): 0
+[2025-06-10T01:22:14.050Z] ✅ Updated prop 2d7ace6e-c6ef-4b76-8509-448002400f20 → win
+[2025-06-10T01:22:14.051Z] 📡 Checking prop: Max Muncy - walks
+[2025-06-10T01:22:14.052Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "571970",
+  "player_name": "Max Muncy",
+  "game_id": 777579,
+  "team": "LAD",
+  "prop_type": "walks"
+}
+[2025-06-10T01:22:14.052Z] 📡 Resolving stat for Max Muncy (walks) — Game ID: 777579
+[2025-06-10T01:22:14.052Z] 📡 Fetching boxscore for game 777579
+[2025-06-10T01:22:14.052Z] 🆔 Looking for player ID: 571970
+[2025-06-10T01:22:14.067Z] 📊 Raw stats for Max Muncy (walks): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:14.067Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:14.068Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:14.068Z] 📊 Raw stats for Max Muncy (walks): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:14.068Z] 🧪 Extracted result for Max Muncy (walks): 0
+[2025-06-10T01:22:14.124Z] ✅ Updated prop 5f2141ce-aa29-420c-8f2f-b96827365066 → loss
+[2025-06-10T01:22:14.124Z] 📡 Checking prop: Gavin Sheets - total_bases
+[2025-06-10T01:22:14.125Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "657757",
+  "player_name": "Gavin Sheets",
+  "game_id": 777579,
+  "team": "SD",
+  "prop_type": "total_bases"
+}
+[2025-06-10T01:22:14.125Z] 📡 Resolving stat for Gavin Sheets (total_bases) — Game ID: 777579
+[2025-06-10T01:22:14.125Z] 📡 Fetching boxscore for game 777579
+[2025-06-10T01:22:14.125Z] 🆔 Looking for player ID: 657757
+[2025-06-10T01:22:14.143Z] 📊 Raw stats for Gavin Sheets (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:14.143Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:14.144Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:14.144Z] 📊 Raw stats for Gavin Sheets (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:14.144Z] 🧪 Extracted result for Gavin Sheets (total_bases): 0
+[2025-06-10T01:22:14.224Z] ✅ Updated prop 018e9602-199c-4603-9c96-fd0356e18868 → win
+[2025-06-10T01:22:14.224Z] 📡 Checking prop: Fernando Tatis Jr. - singles
+[2025-06-10T01:22:14.225Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "665487",
+  "player_name": "Fernando Tatis Jr.",
+  "game_id": 777579,
+  "team": "SD",
+  "prop_type": "singles"
+}
+[2025-06-10T01:22:14.225Z] 📡 Resolving stat for Fernando Tatis Jr. (singles) — Game ID: 777579
+[2025-06-10T01:22:14.225Z] 📡 Fetching boxscore for game 777579
+[2025-06-10T01:22:14.225Z] 🆔 Looking for player ID: 665487
+[2025-06-10T01:22:14.244Z] 📊 Raw stats for Fernando Tatis Jr. (singles): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:14.245Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:14.245Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:14.245Z] 📊 Raw stats for Fernando Tatis Jr. (singles): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:14.245Z] 🧪 Extracted result for Fernando Tatis Jr. (singles): 0
+[2025-06-10T01:22:14.300Z] ✅ Updated prop e5a5d48b-dd22-488c-b24b-f35d29004f64 → win
+[2025-06-10T01:22:14.300Z] 📡 Checking prop: Jose Herrera - runs_scored
+[2025-06-10T01:22:14.300Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "645444",
+  "player_name": "Jose Herrera",
+  "game_id": 777577,
+  "team": "AZ",
+  "prop_type": "runs_scored"
+}
+[2025-06-10T01:22:14.301Z] 📡 Resolving stat for Jose Herrera (runs_scored) — Game ID: 777577
+[2025-06-10T01:22:14.301Z] 📡 Fetching boxscore for game 777577
+[2025-06-10T01:22:14.301Z] 🆔 Looking for player ID: 645444
+[2025-06-10T01:22:14.319Z] 📊 Raw stats for Jose Herrera (runs_scored): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:14.319Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:14.320Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:14.320Z] 📊 Raw stats for Jose Herrera (runs_scored): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:14.320Z] 🧪 Extracted result for Jose Herrera (runs_scored): 0
+[2025-06-10T01:22:14.377Z] ✅ Updated prop 29a8a1b3-7d7c-4961-9e44-e75dea45cc21 → win
+[2025-06-10T01:22:14.377Z] 📡 Checking prop: Jose Herrera - runs_rbis
+[2025-06-10T01:22:14.377Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "645444",
+  "player_name": "Jose Herrera",
+  "game_id": 777577,
+  "team": "AZ",
+  "prop_type": "runs_rbis"
+}
+[2025-06-10T01:22:14.378Z] 📡 Resolving stat for Jose Herrera (runs_rbis) — Game ID: 777577
+[2025-06-10T01:22:14.378Z] 📡 Fetching boxscore for game 777577
+[2025-06-10T01:22:14.378Z] 🆔 Looking for player ID: 645444
+[2025-06-10T01:22:14.398Z] 📊 Raw stats for Jose Herrera (runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:14.399Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:14.399Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:14.399Z] 📊 Raw stats for Jose Herrera (runs_rbis): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:14.400Z] 🧪 Extracted result for Jose Herrera (runs_rbis): 0
+[2025-06-10T01:22:14.455Z] ✅ Updated prop 1b16dee1-f6f7-4da8-b82f-b10f050b79d2 → win
+[2025-06-10T01:22:14.456Z] 📡 Checking prop: Pavin Smith - runs_scored
+[2025-06-10T01:22:14.456Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "656976",
+  "player_name": "Pavin Smith",
+  "game_id": 777577,
+  "team": "AZ",
+  "prop_type": "runs_scored"
+}
+[2025-06-10T01:22:14.456Z] 📡 Resolving stat for Pavin Smith (runs_scored) — Game ID: 777577
+[2025-06-10T01:22:14.456Z] 📡 Fetching boxscore for game 777577
+[2025-06-10T01:22:14.456Z] 🆔 Looking for player ID: 656976
+[2025-06-10T01:22:14.474Z] 📊 Raw stats for Pavin Smith (runs_scored): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:14.474Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:14.474Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:14.474Z] 📊 Raw stats for Pavin Smith (runs_scored): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:14.475Z] 🧪 Extracted result for Pavin Smith (runs_scored): 0
+[2025-06-10T01:22:14.534Z] ✅ Updated prop 82869da9-a4bb-47c7-b7da-cff16ca8d90d → win
+[2025-06-10T01:22:14.534Z] 📡 Checking prop: Denzel Clarke - total_bases
+[2025-06-10T01:22:14.535Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "672016",
+  "player_name": "Denzel Clarke",
+  "game_id": 777576,
+  "team": "ATH",
+  "prop_type": "total_bases"
+}
+[2025-06-10T01:22:14.535Z] 📡 Resolving stat for Denzel Clarke (total_bases) — Game ID: 777576
+[2025-06-10T01:22:14.535Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:14.535Z] 🆔 Looking for player ID: 672016
+[2025-06-10T01:22:14.557Z] 📊 Raw stats for Denzel Clarke (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:14.558Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:14.559Z] 🎯 Extracted value from boxscore: 0
+[2025-06-10T01:22:14.559Z] 📊 Raw stats for Denzel Clarke (total_bases): {
+  "batting": {
+    "summary": "0-0",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 0,
+    "airOuts": 0,
+    "runs": 0,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 0,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 0,
+    "atBats": 0,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 0,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "pitching": {}
+}
+[2025-06-10T01:22:14.559Z] 🧪 Extracted result for Denzel Clarke (total_bases): 0
+[2025-06-10T01:22:14.622Z] ✅ Updated prop 86cd1489-22c7-43ea-81bc-fea74888af84 → loss
+[2025-06-10T01:22:14.622Z] 📡 Checking prop: Logan O'Hoppe - hits_runs_rbis
+[2025-06-10T01:22:14.624Z] 🧪 Calling resolveStatForPlayer with: {
+  "player_id": "681351",
+  "player_name": "Logan O'Hoppe",
+  "game_id": 777576,
+  "team": "LAA",
+  "prop_type": "hits_runs_rbis"
+}
+[2025-06-10T01:22:14.625Z] 📡 Resolving stat for Logan O'Hoppe (hits_runs_rbis) — Game ID: 777576
+[2025-06-10T01:22:14.625Z] 📡 Fetching boxscore for game 777576
+[2025-06-10T01:22:14.625Z] 🆔 Looking for player ID: 681351
+[2025-06-10T01:22:14.641Z] 📊 Raw stats for Logan O'Hoppe (hits_runs_rbis): {
+  "batting": {},
+  "pitching": {}
+}
+[2025-06-10T01:22:14.642Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching"
+]
+[2025-06-10T01:22:14.642Z] ⚠️ Boxscore stats were invalid for Logan O'Hoppe (hits_runs_rbis)
+[2025-06-10T01:22:14.714Z] [COMBO] hits_runs_rbis input: {}
+[2025-06-10T01:22:14.718Z] 🎯 Final derived value for hits_runs_rbis (681351) in game 777576: null
+[2025-06-10T01:22:14.719Z] 📺 Live fallback result for Logan O'Hoppe: null
+[2025-06-10T01:22:14.719Z] 🧪 Final result for Logan O'Hoppe (hits_runs_rbis) → NaN
+[2025-06-10T01:22:14.720Z] 📊 Raw stats for Logan O'Hoppe (hits_runs_rbis): {
+  "batting": {},
+  "pitching": {}
+}
+[2025-06-10T01:22:14.721Z] 🚷 Marking DNP: result not a valid number for Logan O'Hoppe
+[2025-06-10T01:22:14.792Z] 📡 Checking prop: Jorge Soler - Walks
+[2025-06-10T01:22:14.792Z] 🚫 Invalid prop line value: -3 — skipping
+[2025-06-10T01:22:14.792Z] 📡 Checking prop: James Outman - Singles
+[2025-06-10T01:22:14.793Z] 🚫 Invalid prop line value: -23 — skipping
+[2025-06-10T01:22:14.793Z] 📡 Checking prop: Seth Brown - total_bases
+[2025-06-10T01:22:14.793Z] 🚫 Invalid prop line value: -1.5 — skipping
+[2025-06-10T01:22:14.793Z] 🏁 Custom Batch Summary → ✅ 57 | 🚷 4 | ⏭️ 3 | ❌ 0
+[2025-06-10T01:22:14.793Z] 📅 Scheduling cron job: every 30 minutes (in-season)
+[2025-06-10T01:22:14.793Z] 🔁 Local run: Starting scheduled tasks...
+[2025-06-10T01:22:14.793Z] ⬇️  Downloading hits_model.pkl from Supabase...
+[2025-06-10T01:22:14.908Z] ⚠️ Attempt 1 failed for hits_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:15.980Z] ⚠️ Attempt 2 failed for hits_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:18.071Z] ⚠️ Attempt 3 failed for hits_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:18.071Z] ❌ Error downloading hits_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:18.072Z] ✅ Downloaded hits_model.pkl
+[2025-06-10T01:22:18.072Z] ⬇️  Downloading runs_scored_model.pkl from Supabase...
+[2025-06-10T01:22:18.152Z] ⚠️ Attempt 1 failed for runs_scored_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:19.263Z] ⚠️ Attempt 2 failed for runs_scored_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:21.353Z] ⚠️ Attempt 3 failed for runs_scored_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:21.353Z] ❌ Error downloading runs_scored_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:21.354Z] ✅ Downloaded runs_scored_model.pkl
+[2025-06-10T01:22:21.354Z] ⬇️  Downloading total_bases_model.pkl from Supabase...
+[2025-06-10T01:22:21.439Z] ⚠️ Attempt 1 failed for total_bases_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:22.527Z] ⚠️ Attempt 2 failed for total_bases_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:24.622Z] ⚠️ Attempt 3 failed for total_bases_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:24.623Z] ❌ Error downloading total_bases_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:24.623Z] ✅ Downloaded total_bases_model.pkl
+[2025-06-10T01:22:24.623Z] ⬇️  Downloading rbis_model.pkl from Supabase...
+[2025-06-10T01:22:24.697Z] ⚠️ Attempt 1 failed for rbis_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:25.787Z] ⚠️ Attempt 2 failed for rbis_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:27.863Z] ⚠️ Attempt 3 failed for rbis_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:27.864Z] ❌ Error downloading rbis_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:27.864Z] ✅ Downloaded rbis_model.pkl
+[2025-06-10T01:22:27.865Z] ⬇️  Downloading walks_model.pkl from Supabase...
+[2025-06-10T01:22:27.958Z] ⚠️ Attempt 1 failed for walks_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:29.076Z] ⚠️ Attempt 2 failed for walks_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:31.176Z] ⚠️ Attempt 3 failed for walks_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:31.177Z] ❌ Error downloading walks_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:31.178Z] ✅ Downloaded walks_model.pkl
+[2025-06-10T01:22:31.178Z] ⬇️  Downloading strikeouts_batting_model.pkl from Supabase...
+[2025-06-10T01:22:31.251Z] ⚠️ Attempt 1 failed for strikeouts_batting_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:32.348Z] ⚠️ Attempt 2 failed for strikeouts_batting_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:34.427Z] ⚠️ Attempt 3 failed for strikeouts_batting_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:34.428Z] ❌ Error downloading strikeouts_batting_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:34.428Z] ✅ Downloaded strikeouts_batting_model.pkl
+[2025-06-10T01:22:34.428Z] ⬇️  Downloading strikeouts_pitching_model.pkl from Supabase...
+[2025-06-10T01:22:34.502Z] ⚠️ Attempt 1 failed for strikeouts_pitching_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:35.597Z] ⚠️ Attempt 2 failed for strikeouts_pitching_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:37.690Z] ⚠️ Attempt 3 failed for strikeouts_pitching_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:37.692Z] ❌ Error downloading strikeouts_pitching_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:37.692Z] ✅ Downloaded strikeouts_pitching_model.pkl
+[2025-06-10T01:22:37.692Z] ⬇️  Downloading walks_allowed_model.pkl from Supabase...
+[2025-06-10T01:22:37.769Z] ⚠️ Attempt 1 failed for walks_allowed_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:38.853Z] ⚠️ Attempt 2 failed for walks_allowed_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:40.961Z] ⚠️ Attempt 3 failed for walks_allowed_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:40.962Z] ❌ Error downloading walks_allowed_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:40.962Z] ✅ Downloaded walks_allowed_model.pkl
+[2025-06-10T01:22:40.963Z] ⬇️  Downloading hits_allowed_model.pkl from Supabase...
+[2025-06-10T01:22:41.051Z] ⚠️ Attempt 1 failed for hits_allowed_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:42.133Z] ⚠️ Attempt 2 failed for hits_allowed_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:44.222Z] ⚠️ Attempt 3 failed for hits_allowed_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:44.223Z] ❌ Error downloading hits_allowed_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:44.223Z] ✅ Downloaded hits_allowed_model.pkl
+[2025-06-10T01:22:44.224Z] ⬇️  Downloading home_runs_model.pkl from Supabase...
+[2025-06-10T01:22:44.303Z] ⚠️ Attempt 1 failed for home_runs_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:45.393Z] ⚠️ Attempt 2 failed for home_runs_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:47.492Z] ⚠️ Attempt 3 failed for home_runs_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:47.492Z] ❌ Error downloading home_runs_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:47.492Z] ✅ Downloaded home_runs_model.pkl
+[2025-06-10T01:22:47.492Z] ⬇️  Downloading doubles_model.pkl from Supabase...
+[2025-06-10T01:22:47.576Z] ⚠️ Attempt 1 failed for doubles_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:48.647Z] ⚠️ Attempt 2 failed for doubles_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:50.746Z] ⚠️ Attempt 3 failed for doubles_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:50.747Z] ❌ Error downloading doubles_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:50.747Z] ✅ Downloaded doubles_model.pkl
+[2025-06-10T01:22:50.747Z] ⬇️  Downloading triples_model.pkl from Supabase...
+[2025-06-10T01:22:50.817Z] ⚠️ Attempt 1 failed for triples_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:51.909Z] ⚠️ Attempt 2 failed for triples_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:54.001Z] ⚠️ Attempt 3 failed for triples_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:54.001Z] ❌ Error downloading triples_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:54.001Z] ✅ Downloaded triples_model.pkl
+[2025-06-10T01:22:54.001Z] ⬇️  Downloading singles_model.pkl from Supabase...
+[2025-06-10T01:22:54.084Z] ⚠️ Attempt 1 failed for singles_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:55.186Z] ⚠️ Attempt 2 failed for singles_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:57.262Z] ⚠️ Attempt 3 failed for singles_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:57.262Z] ❌ Error downloading singles_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:57.262Z] ✅ Downloaded singles_model.pkl
+[2025-06-10T01:22:57.263Z] ⬇️  Downloading stolen_bases_model.pkl from Supabase...
+[2025-06-10T01:22:57.373Z] ⚠️ Attempt 1 failed for stolen_bases_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:22:58.471Z] ⚠️ Attempt 2 failed for stolen_bases_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:23:00.556Z] ⚠️ Attempt 3 failed for stolen_bases_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:23:00.556Z] ❌ Error downloading stolen_bases_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:23:00.557Z] ✅ Downloaded stolen_bases_model.pkl
+[2025-06-10T01:23:00.557Z] ⬇️  Downloading runs_rbis_model.pkl from Supabase...
+[2025-06-10T01:23:00.674Z] ⚠️ Attempt 1 failed for runs_rbis_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:23:01.984Z] ⚠️ Attempt 2 failed for runs_rbis_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:23:04.084Z] ⚠️ Attempt 3 failed for runs_rbis_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:23:04.084Z] ❌ Error downloading runs_rbis_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:23:04.084Z] ✅ Downloaded runs_rbis_model.pkl
+[2025-06-10T01:23:04.085Z] ⬇️  Downloading hits_runs_rbis_model.pkl from Supabase...
+[2025-06-10T01:23:04.228Z] ⚠️ Attempt 1 failed for hits_runs_rbis_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:23:05.314Z] ⚠️ Attempt 2 failed for hits_runs_rbis_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:23:07.409Z] ⚠️ Attempt 3 failed for hits_runs_rbis_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:23:07.410Z] ❌ Error downloading hits_runs_rbis_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:23:07.410Z] ✅ Downloaded hits_runs_rbis_model.pkl
+[2025-06-10T01:23:07.501Z] 🔧 Updating 3 props via batch resolution...
+[2025-06-10T01:23:07.501Z] 📡 Checking prop: Jorge Soler - Walks
+[2025-06-10T01:23:07.501Z] 🚫 Invalid prop line value: -3 — skipping
+[2025-06-10T01:23:07.501Z] 📡 Checking prop: James Outman - Singles
+[2025-06-10T01:23:07.501Z] 🚫 Invalid prop line value: -23 — skipping
+[2025-06-10T01:23:07.501Z] 📡 Checking prop: Seth Brown - total_bases
+[2025-06-10T01:23:07.501Z] 🚫 Invalid prop line value: -1.5 — skipping
+[2025-06-10T01:23:07.501Z] 🏁 Custom Batch Summary → ✅ 0 | 🚷 0 | ⏭️ 3 | ❌ 0
+[2025-06-10T01:23:07.501Z] ✅ Local run: All tasks complete.
+
+[2025-06-10T01:30:00.010Z] 🕒 Cron triggered at 2025-06-10T01:30:00.010Z
+[2025-06-10T01:30:00.016Z] 🔁 Scheduled Cron Job: Starting scheduled tasks...
+[2025-06-10T01:30:00.017Z] ⬇️  Downloading hits_model.pkl from Supabase...
+[2025-06-10T01:30:00.406Z] ⚠️ Attempt 1 failed for hits_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:01.718Z] ⚠️ Attempt 2 failed for hits_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:03.843Z] ⚠️ Attempt 3 failed for hits_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:03.844Z] ❌ Error downloading hits_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:03.844Z] ✅ Downloaded hits_model.pkl
+[2025-06-10T01:30:03.844Z] ⬇️  Downloading runs_scored_model.pkl from Supabase...
+[2025-06-10T01:30:03.936Z] ⚠️ Attempt 1 failed for runs_scored_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:05.027Z] ⚠️ Attempt 2 failed for runs_scored_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:07.116Z] ⚠️ Attempt 3 failed for runs_scored_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:07.117Z] ❌ Error downloading runs_scored_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:07.117Z] ✅ Downloaded runs_scored_model.pkl
+[2025-06-10T01:30:07.118Z] ⬇️  Downloading total_bases_model.pkl from Supabase...
+[2025-06-10T01:30:07.228Z] ⚠️ Attempt 1 failed for total_bases_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:08.490Z] ⚠️ Attempt 2 failed for total_bases_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:10.608Z] ⚠️ Attempt 3 failed for total_bases_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:10.609Z] ❌ Error downloading total_bases_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:10.609Z] ✅ Downloaded total_bases_model.pkl
+[2025-06-10T01:30:10.610Z] ⬇️  Downloading rbis_model.pkl from Supabase...
+[2025-06-10T01:30:10.699Z] ⚠️ Attempt 1 failed for rbis_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:11.814Z] ⚠️ Attempt 2 failed for rbis_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:13.915Z] ⚠️ Attempt 3 failed for rbis_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:13.916Z] ❌ Error downloading rbis_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:13.916Z] ✅ Downloaded rbis_model.pkl
+[2025-06-10T01:30:13.916Z] ⬇️  Downloading walks_model.pkl from Supabase...
+[2025-06-10T01:30:14.008Z] ⚠️ Attempt 1 failed for walks_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:15.106Z] ⚠️ Attempt 2 failed for walks_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:17.319Z] ⚠️ Attempt 3 failed for walks_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:17.319Z] ❌ Error downloading walks_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:17.320Z] ✅ Downloaded walks_model.pkl
+[2025-06-10T01:30:17.320Z] ⬇️  Downloading strikeouts_batting_model.pkl from Supabase...
+[2025-06-10T01:30:17.433Z] ⚠️ Attempt 1 failed for strikeouts_batting_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:18.538Z] ⚠️ Attempt 2 failed for strikeouts_batting_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:20.632Z] ⚠️ Attempt 3 failed for strikeouts_batting_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:20.633Z] ❌ Error downloading strikeouts_batting_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:20.634Z] ✅ Downloaded strikeouts_batting_model.pkl
+[2025-06-10T01:30:20.634Z] ⬇️  Downloading strikeouts_pitching_model.pkl from Supabase...
+[2025-06-10T01:30:20.739Z] ⚠️ Attempt 1 failed for strikeouts_pitching_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:21.835Z] ⚠️ Attempt 2 failed for strikeouts_pitching_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:23.935Z] ⚠️ Attempt 3 failed for strikeouts_pitching_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:23.935Z] ❌ Error downloading strikeouts_pitching_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:23.935Z] ✅ Downloaded strikeouts_pitching_model.pkl
+[2025-06-10T01:30:23.936Z] ⬇️  Downloading walks_allowed_model.pkl from Supabase...
+[2025-06-10T01:30:24.020Z] ⚠️ Attempt 1 failed for walks_allowed_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:25.102Z] ⚠️ Attempt 2 failed for walks_allowed_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:27.191Z] ⚠️ Attempt 3 failed for walks_allowed_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:27.193Z] ❌ Error downloading walks_allowed_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:27.193Z] ✅ Downloaded walks_allowed_model.pkl
+[2025-06-10T01:30:27.194Z] ⬇️  Downloading hits_allowed_model.pkl from Supabase...
+[2025-06-10T01:30:27.273Z] ⚠️ Attempt 1 failed for hits_allowed_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:28.371Z] ⚠️ Attempt 2 failed for hits_allowed_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:30.477Z] ⚠️ Attempt 3 failed for hits_allowed_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:30.478Z] ❌ Error downloading hits_allowed_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:30.478Z] ✅ Downloaded hits_allowed_model.pkl
+[2025-06-10T01:30:30.479Z] ⬇️  Downloading home_runs_model.pkl from Supabase...
+[2025-06-10T01:30:30.597Z] ⚠️ Attempt 1 failed for home_runs_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:31.713Z] ⚠️ Attempt 2 failed for home_runs_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:33.862Z] ⚠️ Attempt 3 failed for home_runs_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:33.862Z] ❌ Error downloading home_runs_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:33.863Z] ✅ Downloaded home_runs_model.pkl
+[2025-06-10T01:30:33.863Z] ⬇️  Downloading doubles_model.pkl from Supabase...
+[2025-06-10T01:30:33.980Z] ⚠️ Attempt 1 failed for doubles_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:35.106Z] ⚠️ Attempt 2 failed for doubles_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:37.207Z] ⚠️ Attempt 3 failed for doubles_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:37.208Z] ❌ Error downloading doubles_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:37.208Z] ✅ Downloaded doubles_model.pkl
+[2025-06-10T01:30:37.208Z] ⬇️  Downloading triples_model.pkl from Supabase...
+[2025-06-10T01:30:37.339Z] ⚠️ Attempt 1 failed for triples_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:38.433Z] ⚠️ Attempt 2 failed for triples_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:40.516Z] ⚠️ Attempt 3 failed for triples_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:40.516Z] ❌ Error downloading triples_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:40.517Z] ✅ Downloaded triples_model.pkl
+[2025-06-10T01:30:40.517Z] ⬇️  Downloading singles_model.pkl from Supabase...
+[2025-06-10T01:30:40.606Z] ⚠️ Attempt 1 failed for singles_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:41.711Z] ⚠️ Attempt 2 failed for singles_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:43.813Z] ⚠️ Attempt 3 failed for singles_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:43.815Z] ❌ Error downloading singles_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:43.815Z] ✅ Downloaded singles_model.pkl
+[2025-06-10T01:30:43.816Z] ⬇️  Downloading stolen_bases_model.pkl from Supabase...
+[2025-06-10T01:30:43.913Z] ⚠️ Attempt 1 failed for stolen_bases_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:45.030Z] ⚠️ Attempt 2 failed for stolen_bases_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:47.278Z] ⚠️ Attempt 3 failed for stolen_bases_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:47.279Z] ❌ Error downloading stolen_bases_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:47.279Z] ✅ Downloaded stolen_bases_model.pkl
+[2025-06-10T01:30:47.280Z] ⬇️  Downloading runs_rbis_model.pkl from Supabase...
+[2025-06-10T01:30:47.367Z] ⚠️ Attempt 1 failed for runs_rbis_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:48.449Z] ⚠️ Attempt 2 failed for runs_rbis_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:50.560Z] ⚠️ Attempt 3 failed for runs_rbis_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:50.561Z] ❌ Error downloading runs_rbis_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:50.561Z] ✅ Downloaded runs_rbis_model.pkl
+[2025-06-10T01:30:50.561Z] ⬇️  Downloading hits_runs_rbis_model.pkl from Supabase...
+[2025-06-10T01:30:50.662Z] ⚠️ Attempt 1 failed for hits_runs_rbis_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:51.758Z] ⚠️ Attempt 2 failed for hits_runs_rbis_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:53.880Z] ⚠️ Attempt 3 failed for hits_runs_rbis_model.pkl: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:53.881Z] ❌ Error downloading hits_runs_rbis_model.pkl after 3 attempts: Supabase signed URL error: No signed URL returned
+[2025-06-10T01:30:53.882Z] ✅ Downloaded hits_runs_rbis_model.pkl
+[2025-06-10T01:30:54.135Z] 🔧 Updating 3 props via batch resolution...
+[2025-06-10T01:30:54.136Z] 📡 Checking prop: Jorge Soler - Walks
+[2025-06-10T01:30:54.136Z] 🚫 Invalid prop line value: -3 — skipping
+[2025-06-10T01:30:54.136Z] 📡 Checking prop: James Outman - Singles
+[2025-06-10T01:30:54.136Z] 🚫 Invalid prop line value: -23 — skipping
+[2025-06-10T01:30:54.136Z] 📡 Checking prop: Seth Brown - total_bases
+[2025-06-10T01:30:54.137Z] 🚫 Invalid prop line value: -1.5 — skipping
+[2025-06-10T01:30:54.137Z] 🏁 Custom Batch Summary → ✅ 0 | 🚷 0 | ⏭️ 3 | ❌ 0
+[2025-06-10T01:30:54.137Z] ✅ Scheduled Cron Job: All tasks complete.
+

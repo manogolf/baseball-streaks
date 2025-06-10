@@ -258,6 +258,46 @@ export async function updatePropStatuses() {
   }
 }
 
+export async function updatePropStatusesForRows(props) {
+  if (!Array.isArray(props) || props.length === 0) {
+    console.log("⚠️ No props provided to update.");
+    return;
+  }
+
+  let updated = 0,
+    dnp = 0,
+    skipped = 0,
+    error = 0;
+
+  for (const prop of props) {
+    try {
+      const result = await updatePropStatus(prop);
+      switch (result.status) {
+        case "updated":
+          updated++;
+          break;
+        case "dnp":
+          dnp++;
+          break;
+        case "skipped":
+          skipped++;
+          break;
+        case "error":
+        default:
+          error++;
+          break;
+      }
+    } catch (err) {
+      console.error(`❌ Error on prop ${prop.id}:`, err.message);
+      error++;
+    }
+  }
+
+  console.log(
+    `🏁 Custom Batch Summary → ✅ ${updated} | 🚷 ${dnp} | ⏭️ ${skipped} | ❌ ${error}`
+  );
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   (async () => {
     try {

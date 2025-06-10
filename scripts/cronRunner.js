@@ -2,13 +2,27 @@ import "dotenv/config";
 import cron from "node-cron";
 import path from "path";
 import fs from "fs";
+import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
 import { yesterdayET } from "../backend/scripts/shared/timeUtils.js";
 import { updatePropStatuses } from "../backend/scripts/resolution/updatePropResults.js";
+import { updatePropStatusesForRows } from "../backend/scripts/resolution/updatePropResults.js";
 //import { syncStatsForDate } from "../backend/scripts/resolution/syncPlayerStats.js";
 import { downloadModelFromSupabase } from "../backend/scripts/shared/downloadModelFromSupabase.js";
 import { runTrainingBackfillIfNeeded } from "./backfillTrainingFieldsExtended.js";
 
 console.log("⏳ Cron runner starting...");
+
+const { data: propsToRetry, error } = await supabase
+  .from("player_props")
+  .select("*")
+  .eq("status", "pending") // or any custom logic
+  .limit(500);
+
+if (error) {
+  console.error("❌ Failed to fetch props:", error.message);
+} else {
+  await updatePropStatusesForRows(propsToRetry);
+}
 
 const modelDir = "./models";
 const modelFiles = [
@@ -64,13 +78,36 @@ async function ensureModelsExist() {
 const safelyRun = async (label) => {
   try {
     console.log(`🔁 ${label}: Starting scheduled tasks...`);
+
+    // 🧠 Step 1: Ensure models exist
     await ensureModelsExist();
-    //await syncStatsForDate(yesterdayET());
-    console.log(`🚀 ${label}: Running updatePropStatuses...`);
-    await updatePropStatuses(); // Already logs summary internally
-    console.log(`📊 ${label}: Running conditional training backfill...`);
-    await runTrainingBackfillIfNeeded();
+
+    // 📅 Step 2: Sync stats (if enabled)
+    // await syncStatsForDate(yesterdayET());
+
+    // 📊 Step 3: Update prop statuses (limited batch)
+    const { data: propsToRetry, error } = await supabase
+      .from("player_props")
+      .select("*")
+      .eq("status", "pending")
+      .limit(500);
+
+    if (error) {
+      console.error(`❌ Failed to fetch pending props: ${error.message}`);
+    } else if (propsToRetry?.length) {
+      console.log(
+        `🔧 Updating ${propsToRetry.length} props via batch resolution...`
+      );
+      await updatePropStatusesForRows(propsToRetry);
+    } else {
+      console.log("✅ No pending props to update.");
+    }
+
+    // 📈 Step 4: Backfill training (if needed)
+    // await runTrainingBackfillIfNeeded();
+
     console.log(`✅ ${label}: All tasks complete.\n`);
+
     if (isGitHubAction) process.exit(0);
   } catch (err) {
     console.error(`❌ ${label}: Failed with error:`, err);
