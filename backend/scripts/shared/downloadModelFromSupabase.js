@@ -1,7 +1,10 @@
-import { supabase } from "../shared/supabaseUtils.js";
 import fs from "fs";
 import https from "https";
 import path from "path";
+
+// Set your Supabase public base URL here
+const SUPABASE_PUBLIC_BASE =
+  "https://cnwwhhmpashijqbspvhf.supabase.co/storage/v1/object/public/models";
 
 export async function downloadModelFromSupabase(filename, localPath) {
   const MAX_RETRIES = 3;
@@ -13,26 +16,14 @@ export async function downloadModelFromSupabase(filename, localPath) {
   // Remove any stale copy from earlier runs
   if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
 
+  const publicUrl = `${SUPABASE_PUBLIC_BASE}/${filename}`;
+
   while (attempts < MAX_RETRIES) {
     try {
-      const { data, error } = await supabase.storage
-        .from("models")
-        .createSignedUrl(filename, 60);
-
-      const signedUrl = data?.signedUrl;
-
-      if (error || !signedUrl) {
-        throw new Error(
-          `Supabase signed URL error: ${
-            error?.message || "No signed URL returned"
-          }`
-        );
-      }
-
       await new Promise((resolve, reject) => {
         const file = fs.createWriteStream(localPath);
         https
-          .get(signedUrl, (response) => {
+          .get(publicUrl, (response) => {
             if (response.statusCode !== 200) {
               reject(
                 new Error(`HTTP ${response.statusCode} during model download`)
@@ -67,7 +58,7 @@ export async function downloadModelFromSupabase(filename, localPath) {
     }
   }
 
-  // Final check: if still missing, hard fail
+  // Final check
   if (!fs.existsSync(localPath)) {
     throw new Error(
       `❌ ${filename} failed to download after retries and no local file found.`
