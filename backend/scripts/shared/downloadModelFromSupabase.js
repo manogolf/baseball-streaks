@@ -1,5 +1,5 @@
 import { supabase } from "../shared/supabaseUtils.js";
-import fs, { mkdirSync } from "fs";
+import fs from "fs";
 import https from "https";
 import path from "path";
 
@@ -7,8 +7,11 @@ export async function downloadModelFromSupabase(filename, localPath) {
   const MAX_RETRIES = 3;
   let attempts = 0;
 
-  // ✅ Ensure target folder exists
-  mkdirSync(path.dirname(localPath), { recursive: true });
+  // Ensure target folder exists
+  fs.mkdirSync(path.dirname(localPath), { recursive: true });
+
+  // Remove any stale copy from earlier runs
+  if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
 
   while (attempts < MAX_RETRIES) {
     try {
@@ -16,7 +19,9 @@ export async function downloadModelFromSupabase(filename, localPath) {
         .from("2025.05.23.mlb-models")
         .createSignedUrl(filename, 60);
 
-      if (error || !data?.signedUrl) {
+      const signedUrl = data?.signedUrl;
+
+      if (error || !signedUrl) {
         throw new Error(
           `Supabase signed URL error: ${
             error?.message || "No signed URL returned"
@@ -24,12 +29,10 @@ export async function downloadModelFromSupabase(filename, localPath) {
         );
       }
 
-      let downloadSuccessful = false;
-
       await new Promise((resolve, reject) => {
         const file = fs.createWriteStream(localPath);
         https
-          .get(data.signedUrl, (response) => {
+          .get(signedUrl, (response) => {
             if (response.statusCode !== 200) {
               reject(
                 new Error(`HTTP ${response.statusCode} during model download`)
@@ -37,21 +40,17 @@ export async function downloadModelFromSupabase(filename, localPath) {
               return;
             }
             response.pipe(file);
-            file.on("finish", () => {
-              file.close(() => {
-                downloadSuccessful = true;
-                resolve();
-              });
-            });
+            file.on("finish", () => file.close(resolve));
           })
           .on("error", reject);
       });
 
-      if (downloadSuccessful && fs.existsSync(localPath)) {
-        console.log(`✅ Successfully downloaded ${filename}`);
+      // Confirm file exists after write
+      if (fs.existsSync(localPath)) {
+        console.log(`✅ Downloaded ${filename}`);
         return;
       } else {
-        throw new Error(`Download incomplete or file missing for ${filename}`);
+        throw new Error(`File missing after supposed download: ${filename}`);
       }
     } catch (err) {
       attempts += 1;
@@ -63,8 +62,15 @@ export async function downloadModelFromSupabase(filename, localPath) {
           `❌ Error downloading ${filename} after ${MAX_RETRIES} attempts: ${err.message}`
         );
       } else {
-        await new Promise((r) => setTimeout(r, 1000 * attempts)); // Exponential backoff
+        await new Promise((r) => setTimeout(r, 1000 * attempts)); // exponential backoff
       }
     }
+  }
+
+  // Final check: if still missing, hard fail
+  if (!fs.existsSync(localPath)) {
+    throw new Error(
+      `❌ ${filename} failed to download after retries and no local file found.`
+    );
   }
 }
