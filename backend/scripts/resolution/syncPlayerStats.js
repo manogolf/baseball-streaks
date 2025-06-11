@@ -1,4 +1,4 @@
-// File: src/scripts/resolution/syncPlayerStats.js
+// File: backend/scripts/resolution/syncPlayerStats.js
 
 import "dotenv/config";
 import { supabase } from "../shared/index.js";

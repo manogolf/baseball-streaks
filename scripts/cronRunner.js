@@ -4,9 +4,8 @@ import path from "path";
 import fs from "fs";
 import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
 import { yesterdayET } from "../backend/scripts/shared/timeUtils.js";
-import { updatePropStatuses } from "../backend/scripts/resolution/updatePropResults.js";
 import { updatePropStatusesForRows } from "../backend/scripts/resolution/updatePropResults.js";
-//import { syncStatsForDate } from "../backend/scripts/resolution/syncPlayerStats.js";
+import { syncStatsForDate } from "../backend/scripts/resolution/syncPlayerStats.js";
 import { downloadModelFromSupabase } from "../backend/scripts/shared/downloadModelFromSupabase.js";
 import { runTrainingBackfillIfNeeded } from "./backfillTrainingFieldsExtended.js";
 
@@ -83,7 +82,7 @@ const safelyRun = async (label) => {
     await ensureModelsExist();
 
     // 📅 Step 2: Sync stats (if enabled)
-    // await syncStatsForDate(yesterdayET());
+    await syncStatsForDate(yesterdayET());
 
     // 📊 Step 3: Update prop statuses (limited batch)
     const { data: propsToRetry, error } = await supabase
@@ -104,7 +103,7 @@ const safelyRun = async (label) => {
     }
 
     // 📈 Step 4: Backfill training (if needed)
-    // await runTrainingBackfillIfNeeded();
+    await runTrainingBackfillIfNeeded();
 
     console.log(`✅ ${label}: All tasks complete.\n`);
 

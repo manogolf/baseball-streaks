@@ -1,3 +1,23 @@
+/**
+ * 📄 File: updatePropResults.js
+ * 🧠 Purpose: Grade and resolve player props from stats.
+ *
+ * ⚠️ Assumptions / Pre-conditions:
+ * - Game is final (status === 'F') — must be verified *before* calling this.
+ * - Player ID and prop_type are already normalized.
+ * - Stats will be pulled via resolveStatForPlayer().
+ *
+ * ❌ This file does NOT:
+ * - Check game status from MLB API or local cache.
+ * - Generate or validate player streaks.
+ * - Re-fetch updated lines or predictions.
+ *
+ * ✅ Responsibilities:
+ * - Validate player participation (DNP logic).
+ * - Compute outcome: win/loss/push via determineStatus().
+ * - Update Supabase with final result, outcome, and was_correct.
+ */
+
 import "dotenv/config";
 import fs from "fs";
 import { supabase } from "../shared/index.js";
@@ -5,6 +25,7 @@ import { expireOldPendingProps, determineStatus } from "../shared/propUtils.js";
 import { didPlayerParticipate } from "../shared/playerUtils.js";
 import { getPendingProps } from "../shared/supabaseUtils.js";
 import { resolveStatForPlayer, hasMeaningfulStats } from "./statResolvers.js";
+import { isGameFinal, fetchGameStatusById } from "../shared/gameStatusUtils.js";
 
 // 📝 Append console output to log file while still printing to terminal
 // ✅ Save the original console methods to avoid recursion
@@ -40,6 +61,14 @@ const resultsLog = [];
 
 export async function updatePropStatus(prop) {
   console.log(`📡 Checking prop: ${prop.player_name} - ${prop.prop_type}`);
+
+  const gameStatus = await fetchGameStatusById(prop.game_id);
+  if (!isGameFinal(gameStatus)) {
+    console.log(
+      `⏳ Skipping unresolved game for ${prop.player_name} (status: ${gameStatus})`
+    );
+    return { status: "skipped", reason: "game not final" };
+  }
 
   if (prop.prop_value < 0) {
     console.warn(`🚫 Invalid prop line value: ${prop.prop_value} — skipping`);

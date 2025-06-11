@@ -6,6 +6,14 @@ import { formatGameTime } from "./timeUtils.js";
  * Returns a human-readable game status string.
  * @param {Object} game - MLB game object from API.
  */
+/**
+ * Returns true if the game status is final.
+ * Accepts detailedState from MLB API or internal status.
+ */
+export function isGameFinal(status) {
+  return typeof status === "string" && status.toLowerCase() === "final";
+}
+
 export function getStatusDisplay(game) {
   const status = game.status?.detailedState;
 

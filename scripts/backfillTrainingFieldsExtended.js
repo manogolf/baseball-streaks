@@ -11,6 +11,19 @@ console.log("🚀 Starting extended backfill for training fields...");
 
 const BATCH_SIZE = 500;
 
+function isTrainingRowComplete(row) {
+  return (
+    row.rolling_result_avg_7 != null &&
+    row.hit_streak != null &&
+    row.win_streak != null &&
+    row.game_time != null &&
+    row.is_home != null &&
+    row.opponent != null &&
+    row.prop_value != null &&
+    row.over_under != null
+  );
+}
+
 export async function runTrainingBackfillIfNeeded() {
   const { data } = await supabase
     .from("model_training_props")
@@ -54,6 +67,10 @@ export async function runExtendedBackfill() {
     let updated = 0;
 
     for (const row of rows) {
+      if (isTrainingRowComplete(row)) {
+        continue;
+      }
+
       const updates = {};
 
       // Rolling average
@@ -66,13 +83,17 @@ export async function runExtendedBackfill() {
         if (avg != null) updates.rolling_result_avg_7 = avg;
       }
 
-      // Streaks
+      // Streaks — skip row entirely if streaks are required but unavailable
       if (row.hit_streak == null || row.win_streak == null) {
         const streaks = await getStreaksForPlayer(row.player_id, row.prop_type);
-        if (streaks) {
-          if (row.hit_streak == null) updates.hit_streak = streaks.hit_streak;
-          if (row.win_streak == null) updates.win_streak = streaks.win_streak;
+        if (!streaks) {
+          console.warn(
+            `⚠️ No streak profile found for ${row.player_id} (${row.prop_type}), skipping row.`
+          );
+          continue;
         }
+        if (row.hit_streak == null) updates.hit_streak = streaks.hit_streak;
+        if (row.win_streak == null) updates.win_streak = streaks.win_streak;
       }
 
       // Game time
@@ -132,8 +153,14 @@ export async function runExtendedBackfill() {
     console.log(`✅ Batch ${batchCount} complete: ${updated} rows updated`);
     totalUpdated += updated;
 
-    // Optional: Slight delay to prevent accidental rate limiting
-    await new Promise((res) => setTimeout(res, 200));
+    if (updated === 0) {
+      console.log(
+        "🛑 No rows updated this batch. Assuming remaining rows are incomplete permanently. Exiting."
+      );
+      break;
+    }
+
+    await new Promise((res) => setTimeout(res, 200)); // slight delay
   }
 
   console.log(`🏁 Backfill finished. Total updated: ${totalUpdated}`);
