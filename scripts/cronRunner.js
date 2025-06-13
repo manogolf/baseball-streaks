@@ -1,3 +1,5 @@
+// 📄 File: scripts/cron-runner.js
+
 import "dotenv/config";
 import cron from "node-cron";
 import path from "path";
@@ -8,20 +10,9 @@ import { updatePropStatusesForRows } from "../backend/scripts/resolution/updateP
 import { syncStatsForDate } from "../backend/scripts/resolution/syncPlayerStats.js";
 import { downloadModelFromSupabase } from "../backend/scripts/shared/downloadModelFromSupabase.js";
 import { runTrainingBackfillIfNeeded } from "./backfillTrainingFieldsExtended.js";
+import { copyUserAddedPropsToTraining } from "./shared/modelTrainingUtils.js";
 
 console.log("⏳ Cron runner starting...");
-
-const { data: propsToRetry, error } = await supabase
-  .from("player_props")
-  .select("*")
-  .eq("status", "pending") // or any custom logic
-  .limit(500);
-
-if (error) {
-  console.error("❌ Failed to fetch props:", error.message);
-} else {
-  await updatePropStatusesForRows(propsToRetry);
-}
 
 const modelDir = "./models";
 const modelFiles = [
@@ -46,6 +37,7 @@ const modelFiles = [
 const month = new Date().getUTCMonth();
 const inSeason = month >= 2 && month <= 9;
 const cronExpression = inSeason ? "*/30 * * * *" : "0 10 * * *";
+const isGitHubAction = process.env.GITHUB_ACTIONS === "true";
 
 console.log(
   `📅 Scheduling cron job: ${
@@ -55,8 +47,7 @@ console.log(
   }`
 );
 
-const isGitHubAction = process.env.GITHUB_ACTIONS === "true";
-
+// 🔧 Download any missing model files
 async function ensureModelsExist() {
   for (const filename of modelFiles) {
     const modelPath = path.join(modelDir, filename);
@@ -74,18 +65,22 @@ async function ensureModelsExist() {
   }
 }
 
+await copyUserAddedPropsToTraining(7); // sync last 7 days
+
+// 🧠 Run one full cycle of tasks
 const safelyRun = async (label) => {
   try {
     console.log(`🔁 ${label}: Starting scheduled tasks...`);
 
-    // 🧠 Step 1: Ensure models exist
     await ensureModelsExist();
 
-    // 📅 Step 2: Sync stats (if enabled)
+    // Step 1: Sync stats
+    console.log("📊 Syncing stats for yesterday...");
     await syncStatsForDate(yesterdayET());
+    console.log("✅ Stats sync complete.");
 
-    // 📊 Step 3: Update prop statuses (limited batch)
-    const { data: propsToRetry, error } = await supabase
+    // Step 2: Update pending props
+    const { data: pendingProps, error } = await supabase
       .from("player_props")
       .select("*")
       .eq("status", "pending")
@@ -93,20 +88,24 @@ const safelyRun = async (label) => {
 
     if (error) {
       console.error(`❌ Failed to fetch pending props: ${error.message}`);
-    } else if (propsToRetry?.length) {
-      console.log(
-        `🔧 Updating ${propsToRetry.length} props via batch resolution...`
-      );
-      await updatePropStatusesForRows(propsToRetry);
+    } else if (pendingProps.length) {
+      console.log(`🔧 Resolving ${pendingProps.length} pending props...`);
+      await updatePropStatusesForRows(pendingProps);
+      console.log("✅ Prop resolution complete.");
     } else {
-      console.log("✅ No pending props to update.");
+      console.log("✅ No pending props to resolve.");
     }
 
-    // 📈 Step 4: Backfill training (if needed)
-    await runTrainingBackfillIfNeeded();
+    // Step 3: Backfill training fields
+    console.log("📥 Checking for training backfill needs...");
+    const ranBackfill = await runTrainingBackfillIfNeeded();
+    console.log(
+      ranBackfill
+        ? "✅ Training backfill completed."
+        : "✅ No training rows needed backfill."
+    );
 
     console.log(`✅ ${label}: All tasks complete.\n`);
-
     if (isGitHubAction) process.exit(0);
   } catch (err) {
     console.error(`❌ ${label}: Failed with error:`, err);
@@ -114,10 +113,11 @@ const safelyRun = async (label) => {
   }
 };
 
-if (isGitHubAction) {
-  await safelyRun("GitHub Action");
-} else {
-  await safelyRun("Local run");
+// Run once immediately
+await safelyRun(isGitHubAction ? "GitHub Action" : "Local run");
+
+// Schedule repeated execution if not in GitHub Actions
+if (!isGitHubAction) {
   cron.schedule(cronExpression, async () => {
     const now = new Date().toISOString();
     console.log(`🕒 Cron triggered at ${now}`);

@@ -18,14 +18,21 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      - name: Install Node dependencies
+        run: npm install
 
       - name: Create .env from secrets
         run: |
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
           echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> .env
+
+      - name: Run sync of user-added props
+        run: node scripts/shared/modelTrainingUtils.js
 
       - name: Run retraining script
         run: python backend/scripts/retrain_all_models.py

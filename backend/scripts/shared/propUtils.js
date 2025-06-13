@@ -190,6 +190,13 @@ export function getStaticFallbackLine(propType) {
   return defaultLines[propType] ?? 1.0;
 }
 
+export function determineOutcome(propValue, line, overUnder) {
+  if (propValue === null || line === null || overUnder === null) return null;
+  if (overUnder === "over") return propValue > line ? "win" : "loss";
+  if (overUnder === "under") return propValue < line ? "win" : "loss";
+  return null;
+}
+
 export function extractStatForPropType(propType, stats) {
   return derivePropValue(propType, stats);
 }

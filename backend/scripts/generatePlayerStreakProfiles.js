@@ -1,29 +1,72 @@
-import { supabase } from "./shared/supabaseUtils.js";
-import { normalizePropType } from "./shared/propUtils.js";
-import { toISODate } from "./shared/timeUtils.js";
+// 📄 File: scripts/generatePlayerStreakProfiles.js
 
-// 📥 Fetch resolved props
-async function fetchResolvedProps() {
-  const { data, error } = await supabase
-    .from("player_props")
-    .select("player_id, prop_type, outcome, game_date")
-    .in("status", ["win", "loss"])
-    .not("player_id", "is", null);
+import { supabase } from "../scripts/shared/supabaseUtils.js";
+import { normalizePropType } from "../scripts/shared/propUtils.js";
+import { toISODate } from "../scripts/shared/timeUtils.js";
 
-  if (error)
-    throw new Error(`Failed to fetch resolved props: ${error.message}`);
-  return data;
+// 🧩 Optional bucketed support
+const [_, bucketArg] =
+  process.argv.find((arg) => arg.includes("--bucket"))?.split("=") || [];
+let currentBucket = 0,
+  totalBuckets = 1;
+
+if (bucketArg && bucketArg.includes("/")) {
+  const [curr, total] = bucketArg.split("/").map((n) => parseInt(n));
+  currentBucket = curr - 1;
+  totalBuckets = total;
 }
 
-// 🧠 Compute streaks from sorted props
+console.log(
+  `📦 Running streak profile generator (Bucket ${
+    currentBucket + 1
+  }/${totalBuckets})`
+);
+
+async function fetchResolvedProps() {
+  const pageSize = 10000;
+  const allData = [];
+  let from = 0;
+  let to = pageSize - 1;
+
+  const cutoffDate = toISODate(new Date(Date.now() - 14 * 86400000)); // ⏳ 14 days ago
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("player_props")
+      .select("player_id, prop_type, outcome, game_date")
+      .in("status", ["win", "loss"])
+      .not("player_id", "is", null)
+      .gte("game_date", cutoffDate) // ✅ Limit to last 14 days
+      .order("game_date", { ascending: false })
+      .range(from, to);
+
+    if (error) throw new Error(`❌ Failed to fetch props: ${error.message}`);
+    if (!data || data.length === 0) break;
+
+    allData.push(...data);
+    console.log(`📦 Fetched ${allData.length} so far...`);
+
+    if (data.length < pageSize) break;
+
+    from += pageSize;
+    to += pageSize;
+  }
+
+  return allData;
+}
+
 function computeStreaks(resolvedProps) {
   const grouped = {};
+  let i = 0;
 
   for (const row of resolvedProps) {
-    const rawPropType = row.prop_type;
-    const prop_type = normalizePropType(rawPropType);
-    const { player_id, outcome } = row;
+    if (i % 1000 === 0) {
+      console.log(`⏳ Processed ${i} of ${resolvedProps.length} props...`);
+    }
+    i++;
 
+    const prop_type = normalizePropType(row.prop_type);
+    const { player_id, outcome } = row;
     if (!player_id || player_id === "None") continue;
 
     const key = `${player_id}_${prop_type}`;
@@ -46,7 +89,6 @@ function computeStreaks(resolvedProps) {
     ) {
       streak.streak_count += 1;
     } else {
-      // Streak broke — reset
       streak.streak_type = outcome === "win" ? "hot" : "cold";
       streak.streak_count = 1;
     }
@@ -55,52 +97,57 @@ function computeStreaks(resolvedProps) {
   return Object.values(grouped);
 }
 
-// ⬆️ Upsert into Supabase
 async function upsertStreaks(streakProfiles) {
-  let inserted = 0;
-  for (const profile of streakProfiles) {
-    const { player_id, prop_type, streak_count, streak_type } = profile;
-
-    if (!player_id || player_id === "None" || !prop_type) continue;
-
-    const { error } = await supabase.from("player_streak_profiles").upsert(
-      {
-        player_id,
-        prop_type,
-        streak_count,
-        streak_type,
-        updated_at: toISODate(new Date()),
-      },
-      { onConflict: ["player_id", "prop_type"] }
-    );
-
-    if (error) {
-      console.warn(
-        `⚠️ Failed upsert for ${player_id} (${prop_type}): ${error.message}`
-      );
-    } else {
-      inserted += 1;
-    }
+  if (!streakProfiles.length) {
+    console.warn("⚠️ No streak profiles to upsert.");
+    return;
   }
 
-  console.log(`✅ Upserted ${inserted} streak profiles.`);
+  const enriched = streakProfiles.map((profile) => ({
+    ...profile,
+    updated_at: toISODate(new Date()),
+  }));
+
+  const { error } = await supabase
+    .from("player_streak_profiles")
+    .upsert(enriched, {
+      onConflict: ["player_id", "prop_type"],
+    });
+
+  if (error) {
+    console.error("❌ Bulk upsert failed:", error.message || error);
+  } else {
+    console.log(`✅ Upserted ${streakProfiles.length} streak profiles.`);
+  }
 }
 
 async function main() {
   try {
-    console.log("📥 Fetching resolved props...");
     const resolvedProps = await fetchResolvedProps();
     console.log(`🔍 Found ${resolvedProps.length} resolved props.`);
 
-    console.log("🧠 Analyzing streaks...");
-    const streakProfiles = computeStreaks(resolvedProps);
+    const allKeys = [
+      ...new Set(
+        resolvedProps.map(
+          (r) => `${r.player_id}_${normalizePropType(r.prop_type)}`
+        )
+      ),
+    ];
+    const filteredKeys = allKeys.filter(
+      (_, idx) => idx % totalBuckets === currentBucket
+    );
+    const keySet = new Set(filteredKeys);
+    const filteredProps = resolvedProps.filter((r) =>
+      keySet.has(`${r.player_id}_${normalizePropType(r.prop_type)}`)
+    );
 
-    console.log(`⬆️ Attempting to upsert ${streakProfiles.length} profiles...`);
+    console.log(`🎯 Bucketed resolved props → ${filteredProps.length}`);
+
+    const streakProfiles = computeStreaks(filteredProps);
     await upsertStreaks(streakProfiles);
-
     console.log("🎉 Done.");
   } catch (err) {
-    console.error("❌ Failed to generate streak profiles:", err.message);
+    console.error("❌ Failed to generate streaks:", err.message);
   }
 }
 

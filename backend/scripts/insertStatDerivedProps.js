@@ -4,7 +4,7 @@ import fetch from "node-fetch";
 import "dotenv/config";
 import { toISODate, yesterdayET } from "./shared/timeUtils.js";
 import {
-  propExtractors,
+  extractStatForPropType,
   getSyntheticLine,
   getRollingAverage,
 } from "./shared/propUtils.js";
@@ -64,7 +64,9 @@ async function processGame(gameId, gameDate) {
       const teamId = player.parentTeamId?.toString() ?? null;
       const teamInfo = getTeamInfoByID(teamId);
 
-      for (const [propType, extractor] of Object.entries(propExtractors)) {
+      for (const [propType, extractor] of Object.entries(
+        extractStatForPropType
+      )) {
         let value;
         try {
           value = extractor(stats);
