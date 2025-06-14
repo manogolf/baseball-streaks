@@ -50,7 +50,9 @@ async function syncTrainingData() {
 
       const { error: insertError } = await supabase
         .from("model_training_props")
-        .upsert(insertPayload, { onConflict: "id" });
+        .upsert(insertPayload, {
+          onConflict: ["player_id", "game_id", "prop_type"],
+        });
 
       if (insertError) {
         console.warn(

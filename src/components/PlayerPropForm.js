@@ -16,8 +16,11 @@ const apiUrl = `${
 const PlayerPropForm = ({ onPropAdded }) => {
   const today = todayET();
   const auth = useAuth();
-  const user = auth?.user || { id: "test-user" };
 
+  // 🆔 Logged‑in Supabase user UUID
+  const [userId, setUserId] = useState(null);
+
+  // 🌱 Local form state
   const [formData, setFormData] = useState({
     player_name: "",
     team: "",
@@ -35,7 +38,6 @@ const PlayerPropForm = ({ onPropAdded }) => {
   const [successMessage, setSuccessMessage] = useState("");
 
   const propTypeOptions = getPropTypeOptions();
-
   const successMessages = [
     "🎯 Prediction ready — make your move!",
     "🧠 Got a prediction — trust your gut!",
@@ -44,6 +46,20 @@ const PlayerPropForm = ({ onPropAdded }) => {
     "🔥 Prediction locked — time to go big!",
   ];
 
+  /**
+   * 🔐 Fetch the logged‑in user once on mount
+   */
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (data?.user) setUserId(data.user.id);
+    };
+    fetchUser();
+  }, []);
+
+  /**
+   * 📜 Load prop‑type dropdown once
+   */
   useEffect(() => {
     const fetchPropTypes = async () => {
       const { data, error } = await supabase.from("prop_types").select("name");
@@ -57,6 +73,9 @@ const PlayerPropForm = ({ onPropAdded }) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  /**
+   * 🧠 Predict outcome (unchanged logic)
+   */
   const handlePredict = async () => {
     setError("");
     setPrediction(null);
@@ -107,7 +126,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
       const fullFeatures = { ...requiredFeatures, ...normalized };
 
       const predictionPayload = {
-        player_id: String(preparedData.player_id), // Force string type
+        player_id: String(preparedData.player_id),
         prop_type: preparedData.prop_type,
         prop_value: parseFloat(preparedData.prop_value),
         over_under: preparedData.over_under.toLowerCase(),
@@ -123,11 +142,9 @@ const PlayerPropForm = ({ onPropAdded }) => {
       if (!response.ok) throw new Error("Prediction API returned error");
 
       const result = await response.json();
-
-      console.log("📬 Received prediction:", result); // ✅ this is your actual prediction
+      console.log("📬 Received prediction:", result);
 
       setPrediction(result);
-
       const randomIndex = Math.floor(Math.random() * successMessages.length);
       setSuccessMessage(successMessages[randomIndex]);
       setSuccessToast(true);
@@ -141,13 +158,23 @@ const PlayerPropForm = ({ onPropAdded }) => {
     }
   };
 
+  /**
+   * ➕ Submit prop to Supabase
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     setError("");
 
+    // 🛑 Ensure user is logged in & UUID loaded
+    if (!userId) {
+      setError("You must be logged in to submit a prop.");
+      setSubmitting(false);
+      return;
+    }
+
     try {
-      // 👉 Step 1: Generate prediction
+      // 👉 Step 1: Build feature vector for prediction (optional second call here)
       const predictionPayload = await buildFeatureVector({
         player_name: formData.player_name,
         team: formData.team,
@@ -157,59 +184,33 @@ const PlayerPropForm = ({ onPropAdded }) => {
         game_date: formData.game_date,
       });
 
-      console.log("📊 Feature Vector Result:", predictionPayload);
-
+      // 👉 Step 2: Get prediction result
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(predictionPayload),
       });
-
       if (!response.ok) throw new Error("Prediction API returned error");
-
       const result = await response.json();
-      console.log("📬 Received prediction:", result);
 
-      // 👉 Step 2: Resolve Game ID
+      // 👉 Step 3: Resolve MLB game ID
       const resolvedGameId = await getGamePkForTeamOnDate(
         formData.team,
         formData.game_date
       );
-
       if (!resolvedGameId) {
-        console.error(
-          `❌ No game found for ${formData.team} on ${formData.game_date}`
-        );
-        alert(
-          `⚠️ Could not find a game for ${formData.team} on ${formData.game_date}. Please check the date or team abbreviation.`
-        );
+        setError("Could not find a game for this team on the selected date.");
+        setSubmitting(false);
         return;
       }
 
-      console.log(`✅ Resolved game ID: ${resolvedGameId}`);
-
-      // 👉 Step 3: Prepare payload
+      // 👉 Step 4: Prepare final payload for DB insert
       const preparedData = await preparePropSubmission({
         ...formData,
         game_id: resolvedGameId,
       });
 
-      const { player_id } = preparedData;
       const now = nowET().toISO();
-
-      // 🛡️ Validate critical fields before continuing
-      if (
-        preparedData.prop_value === undefined ||
-        isNaN(preparedData.prop_value) ||
-        !preparedData.over_under
-      ) {
-        console.error("❌ Missing or invalid prop_value or over_under.");
-        setError("Missing required fields for prediction.");
-        setSubmitting(false);
-        return;
-      }
-
-      // ✅ Build payload only if validation passed
       const payload = {
         player_name: preparedData.player_name || formData.player_name,
         team: preparedData.team || formData.team,
@@ -217,23 +218,28 @@ const PlayerPropForm = ({ onPropAdded }) => {
         prop_value: parseFloat(preparedData.prop_value),
         game_date: preparedData.game_date || formData.game_date,
         game_id: resolvedGameId,
-        player_id,
+        player_id: preparedData.player_id,
         status: "pending",
         created_at: now,
         predicted_outcome: result?.predicted_outcome ?? null,
         confidence_score: result?.confidence_score ?? null,
         prediction_timestamp: result ? now : null,
         over_under: preparedData.over_under.toLowerCase(),
+        user_id: userId, // 🆕 Enforce per-user uniqueness
       };
 
-      // 👉 Step 4: Save to Supabase
+      // 👉 Step 5: Insert into Supabase
       const { error: insertError } = await supabase
         .from("player_props")
         .insert([payload]);
 
       if (insertError) {
+        if (insertError.code === "23505") {
+          setError("You've already submitted this prop.");
+        } else {
+          setError("Failed to save prop.");
+        }
         console.error("❌ Supabase insert error:", insertError.message);
-        setError("Failed to save prop.");
         setTimeout(() => setError(""), 4000);
         return;
       }
@@ -241,21 +247,21 @@ const PlayerPropForm = ({ onPropAdded }) => {
       console.log("✅ Prop successfully added to Supabase.");
       onPropAdded?.();
 
-      // ✅ Toast + clear form
+      // 🚀 Success toast & reset form
       setSuccessMessage("✅ Prop successfully added!");
       setSuccessToast(true);
-      setFormData((prev) => ({
-        ...prev,
+      setFormData({
         player_name: "",
         team: "",
         prop_type: "",
         prop_value: 0.5,
         over_under: "over",
-        game_date: todayET(),
-      }));
+        game_date: today,
+      });
+      setPrediction(null);
       setTimeout(() => setSuccessToast(false), 4000);
     } catch (err) {
-      console.error("❌ Prediction flow error:", err);
+      console.error("❌ Submission Error:", err);
       setError("Prediction failed or timed out.");
       setTimeout(() => setError(""), 4000);
     } finally {
@@ -379,7 +385,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
         <button
           type="button"
           onClick={handlePredict}
-          disabled={submitting}
+          disabled={!userId || submitting}
           className="flex-1 md:flex-none px-4 py-2 bg-white border border-blue-500 text-black rounded-md hover:bg-blue-100 disabled:opacity-50"
         >
           {submitting ? (
@@ -391,7 +397,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
 
         <button
           type="submit"
-          disabled={!prediction || submitting}
+          disabled={!userId || !prediction || submitting}
           className="flex-1 md:flex-none px-4 py-2 bg-white border border-green-500 text-black rounded-md hover:bg-green-100 disabled:opacity-50"
         >
           {submitting ? <span className="loader mr-2"></span> : "➕ Add Prop"}

@@ -1,7 +1,11 @@
 // backend/scripts/shared/modelTrainingUtils.js
 import crypto from "node:crypto";
 import { supabase } from "./supabaseUtils.js";
-import { normalizePropType, getRollingAverage } from "./propUtils.js";
+import {
+  normalizePropType,
+  getRollingAverage,
+  determineOpponent,
+} from "./propUtils.js";
 import { getStreaksForPlayer } from "./playerUtils.js";
 
 /**
@@ -44,7 +48,7 @@ export async function upsertUserPropsToTraining(opts = {}) {
           id, player_id, player_name, team, position, prop_type, prop_value,
           result, outcome, over_under, is_pitcher, game_date, game_id,
           status, predicted_outcome, confidence_score, was_correct,
-          prediction_timestamp, opponent, prop_source
+          prediction_timestamp, prop_source
         `
       )
       .eq("prop_source", "user_added")
@@ -94,16 +98,17 @@ export async function upsertUserPropsToTraining(opts = {}) {
 
       // Current streak (may return undefined / null)
       const streaks = await getStreaksForPlayer(p.player_id, propTypeNorm);
+      const opponent = await determineOpponent(p.player_id, p.game_id);
 
       rowsToUpsert.push({
         ...p,
-        // 💡 use deterministic conflict key; id can be regenerated
         id: crypto.randomUUID(),
         prop_type: propTypeNorm,
         rolling_result_avg_7: rollingAvg ?? null,
         line_diff: lineDiff,
         hit_streak: streaks?.hit_streak ?? null,
         win_streak: streaks?.win_streak ?? null,
+        opponent: opponent ?? null, // ✅ derived and added
       });
     }
 
@@ -114,7 +119,7 @@ export async function upsertUserPropsToTraining(opts = {}) {
       const { error: upsertErr } = await supabase
         .from("model_training_props")
         .upsert(rowsToUpsert, {
-          onConflict: "player_id, game_id, prop_type",
+          onConflict: "player_id, game_id, prop_type, prop_source",
         });
 
       const stamp = new Date().toISOString();

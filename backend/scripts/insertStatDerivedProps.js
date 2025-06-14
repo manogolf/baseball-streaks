@@ -39,7 +39,7 @@ function getStartingPitchers(teamPlayers) {
     .filter(([_, player]) => {
       const positionCode = player?.position?.code;
       const isStarter = player?.gameStatus?.isStarter;
-      return positionCode === "1" && isStarter; // position 1 = pitcher
+      return positionCode === "1" && isStarter;
     })
     .map(([_, player]) => player);
 }
@@ -76,20 +76,28 @@ async function processGame(gameId, gameDate) {
         if (typeof value !== "number" || isNaN(value)) continue;
 
         const playerId = player.person.id.toString();
-
-        // 🔁 Get synthetic prop line for this type
         const realLineValue = await getSyntheticLine(propType);
-
-        // 📈 Get recent 7-game average
         const rollingAvg = await getRollingAverage(
           playerId,
           propType,
           gameDate
         );
 
-        // 🔢 Optionally set streaks (can be null or added later)
-        const hitStreak = null;
-        const winStreak = null;
+        // ⬇️ Grade outcome + over/under
+        let outcome = null;
+        let over_under = null;
+        if (realLineValue != null) {
+          if (value > realLineValue) {
+            outcome = "win";
+            over_under = "over";
+          } else if (value < realLineValue) {
+            outcome = "loss";
+            over_under = "under";
+          } else {
+            outcome = "push";
+            over_under = "push";
+          }
+        }
 
         const payload = {
           id: crypto.randomUUID(),
@@ -99,16 +107,17 @@ async function processGame(gameId, gameDate) {
           prop_type: propType,
           prop_value: realLineValue,
           result: value,
-          outcome: null,
+          outcome,
+          over_under,
+          status: "resolved",
+          prop_source: "mlb_api",
           is_pitcher: !!player.stats?.pitching,
           game_date: gameDate,
           game_id: gameId,
-          over_under: null,
-          source: "stat_derived",
           player_id: playerId,
           rolling_result_avg_7: rollingAvg,
-          hit_streak: hitStreak,
-          win_streak: winStreak,
+          hit_streak: null,
+          win_streak: null,
           line_diff:
             rollingAvg !== null && realLineValue !== null
               ? rollingAvg - realLineValue
@@ -117,7 +126,9 @@ async function processGame(gameId, gameDate) {
 
         const { error } = await supabase
           .from("model_training_props")
-          .upsert(payload, { onConflict: "id" });
+          .upsert(payload, {
+            onConflict: ["player_id", "game_id", "prop_type, prop_source"],
+          });
 
         if (error) {
           console.warn(

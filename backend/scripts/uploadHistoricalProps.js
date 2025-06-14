@@ -51,7 +51,9 @@ async function uploadHistoricalProps(csvFilePath) {
 
         const { error } = await supabase
           .from("model_training_props")
-          .upsert(insertPayload, { onConflict: "id" });
+          .upsert(insertPayload, {
+            onConflict: ["player_id", "game_id", "prop_type"],
+          });
 
         if (error) {
           console.warn(

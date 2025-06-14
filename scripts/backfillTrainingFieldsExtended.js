@@ -54,18 +54,41 @@ export async function runTrainingBackfillIfNeeded() {
   await runExtendedBackfill();
 }
 
-export async function runExtendedBackfill() {
-  const { data: rows, error } = await supabase
-    .from("model_training_props")
-    .select("*")
-    .or(
-      "rolling_result_avg_7.is.null,hit_streak.is.null,win_streak.is.null,game_time.is.null,is_home.is.null,opponent.is.null,prop_value.is.null,over_under.is.null"
-    );
+async function fetchAllIncompleteRows() {
+  const pageSize = 1000;
+  let from = 0;
+  let to = pageSize - 1;
+  let allRows = [];
 
-  if (error) {
-    console.error("❌ Error fetching rows:", error.message);
-    return;
+  while (true) {
+    const { data, error } = await supabase
+      .from("model_training_props")
+      .select("*")
+      .or(
+        "rolling_result_avg_7.is.null,hit_streak.is.null,win_streak.is.null,game_time.is.null,is_home.is.null,opponent.is.null,prop_value.is.null,over_under.is.null"
+      )
+      .range(from, to);
+
+    if (error) {
+      console.error("❌ Error fetching rows:", error.message);
+      break;
+    }
+
+    if (!data || data.length === 0) break;
+
+    allRows.push(...data);
+
+    if (data.length < pageSize) break;
+
+    from += pageSize;
+    to += pageSize;
   }
+
+  return allRows;
+}
+
+export async function runExtendedBackfill() {
+  const rows = await fetchAllIncompleteRows();
 
   if (!rows || rows.length === 0) {
     console.log("🎉 No incomplete training rows found.");
