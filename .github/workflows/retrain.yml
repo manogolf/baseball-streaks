@@ -2,7 +2,7 @@ name: Retrain Models
 
 on:
   schedule:
-    - cron: "0 12 * * *" # Daily at 12:00 UTC (4 AM PT)
+    - cron: "0 7 * * *" # Daily at 07:00 UTC (12 AM PT)
   workflow_dispatch:
 
 jobs:
@@ -30,9 +30,6 @@ jobs:
         run: |
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
           echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> .env
-
-      - name: Run sync of user-added props
-        run: node scripts/shared/modelTrainingUtils.js
 
       - name: Run retraining script
         run: python backend/scripts/retrain_all_models.py

@@ -2,7 +2,7 @@ name: Cron Runner
 
 on:
   schedule:
-    - cron: "*/113 * * * *" # Runs every 113 minutes
+    - cron: "53 */1 * * *" # Runs every 113 minutes
   workflow_dispatch: # ✅ Manual trigger from GitHub UI
 
 jobs:

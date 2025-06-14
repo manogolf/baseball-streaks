@@ -2,7 +2,7 @@ name: Update Player Streak Profiles
 
 on:
   schedule:
-    - cron: "0 5 * * *" # 🕔 Runs every day at 05:00 UTC
+    - cron: "16 6 * * *" # 🕔 Runs every day at 06:15 UTC
   workflow_dispatch: # ✅ Allows manual triggering
 
 jobs:
