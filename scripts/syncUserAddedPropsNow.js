@@ -1,5 +1,7 @@
 // scripts/syncUserAddedPropsNow.js
+// script syncs user_added from player_props with model_training_props
 
-import { copyUserAddedPropsToTraining } from "../backend/scripts/shared/modelTrainingUtils.js";
+// scripts/syncUserAddedPropsNow.js
+import { upsertUserPropsToTraining } from "../backend/scripts/shared/modelTrainingUtils.js";
 
-await copyUserAddedPropsToTraining(30); // ⏱️ sync last 30 days (or change as needed)
+await upsertUserPropsToTraining(); //

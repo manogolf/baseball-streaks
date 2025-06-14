@@ -1,86 +1,137 @@
 // backend/scripts/shared/modelTrainingUtils.js
-
-import { supabase } from "./supabaseUtils.js";
 import crypto from "node:crypto";
-import { toISODate } from "./timeUtils.js";
-import { getRollingAverage } from "./propUtils.js";
+import { supabase } from "./supabaseUtils.js";
+import { normalizePropType, getRollingAverage } from "./propUtils.js";
 import { getStreaksForPlayer } from "./playerUtils.js";
 
-// ⏩ Copies user-added props from player_props → model_training_props
-export async function copyUserAddedPropsToTraining(sinceDaysAgo = 7) {
-  console.log("📤 Syncing user-added props to model_training_props...");
+/**
+ * Up-sert all user-added props from `player_props` into `model_training_props`.
+ *
+ * @param {object} opts
+ * @param {number} opts.batchSize   – rows per pull from Supabase (default 1 000)
+ * @param {number} opts.daysBack    – look-back window in days; 0 = all time
+ *                                    (handy for daily crons: daysBack = 1-3,
+ *                                    or a larger value if you missed runs)
+ */
+export async function upsertUserPropsToTraining(opts = {}) {
+  const {
+    batchSize = 1_000,
+    daysBack = 0, // 0 ⇒ no date filter (all rows)
+  } = opts;
 
-  const sinceDate = toISODate(new Date(Date.now() - sinceDaysAgo * 86400000));
+  console.log(
+    `🔁 Re-syncing user-added props into model_training_props (batch ${batchSize}, daysBack ${daysBack})`
+  );
 
-  const { data: props, error } = await supabase
-    .from("player_props")
-    .select(
-      `
-        id, player_id, player_name, team, position, prop_type, prop_value,
-        result, outcome, over_under, is_pitcher, game_date, game_id,
-        status, predicted_outcome, confidence_score, was_correct,
-        prediction_timestamp, game_time, opponent, prop_source
-      `
-    )
-    .eq("prop_source", "user_added")
-    .in("status", ["win", "loss", "push"])
-    .gte("game_date", sinceDate);
-
-  if (error) {
-    console.error("❌ Failed to fetch user-added props:", error.message);
-    return;
+  // ① Calculate optional date cutoff
+  let dateCutoff = null;
+  if (daysBack > 0) {
+    dateCutoff = new Date(Date.now() - daysBack * 86_400_000)
+      .toISOString()
+      .slice(0, 10); // YYYY-MM-DD
   }
 
-  const seen = new Set();
-  const rows = [];
+  let offset = 0;
+  let totalProcessed = 0;
+  const timerStart = Date.now();
 
-  for (const p of props) {
-    if (!p.player_id || seen.has(p.id)) continue;
-    seen.add(p.id);
+  while (true) {
+    /* ---------------- fetch a batch ---------------- */
+    let query = supabase
+      .from("player_props")
+      .select(
+        `
+          id, player_id, player_name, team, position, prop_type, prop_value,
+          result, outcome, over_under, is_pitcher, game_date, game_id,
+          status, predicted_outcome, confidence_score, was_correct,
+          prediction_timestamp, opponent, prop_source
+        `
+      )
+      .eq("prop_source", "user_added")
+      .in("status", ["win", "loss", "push"])
+      .order("game_date", { ascending: true })
+      .range(offset, offset + batchSize - 1);
 
-    const rollingAvg = await getRollingAverage(
-      p.player_id,
-      p.prop_type,
-      p.game_date
-    );
+    if (dateCutoff) query = query.gte("game_date", dateCutoff);
 
-    const lineDiff =
-      typeof rollingAvg === "number" && typeof p.prop_value === "number"
-        ? rollingAvg - p.prop_value
-        : null;
+    const { data: props, error } = await query;
 
-    const streaks = await getStreaksForPlayer(p.player_id, p.prop_type);
-
-    rows.push({
-      ...p,
-      id: p.id,
-      prop_source: "user_added",
-      rolling_result_avg_7: rollingAvg,
-      line_diff: lineDiff,
-      hit_streak: streaks?.hit_streak ?? null,
-      win_streak: streaks?.win_streak ?? null,
-    });
-  }
-
-  if (rows.length === 0) {
-    console.log("✅ No new user-added props to sync.");
-    return;
-  }
-
-  const chunkSize = 500;
-  for (let i = 0; i < rows.length; i += chunkSize) {
-    const chunk = rows.slice(i, i + chunkSize);
-    const { error: insertError } = await supabase
-      .from("model_training_props")
-      .upsert(chunk, { onConflict: "id" });
-
-    if (insertError) {
-      console.error(
-        `❌ Insert error on chunk starting at ${i}:`,
-        insertError.message
-      );
-    } else {
-      console.log(`✅ Synced ${chunk.length} user-added props.`);
+    if (error) {
+      console.error("❌ Fetch error:", error.message);
+      break;
     }
+
+    if (!props?.length) {
+      console.log("✅ Sync complete - no more rows.");
+      break;
+    }
+
+    /* ---------- enrich each row (rolling avg, streaks…) ---------- */
+    const rowsToUpsert = [];
+
+    for (const p of props) {
+      if (!p.player_id || !p.game_date) {
+        console.warn(
+          `⚠️ Skipping row missing player_id / game_date (id: ${p.id})`
+        );
+        continue;
+      }
+
+      const propTypeNorm = normalizePropType(p.prop_type);
+
+      // Recent 7-game rolling average
+      const rollingAvg = await getRollingAverage(
+        p.player_id,
+        propTypeNorm,
+        p.game_date
+      );
+
+      // Simple line-diff helper
+      const lineDiff =
+        typeof rollingAvg === "number" && typeof p.prop_value === "number"
+          ? rollingAvg - p.prop_value
+          : null;
+
+      // Current streak (may return undefined / null)
+      const streaks = await getStreaksForPlayer(p.player_id, propTypeNorm);
+
+      rowsToUpsert.push({
+        ...p,
+        // 💡 use deterministic conflict key; id can be regenerated
+        id: crypto.randomUUID(),
+        prop_type: propTypeNorm,
+        rolling_result_avg_7: rollingAvg ?? null,
+        line_diff: lineDiff,
+        hit_streak: streaks?.hit_streak ?? null,
+        win_streak: streaks?.win_streak ?? null,
+      });
+    }
+
+    console.log(`📦 Prepared ${rowsToUpsert.length} rows (offset ${offset})`);
+
+    /* ---------------- bulk upsert ---------------- */
+    if (rowsToUpsert.length) {
+      const { error: upsertErr } = await supabase
+        .from("model_training_props")
+        .upsert(rowsToUpsert, {
+          onConflict: "player_id, game_id, prop_type",
+        });
+
+      const stamp = new Date().toISOString();
+      if (upsertErr) {
+        console.error(`❌ [${stamp}] Upsert error: ${upsertErr.message}`);
+      } else {
+        console.log(
+          `✅ [${stamp}] Upserted ${rowsToUpsert.length} rows (offset ${offset})`
+        );
+        totalProcessed += rowsToUpsert.length;
+      }
+    }
+
+    // next page
+    offset += batchSize;
   }
+
+  const secs = ((Date.now() - timerStart) / 1000).toFixed(1);
+  console.log(`🎉 Sync finished. Processed ${totalProcessed} rows in ${secs}s`);
 }

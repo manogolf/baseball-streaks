@@ -10,7 +10,7 @@ import { updatePropStatusesForRows } from "../backend/scripts/resolution/updateP
 import { syncStatsForDate } from "../backend/scripts/resolution/syncPlayerStats.js";
 import { downloadModelFromSupabase } from "../backend/scripts/shared/downloadModelFromSupabase.js";
 import { runTrainingBackfillIfNeeded } from "./backfillTrainingFieldsExtended.js";
-import { copyUserAddedPropsToTraining } from "./shared/modelTrainingUtils.js";
+import { upsertUserPropsToTraining } from "./shared/modelTrainingUtils.js";
 
 console.log("⏳ Cron runner starting...");
 
@@ -36,13 +36,13 @@ const modelFiles = [
 
 const month = new Date().getUTCMonth();
 const inSeason = month >= 2 && month <= 9;
-const cronExpression = inSeason ? "*/30 * * * *" : "0 10 * * *";
+const cronExpression = inSeason ? "*/90 * * * *" : "0 10 * * *";
 const isGitHubAction = process.env.GITHUB_ACTIONS === "true";
 
 console.log(
   `📅 Scheduling cron job: ${
     inSeason
-      ? "every 30 minutes (in-season)"
+      ? "every 90 minutes (in-season)"
       : "daily at 10:00 UTC (off-season)"
   }`
 );
@@ -65,7 +65,8 @@ async function ensureModelsExist() {
   }
 }
 
-await copyUserAddedPropsToTraining(7); // sync last 7 days
+// daily cron (yesterday + today’s early props)
+await upsertUserPropsToTraining({ batchSize: 1000, daysBack: 2 });
 
 // 🧠 Run one full cycle of tasks
 const safelyRun = async (label) => {
