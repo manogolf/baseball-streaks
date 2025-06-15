@@ -7173,3 +7173,18 @@
 [2025-06-14T01:36:55.720Z] ✅ No training rows needed backfill.
 [2025-06-14T01:36:55.720Z] ✅ Scheduled Cron Job: All tasks complete.
 
+[2025-06-15T01:31:23.076Z] 🔍 (442/1000) Player 664034 → 280 rows
+[2025-06-15T01:31:26.068Z] ⚠️ No streak profile found for 664034 (runs_scored)
+[2025-06-15T01:31:26.151Z] ⚠️ No streak profile found for 664034 (singles)
+[2025-06-15T01:31:26.218Z] ⚠️ No streak profile found for 664034 (triples)
+[2025-06-15T01:31:26.284Z] ⚠️ No streak profile found for 664034 (strikeouts_pitching)
+[2025-06-15T01:31:26.345Z] ⚠️ No streak profile found for 664034 (hits_allowed)
+[2025-06-15T01:31:26.470Z] ⚠️ No streak profile found for 664034 (walks)
+[2025-06-15T01:31:26.736Z] ⚠️ No streak profile found for 664034 (total_bases)
+[2025-06-15T01:31:26.859Z] ⚠️ No streak profile found for 664034 (strikeouts_batting)
+[2025-06-15T01:31:27.194Z] ⚠️ No streak profile found for 664034 (rbis)
+[2025-06-15T01:31:27.401Z] ⚠️ No streak profile found for 664034 (hits)
+[2025-06-15T01:31:27.613Z] ⚠️ No streak profile found for 664034 (doubles)
+[2025-06-15T01:31:27.801Z] ⚠️ No streak profile found for 664034 (stolen_bases)
+[2025-06-15T01:31:28.361Z] ⚠️ No streak profile found for 664034 (walks_allowed)
+[2025-06-15T01:31:28.501Z] ⚠️ No streak profile found for 664034 (home_runs)

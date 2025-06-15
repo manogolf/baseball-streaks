@@ -10,7 +10,6 @@ import { updatePropStatusesForRows } from "../backend/scripts/resolution/updateP
 import { syncStatsForDate } from "../backend/scripts/resolution/syncPlayerStats.js";
 import { downloadModelFromSupabase } from "../backend/scripts/shared/downloadModelFromSupabase.js";
 import { runTrainingBackfillIfNeeded } from "./backfillTrainingFieldsExtended.js";
-import { upsertUserPropsToTraining } from "./shared/modelTrainingUtils.js";
 
 console.log("⏳ Cron runner starting...");
 
@@ -64,9 +63,6 @@ async function ensureModelsExist() {
     }
   }
 }
-
-// daily cron (yesterday + today’s early props)
-await upsertUserPropsToTraining({ batchSize: 1000, daysBack: 2 });
 
 // 🧠 Run one full cycle of tasks
 const safelyRun = async (label) => {

@@ -1,3 +1,26 @@
+"""
+model_trainer.py
+
+This script trains recent-form Random Forest models for each MLB prop type
+using a balanced sample of wins and losses from the last ~500 entries per outcome.
+
+Key Features:
+- Pulls training data from Supabase ('model_training_props' table).
+- Balances win/loss samples to avoid skewed learning.
+- Uses recent game data only — focuses on short-term trends and model responsiveness.
+- Includes extended feature set: line_diff, streaks, home/away, opponent encoding, etc.
+- Uploads trained models directly to Supabase Storage.
+
+Typical use case:
+This script is designed to reflect **current player form and matchup patterns**.
+Best used for near-term predictions where up-to-date trends are most impactful.
+
+Do not confuse with:
+- retrain_all_models.py → trains historical logistic regression models using full history
+  and sample weighting (user_added:mlb_api = 100:1).
+- backfill_training_props.py → builds the training data foundation from resolved props.
+"""
+
 import os
 import pandas as pd
 import joblib
@@ -74,22 +97,24 @@ def train_and_save_model(prop_type):
         else:
             raise ValueError("Missing 'result' or 'prop_value' to compute 'line_diff'")
 
-    # Encode opponent
+    # Encode opponent if needed
     if "opponent_encoded" not in df.columns and "opponent" in df.columns:
         df["opponent_encoded"] = df["opponent"].astype("category").cat.codes
 
+    # Define unified feature set
+    feature_cols = [
+        "line_diff",
+        "hit_streak",
+        "win_streak",
+        "is_home",
+        "opponent_avg_win_rate",
+        "opponent_encoded",
+    ]
+
+    # Drop rows missing features or outcome
+    df.dropna(subset=feature_cols + ["outcome"], inplace=True)
     if df.empty:
-        raise ValueError(f"No training data found for: {prop_type}")
-
-    feature_cols = ["line_diff", "hit_streak", "win_streak", "is_home", "opponent_avg_win_rate", "opponent_encoded"]
-    df.dropna(subset=feature_cols + ["outcome"], inplace=True)
-    X = df[feature_cols]
-
-
-
-
-    feature_cols = ["line_diff", "hit_streak", "win_streak", "is_home", "opponent_encoded"]
-    df.dropna(subset=feature_cols + ["outcome"], inplace=True)
+        raise ValueError(f"No usable training data found for: {prop_type}")
 
     X = df[feature_cols]
     y = df["outcome"].map({"win": 1, "loss": 0})
@@ -109,6 +134,7 @@ def train_and_save_model(prop_type):
     importances = model.feature_importances_
     print("📊 Feature importances:", dict(zip(feature_cols, importances)))
 
-    # ✅ Upload to Supabase from memory
+    # ✅ Upload model to Supabase
     model_filename = f"{prop_type}_model.pkl"
     upload_model_to_supabase_from_memory(model_filename, model)
+
