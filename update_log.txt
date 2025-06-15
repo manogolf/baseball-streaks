@@ -7188,3 +7188,4 @@
 [2025-06-15T01:31:27.801Z] ⚠️ No streak profile found for 664034 (stolen_bases)
 [2025-06-15T01:31:28.361Z] ⚠️ No streak profile found for 664034 (walks_allowed)
 [2025-06-15T01:31:28.501Z] ⚠️ No streak profile found for 664034 (home_runs)
+[2025-06-15T02:43:45.319Z] ⚠️ No streak profile found for 677594 (hits_allowed)
