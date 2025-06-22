@@ -81,7 +81,7 @@ def process_batch(prop_type, batch_size=500):
     response = supabase.table("model_training_props") \
         .select("*") \
         .eq("prop_type", prop_type) \
-        .eq("source", "stat_derived") \
+        .eq("source", "mlb_api") \
         .is_("predicted_outcome", None) \
         .in_("outcome", ["win", "loss"]) \
         .limit(batch_size) \

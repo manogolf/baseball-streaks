@@ -177,7 +177,7 @@ export async function runExtendedBackfill() {
         if (
           row.prop_value == null &&
           row.result != null &&
-          row.source === "stat_derived"
+          row.source === "mlb_api"
         ) {
           updates.prop_value = parseFloat(row.result);
         }

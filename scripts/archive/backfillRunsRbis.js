@@ -41,7 +41,7 @@ async function run() {
             result: total,
             outcome: total > 0.5 ? "win" : "loss",
             status: "resolved",
-            source: "stat_derived",
+            source: "mlb_api",
           },
           { onConflict: ["player_id", "game_id", "prop_type"] }
         );

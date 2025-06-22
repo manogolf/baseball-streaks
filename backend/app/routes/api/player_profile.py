@@ -89,7 +89,7 @@ async def generate_fresh_player_profile(player_id: str):
         .from_("model_training_props")
         .select("game_date, prop_type, prop_value, result, outcome")
         .eq("player_id", player_id)
-        .eq("source", "stat_derived")
+        .eq("source", "mlb_api")
         .in_("outcome", ["win", "loss", "push"])
         .order("game_date", desc=True)
         .limit(10)

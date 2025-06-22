@@ -23,7 +23,7 @@ async function resolveHitsOutcomes() {
       .from("model_training_props")
       .select("id, prop_value, result, over_under")
       .eq("prop_type", "hits")
-      .eq("source", "stat_derived")
+      .eq("source", "mlb_api")
       .is("outcome", null)
       .range(offset, offset + BATCH_SIZE - 1);
 
