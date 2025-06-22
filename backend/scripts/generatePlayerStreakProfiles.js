@@ -85,7 +85,7 @@ function computeStreaks(resolvedProps) {
 /** Upsert streak profiles into Supabase */
 async function upsertStreaks(streakProfiles) {
   if (!streakProfiles.length) {
-    console.warn("⚠️ No streak profiles to upsert.");
+    //console.warn("⚠️ No streak profiles to upsert.");
     return;
   }
 

@@ -28,7 +28,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: python backend/scripts/backfill_predictions.py
+        run: python backend/scripts/shared/backfill_predictions.py
 
       # ✅ Node.js Setup & Script
       - name: Set up Node.js

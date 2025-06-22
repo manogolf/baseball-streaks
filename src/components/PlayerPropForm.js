@@ -26,7 +26,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
     team: "",
     prop_type: "",
     prop_value: 0.5,
-    over_under: "over",
+    over_under: "under",
     game_date: todayET(),
   });
 
@@ -226,6 +226,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
         prediction_timestamp: result ? now : null,
         over_under: preparedData.over_under.toLowerCase(),
         user_id: userId, // 🆕 Enforce per-user uniqueness
+        prop_source: "user_added", // ✅ canonical value
       };
 
       // 👉 Step 5: Insert into Supabase

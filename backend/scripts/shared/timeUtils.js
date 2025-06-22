@@ -52,3 +52,70 @@ export function formatDateET(dateString) {
     .setZone("America/New_York")
     .toFormat("LLL dd, yyyy");
 }
+
+export function getDayOfWeekET(isoDate) {
+  return DateTime.fromISO(isoDate, { zone: "America/New_York" }).toFormat(
+    "cccc"
+  );
+}
+
+export function getTimeOfDayBucketET(isoDateTime) {
+  const hour = DateTime.fromISO(isoDateTime, { zone: "America/New_York" }).hour;
+  if (hour < 12) return "morning";
+  if (hour < 17) return "afternoon";
+  if (hour < 21) return "evening";
+  return "night";
+}
+
+// 📌 Get Eastern Time (HH:mm) game time from game ID using boxscore endpoint
+/**
+ * Get the scheduled start time in Eastern Time ("HH:mm") for a gamePk.
+ * 1) Try the Schedule endpoint (more complete for older seasons)
+ * 2) Fall back to Boxscore if Schedule has no gameDate
+ */
+export async function getGameStartTimeET(gameId) {
+  try {
+    /* 1️⃣  Schedule endpoint */
+    let res = await fetch(
+      `https://statsapi.mlb.com/api/v1/schedule?sportId=1&gamePk=${gameId}`
+    );
+    if (res.ok) {
+      const schedJson = await res.json();
+      const schedISO = schedJson?.dates?.[0]?.games?.[0]?.gameDate;
+      if (schedISO) {
+        return DateTime.fromISO(schedISO)
+          .setZone("America/New_York")
+          .toFormat("HH:mm");
+      }
+    }
+
+    /* 2️⃣  Boxscore fallback */
+    res = await fetch(
+      `https://statsapi.mlb.com/api/v1/game/${gameId}/boxscore`
+    );
+    if (res.ok) {
+      const boxJson = await res.json();
+      const boxISO = boxJson?.gameData?.datetime?.dateTime;
+      if (boxISO) {
+        return DateTime.fromISO(boxISO)
+          .setZone("America/New_York")
+          .toFormat("HH:mm");
+      }
+    }
+
+    // Still nothing
+    return null;
+  } catch (err) {
+    console.warn(`⚠️ Could not get game time for ${gameId}:`, err.message);
+    return null;
+  }
+}
+
+/* Keep your other helpers here … */
+
+// ✅ Combine gameDate and gameTime into an Eastern-zone DateTime object
+export function toEasternDateTime(gameDate, gameTime) {
+  if (!gameDate || !gameTime) return null; // guard clause
+  const iso = `${gameDate}T${gameTime}`; // e.g. 2023-04-30T19:05:00
+  return DateTime.fromISO(iso, { zone: "America/New_York" });
+}

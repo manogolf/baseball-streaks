@@ -1,71 +1,108 @@
-// 📄 File: scripts/repairStatDerivedProps.js
+// scripts/repairStatDerivedProps.js
 
 import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
-import { derivePropValue } from "../backend/scripts/resolution/derivePropValue.js";
-import { determineOutcome } from "../backend/scripts/shared/propUtils.js";
+import {
+  flattenPlayerBoxscore,
+  didPlayerParticipate,
+} from "../backend/scripts/shared/playerUtils.js";
+import { getBoxscoreFromGameID } from "../backend/scripts/shared/mlbApiUtils.js";
+import {
+  extractStatForPropType,
+  determineOutcome,
+} from "../backend/scripts/shared/propUtils.js";
+import fs from "fs";
 
-const BATCH_SIZE = 1000;
+const SKIPPED_LOG = "skippedRepairs.log";
 
-async function fetchBrokenProps(offset = 0) {
+function logSkip(id, reason) {
+  const message = `⏭ Skipping row ID ${id}: ${reason}`;
+  console.warn(message);
+  fs.appendFileSync(SKIPPED_LOG, message + "\n");
+}
+
+async function fetchBrokenProps() {
   const { data, error } = await supabase
-    .from("player_props")
-    .select(
-      "id, player_id, game_id, team, opponent, is_home, prop_type, line, result, prop_value, source"
-    )
-    .eq("source", "stat_derived")
-    .or("result.is.null,prop_value.is.null")
-    .order("id", { ascending: true })
-    .range(offset, offset + BATCH_SIZE - 1);
+    .from("model_training_props")
+    .select("id, player_id, game_id, prop_type, prop_value, over_under")
+    .eq("prop_source", "mlb_api")
+    .in("status", ["win", "loss"])
+    .is("result", null)
+    .range(0, 4999); // Up to 5000 rows
 
-  if (error) throw new Error(`❌ Failed to fetch: ${error.message}`);
+  if (error) throw new Error("❌ Failed to fetch: " + error.message);
   return data;
 }
 
-async function updateProps(rows) {
-  const updates = [];
-  for (const row of rows) {
-    const value = derivePropValue(row.prop_type, row);
-    if (value == null) continue;
+async function repairPropRow(row) {
+  const { id, player_id, game_id, prop_type, prop_value, over_under } = row;
 
-    const outcome = determineOutcome(value, row.line);
-    if (!outcome) continue;
-
-    updates.push({ id: row.id, prop_value: value, result: outcome });
+  if (!player_id || !game_id || !prop_type) {
+    logSkip(id, "Missing player_id, game_id, or prop_type");
+    return null;
   }
 
-  if (!updates.length) {
-    console.log("⚠️ No updates to process in this batch.");
+  const boxscore = await getBoxscoreFromGameID(game_id);
+  if (!boxscore) {
+    logSkip(id, "Missing boxscore");
+    return null;
+  }
+
+  const stats = flattenPlayerBoxscore(player_id, boxscore);
+  if (!didPlayerParticipate(stats)) {
+    logSkip(id, "Player did not participate");
+    return null;
+  }
+
+  const propValue = extractStatForPropType(prop_type, stats);
+  if (typeof propValue !== "number") {
+    logSkip(id, "Stat not extractable");
+    return null;
+  }
+
+  const status = determineOutcome(propValue, prop_value, over_under);
+  if (!status || !["win", "loss", "push"].includes(status)) {
+    logSkip(id, `Could not determine status: ${status}`);
+    return null;
+  }
+
+  return {
+    id,
+    result: propValue,
+    status,
+    // prediction, outcome, and was_correct are skipped due to missing column
+  };
+}
+
+async function main() {
+  console.log("⚡ Starting repair of stat-derived props...");
+  fs.writeFileSync(SKIPPED_LOG, ""); // Clear log
+
+  const brokenRows = await fetchBrokenProps();
+  console.log("🔍 Rows needing repair:", brokenRows.length);
+
+  const repaired = [];
+  for (const row of brokenRows) {
+    const fixed = await repairPropRow(row);
+    if (fixed) repaired.push(fixed);
+  }
+
+  if (repaired.length === 0) {
+    console.log("🤷 No rows could be repaired.");
     return;
   }
 
   const { error } = await supabase
-    .from("player_props")
-    .upsert(updates, { onConflict: ["id"] });
+    .from("model_training_props")
+    .upsert(repaired, { onConflict: "id" });
 
   if (error) {
-    console.error("❌ Update failed:", error.message);
-  } else {
-    console.log(`✅ Updated ${updates.length} broken props.`);
-  }
-}
-
-async function main() {
-  let offset = 0;
-  let totalFixed = 0;
-
-  while (true) {
-    const batch = await fetchBrokenProps(offset);
-    if (!batch.length) break;
-
-    console.log(`🔧 Repairing batch of ${batch.length} props...`);
-    await updateProps(batch);
-    totalFixed += batch.length;
-    offset += BATCH_SIZE;
+    throw new Error("❌ Upsert failed: " + error.message);
   }
 
-  console.log(`🎯 Repair complete. Total repaired: ${totalFixed}`);
+  console.log(`✅ Repaired ${repaired.length} rows successfully.`);
 }
 
 main().catch((err) => {
   console.error("❌ Script failed:", err);
+  process.exit(1);
 });

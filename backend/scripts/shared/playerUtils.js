@@ -1,7 +1,9 @@
+import fetch from "node-fetch";
 import { supabase } from "./supabaseUtils.js";
 import { normalizePropType } from "./propUtils.js";
 import { getGamePkForTeamOnDate } from "./fetchGameID.js";
 import { toISODate } from "./timeUtils.js";
+import { DateTime } from "luxon";
 
 // 🧠 Flatten boxscore player stats (converts nested MLB format to simpler object)
 export function flattenPlayerBoxscore(player) {
@@ -230,9 +232,12 @@ export async function getStreaksForPlayer(player_id, prop_type) {
     .single();
 
   if (error || !data) {
-    // Log only the first time we see this (per session)
     missingStreakCache.add(key);
-    console.warn(`⚠️ No streak profile found for ${player_id} (${prop_type})`);
+    // if (process.env.VERBOSE_STREAKS !== "false") {
+    //   console.warn(
+    //     `⚠️ No streak profile found for ${player_id} (${prop_type})`
+    //   );
+    // }
     return null;
   }
 
@@ -261,3 +266,145 @@ export async function upsertPlayerID({ player_id, player_name, team = null }) {
 
   return data;
 }
+
+// 🔁 Batter-vs-Pitcher (BvP) utilities
+// ------------------------------------------------------------
+// Strategy:
+// 1) Look for a cached row in the `batter_vs_pitcher_stats` table
+//    so we don’t hammer the MLB API on every run.
+// 2) If no cache, fall back to the MLB StatsAPI, then (optionally)
+//    write a new cache row back to Supabase.
+// -----------------------------------------------------------
+
+/**
+ * Get lifetime stats for a BATTER vs a specific PITCHER.
+ * Returns an object such as:
+ * {
+ *   pa, ab, hits, home_runs, strikeouts, walks,
+ *   avg, obp, slg, ops
+ * }
+ * or `null` if no data.
+ */
+export async function getBatterVsPitcherStats(batterId, pitcherId) {
+  if (!batterId || !pitcherId) return null;
+
+  /* 1️⃣  Try cached row first */
+  const { data: cached } = await supabase
+    .from("batter_vs_pitcher_stats")
+    .select("*")
+    .eq("batter_id", batterId)
+    .eq("pitcher_id", pitcherId)
+    .maybeSingle();
+
+  if (cached) return cached; // ✅ cache hit
+
+  /* 2️⃣  Fallback to live StatsAPI */
+  try {
+    const url = `https://statsapi.mlb.com/api/v1/people/${batterId}/stats?stats=vsPlayer&opposingPlayerId=${pitcherId}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    const stat = json?.stats?.[0]?.splits?.[0]?.stat;
+    if (!stat) return null;
+
+    const record = {
+      batter_id: batterId,
+      pitcher_id: pitcherId,
+      pa: parseInt(stat.plateAppearances ?? 0, 10),
+      ab: parseInt(stat.atBats ?? 0, 10),
+      hits: parseInt(stat.hits ?? 0, 10),
+      home_runs: parseInt(stat.homeRuns ?? 0, 10),
+      strikeouts: parseInt(stat.strikeOuts ?? 0, 10),
+      walks: parseInt(stat.baseOnBalls ?? 0, 10),
+      avg: stat.avg ? parseFloat(stat.avg) : null,
+      obp: stat.obp ? parseFloat(stat.obp) : null,
+      slg: stat.slg ? parseFloat(stat.slg) : null,
+      ops: stat.ops ? parseFloat(stat.ops) : null,
+    };
+
+    /* Optional: cache it */
+    const { error: cacheErr } = await supabase
+      .from("batter_vs_pitcher_stats")
+      .insert([record]);
+
+    if (cacheErr && process.env.DEBUG_BVP === "true") {
+      console.warn("⚠️  BvP cache insert error:", cacheErr.message);
+    }
+
+    return record;
+  } catch (err) {
+    console.warn(
+      `⚠️  Exception in BvP fetch for ${batterId} vs ${pitcherId}`,
+      err
+    );
+    return null;
+  }
+}
+
+/** Pitcher-vs-Batter: just reverse the IDs */
+export async function getPitcherVsBatterStats(pitcherId, batterId) {
+  return getBatterVsPitcherStats(batterId, pitcherId);
+}
+
+/* ----------  Recent-Performance Helpers  ---------- */
+
+// /**
+//  * Get recent hitting or pitching stats for a player (last N days, 2025 season).
+//  * MLB StatsAPI uses `timeFrame` param (capital F).
+//  */
+// export async function getRecentStats(playerId, group = "hitting", days = 7) {
+//   const url =
+//     `https://statsapi.mlb.com/api/v1/people/${playerId}/stats` +
+//     `?stats=gameLog&group=${group}&season=2025`;
+
+//   try {
+//     const res = await fetch(url);
+//     const json = await res.json();
+//     const games = json?.stats?.[0]?.splits || [];
+
+//     const cutoff = DateTime.now().minus({ days });
+
+//     const recentGames = games.filter((g) => {
+//       const date = DateTime.fromISO(g.date);
+//       return date >= cutoff;
+//     });
+
+//     // Sum stat totals
+//     const totals = {};
+//     for (const g of recentGames) {
+//       const stat = g.stat;
+//       for (const key in stat) {
+//         const val = Number(stat[key]);
+//         if (!isNaN(val)) {
+//           totals[key] = (totals[key] || 0) + val;
+//         }
+//       }
+//     }
+
+//     return totals;
+//   } catch (e) {
+//     console.warn(
+//       `⚠️  Failed to fetch ${group} gameLog for last ${days} days for ${playerId}`,
+//       e
+//     );
+//     return null;
+//   }
+// }
+
+// /**
+//  * Bundle recent stats for hitting & pitching (7 / 15 / 30 days).
+//  */
+// export async function getRecentStatsBundle(playerId) {
+//   const hitting = {
+//     d7: await getRecentStats(playerId, "hitting", 7),
+//     d15: await getRecentStats(playerId, "hitting", 15),
+//     d30: await getRecentStats(playerId, "hitting", 30),
+//   };
+//   const pitching = {
+//     d7: await getRecentStats(playerId, "pitching", 7),
+//     d15: await getRecentStats(playerId, "pitching", 15),
+//     d30: await getRecentStats(playerId, "pitching", 30),
+//   };
+//   return { hitting, pitching };
+// }

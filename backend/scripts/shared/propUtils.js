@@ -133,63 +133,6 @@ export async function getRollingAverage(playerId, propType, gameDate) {
   return parseFloat((sum / values.length).toFixed(2));
 }
 
-export async function getSyntheticLine(propType, daysBack = 60) {
-  const cutoffDate = toISODate(new Date(Date.now() - daysBack * 86400000));
-
-  const { data, error } = await supabase
-    .from("player_props")
-    .select("prop_value")
-    .eq("prop_type", propType)
-    .eq("source", "user_added")
-    .gte("game_date", cutoffDate)
-    .order("game_date", { ascending: false })
-    .limit(1000);
-
-  if (error || !data || data.length === 0) {
-    console.warn(`⚠️ No real lines found for ${propType}, using fallback.`);
-    return getStaticFallbackLine(propType);
-  }
-
-  const values = data
-    .map((d) => parseFloat(d.prop_value))
-    .filter((v) => !isNaN(v));
-
-  if (values.length === 0) {
-    return getStaticFallbackLine(propType);
-  }
-
-  values.sort((a, b) => a - b);
-  const mid = Math.floor(values.length / 2);
-  const median =
-    values.length % 2 === 0 ? (values[mid - 1] + values[mid]) / 2 : values[mid];
-
-  return median;
-}
-
-export function getStaticFallbackLine(propType) {
-  const defaultLines = {
-    hits: 1.5,
-    home_runs: 0.5,
-    rbis: 0.5,
-    runs_scored: 0.5,
-    strikeouts_batting: 1.5,
-    walks: 0.5,
-    total_bases: 1.5,
-    hits_runs_rbis: 2.5,
-    runs_rbis: 1.5,
-    doubles: 0.5,
-    triples: 0.5,
-    stolen_bases: 0.5,
-    walks_allowed: 1.5,
-    hits_allowed: 4.5,
-    earned_runs: 2.5,
-    outs_recorded: 15.5,
-    strikeouts_pitching: 4.5,
-    singles: 0.5,
-  };
-  return defaultLines[propType] ?? 1.0;
-}
-
 export function determineOutcome(propValue, line, overUnder) {
   if (propValue === null || line === null || overUnder === null) return null;
   if (overUnder === "over") return propValue > line ? "win" : "loss";
