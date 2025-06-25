@@ -51,11 +51,18 @@ const PlayerPropForm = ({ onPropAdded }) => {
    */
   useEffect(() => {
     const fetchUser = async () => {
+      // Try context first
+      if (auth?.user?.id) {
+        setUserId(auth.user.id);
+        return;
+      }
+
+      // Fallback to direct Supabase call
       const { data, error } = await supabase.auth.getUser();
       if (data?.user) setUserId(data.user.id);
     };
     fetchUser();
-  }, []);
+  }, [auth?.user]);
 
   /**
    * 📜 Load prop‑type dropdown once
@@ -256,7 +263,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
         team: "",
         prop_type: "",
         prop_value: 0.5,
-        over_under: "over",
+        over_under: "under",
         game_date: today,
       });
       setPrediction(null);

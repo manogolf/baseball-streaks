@@ -1,5 +1,5 @@
 /**
- * 📄 File: updatePropResults.js
+ * 📄 File: backend/scripts/resolution/updatePropResults.js
  * 🧠 Purpose: Grade and resolve player props from stats.
  *
  * ⚠️ Assumptions / Pre-conditions:

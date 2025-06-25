@@ -21,13 +21,35 @@ export function derivePropValue(propType, stats) {
       return batting.strikeOuts;
     case "total_bases":
       return batting.totalBases;
-    case "hits_runs_rbis":
-      console.log("[COMBO] hits_runs_rbis input:", {
-        hits: batting.hits,
-        runs: batting.runs,
-        rbi: batting.rbi,
-      });
-      return batting.hits + batting.runs + batting.rbi;
+    case "hits_runs_rbis": {
+      const hasBattingInputs =
+        typeof batting?.hits === "number" ||
+        typeof batting?.runs === "number" ||
+        typeof batting?.rbi === "number";
+
+      if (!hasBattingInputs) return null;
+
+      const hits = batting?.hits ?? 0;
+      const runs = batting?.runs ?? 0;
+      const rbi = batting?.rbi ?? 0;
+
+      const isMissing = [batting?.hits, batting?.runs, batting?.rbi].some(
+        (v) => v === undefined
+      );
+
+      if (isMissing) {
+        console.warn("[⚠️ COMBO] Missing input(s) for hits_runs_rbis:", {
+          hits: batting?.hits,
+          runs: batting?.runs,
+          rbi: batting?.rbi,
+        });
+      } else {
+        console.log("[COMBO] hits_runs_rbis input:", { hits, runs, rbi });
+      }
+
+      return hits + runs + rbi;
+    }
+
     case "runs_rbis":
       return batting.runs + batting.rbi;
     case "singles":

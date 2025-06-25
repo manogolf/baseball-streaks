@@ -1,8 +1,5 @@
-Model Training YAML
-
-
 features:
-  # ────────── Basic Game Context ──────────
+  # ────────── Game Context ──────────
   is_home:
     type: binary
     required: true
@@ -29,25 +26,38 @@ features:
     type: categorical
     required: true
     transform: one_hot
-    description: 'morning', 'afternoon', 'evening', etc.
+    description: Morning, afternoon, evening
 
   game_time:
     type: time
     required: false
     transform: bucketize
-    description: Start time of game (ET), may be used for finer control than time_of_day_bucket
+    description: Start time of game (ET)
 
   # ────────── Streaks ──────────
   streak_type:
     type: categorical
     required: false
     transform: one_hot
-    description: Whether the player is on a "hot", "cold", or "neutral" streak
+    description: hot, cold, neutral
 
   streak_count:
     type: numeric
     required: false
     description: Number of games in current streak
+
+  hit_streak:
+    type: numeric
+    required: false
+
+  win_streak:
+    type: numeric
+    required: false
+
+  # ────────── Rolling Results ──────────
+  rolling_result_avg_7:
+    type: numeric
+    required: false
 
   # ────────── Rolling Averages ──────────
   d7_hits:
@@ -98,14 +108,17 @@ features:
     type: numeric
     required: false
 
-  # ────────── BvP: Batter vs Pitcher ──────────
-  bvp_ab:
+  # ────────── BvP ──────────
+  bvp_at_bats:
     type: numeric
     required: false
   bvp_hits:
     type: numeric
     required: false
   bvp_home_runs:
+    type: numeric
+    required: false
+  bvp_rbi:
     type: numeric
     required: false
   bvp_strikeouts:
@@ -117,9 +130,12 @@ features:
   bvp_avg:
     type: numeric
     required: false
+  bvp_plate_appearances:
+    type: numeric
+    required: false
 
-  # ────────── PvB: Pitcher vs Batters ──────────
-  pvb_ab:
+  # ────────── PvB ──────────
+  pvb_at_bats:
     type: numeric
     required: false
   pvb_hits:
@@ -140,3 +156,34 @@ features:
   pvb_plate_appearances:
     type: numeric
     required: false
+  pvb_hits_allowed:
+    type: numeric
+    required: false
+  pvb_home_runs_allowed:
+    type: numeric
+    required: false
+  pvb_walks_issued:
+    type: numeric
+    required: false
+
+  # ────────── Team Context ──────────
+  opponent_avg_result_vs_player:
+    type: numeric
+    required: false
+
+  opponent_avg_win_rate:
+    type: numeric
+    required: false
+
+  # ────────── Line Info ──────────
+  line:
+    type: numeric
+    required: false
+
+  line_diff:
+    type: numeric
+    required: false
+
+  prop_source:
+    type: categorical
+    required: true

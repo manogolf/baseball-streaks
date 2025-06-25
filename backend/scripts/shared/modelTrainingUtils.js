@@ -115,10 +115,20 @@ export async function upsertUserPropsToTraining(opts = {}) {
     console.log(`📦 Prepared ${rowsToUpsert.length} rows (offset ${offset})`);
 
     /* ---------------- bulk upsert ---------------- */
+
+    const deduped = Array.from(
+      new Map(
+        rowsToUpsert.map((r) => [
+          `${r.player_id}-${r.game_id}-${r.prop_type}-${r.prop_source}`,
+          r,
+        ])
+      ).values()
+    );
+
     if (rowsToUpsert.length) {
       const { error: upsertErr } = await supabase
         .from("model_training_props")
-        .upsert(rowsToUpsert, {
+        .upsert(deduped, {
           onConflict: "player_id, game_id, prop_type, prop_source",
         });
 

@@ -1,3 +1,35 @@
+/**
+ * 📄 File: scripts/backfillTrainingFieldsExtended.js
+ *
+ * 🔍 Description:
+ * This script performs a comprehensive backfill of missing training features in the
+ * `model_training_props` table. It is designed to fill in any null or incomplete fields
+ * critical for model training, such as:
+ *   - Rolling average (7-day result)
+ *   - Hit/win streaks
+ *   - Game time
+ *   - Home/away status
+ *   - Opponent
+ *   - Derived prop value (if missing but result exists)
+ *   - Inferred over/under (if missing but result + value exist)
+ *
+ * 🧱 It fetches all incomplete rows and processes them grouped by player, supporting
+ * optional bucketing to parallelize large backfills.
+ *
+ * ✅ Triggered manually or via cron using:
+ *   `node scripts/backfillTrainingFieldsExtended.js`
+ *   or with buckets:
+ *   `node scripts/backfillTrainingFieldsExtended.js --bucket=1/4`
+ *
+ * 🧩 Dependencies:
+ * - Supabase DB connection
+ * - Shared utilities: propUtils.js, playerUtils.js, timeUtils.js, fetchSchedule.js
+ *
+ * 🎯 Purpose:
+ * Ensures all training rows are complete and feature-rich before being used for model
+ * retraining or evaluation. Critical to maintain feature consistency across rows.
+ */
+
 import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
 import {
   getRollingAverage,

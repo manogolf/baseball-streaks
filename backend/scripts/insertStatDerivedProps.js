@@ -30,8 +30,8 @@ import { fetchBoxscoreStatsForGame } from "./shared/fetchBoxscoreStats.js";
 import { teamNameMap } from "./shared/teamNameMap.js";
 import crypto from "node:crypto";
 
-const START = "2024-03-28";
-const END = "2024-10-01";
+const START = "2025-04-23";
+const END = "2025-06-24";
 const LOG_EVERY = 150;
 const SLEEP_MS = 10;
 
@@ -44,7 +44,6 @@ let lossCount = 0;
 
 const quietMode = true;
 
-// helper (keep it near top of file)
 const isLocallyMeaningful = (obj) =>
   obj && (Number(obj.ab ?? obj.at_bats ?? 0) > 0 || Number(obj.pa ?? 0) > 0);
 
@@ -88,7 +87,6 @@ async function processDate(gameDate) {
     for (const pl of players) {
       const { id: player_id, fullName, teamAbbr: team, isHome, stats } = pl;
 
-      // ── NEW: define role flags right after we have `stats`
       const hasBat = stats?.batting && Object.keys(stats.batting).length > 0;
       const isPitcher = stats?.pitching && stats.pitching.gamesStarted > 0;
 
@@ -104,48 +102,23 @@ async function processDate(gameDate) {
 
       const now = new Date().toISOString();
 
-      // ✅ Restore correct opponent handling
-
-      // ────────────────────────────────────────────────────────────
-      // 🎯  Trimmed and validated BvP / PvB logic
-      // ────────────────────────────────────────────────────────────
-
+      // ── BvP and PvB STATS
       let bvpStats = {};
       let pvbStats = {};
-
-      // Find the starting pitcher on the OTHER team
       const startingPitcher = allPlayers.find(
-        (p) =>
-          p.isHome !== isHome &&
-          p.stats?.pitching &&
-          p.stats.pitching.gamesStarted > 0
+        (p) => p.isHome !== isHome && p.stats?.pitching?.gamesStarted > 0
       );
       const startingPitcherId = startingPitcher?.id ?? null;
 
-      /* ----------  BvP  ---------- */
       if (hasBat && startingPitcherId) {
-        // 1️⃣ call resolver & log full object
         const resBvp = await resolveStatForPlayer({
           mode: "bvp",
           batter_id: player_id,
           pitcher_id: startingPitcherId,
         });
-        //console.log("→ full BvP resolver response:", resBvp);
-
-        const rawBvp = resBvp?.rawStats;
-        //console.log("→ rawBvp:", rawBvp);
-
-        const legacyBvp = !rawBvp
-          ? await getBatterVsPitcherStats(player_id, startingPitcherId)
-          : null;
-
-        // 2️⃣ meaningful check
-        // Always prefer the live raw block; fall back to legacy only if it’s missing
-        const s = rawBvp ?? legacyBvp;
-        //console.log("→ candidate BvP block (raw or legacy):", s);
-
-        //console.log("🧪 final `s` selected for BvP:", s);
-
+        const s =
+          resBvp?.rawStats ??
+          (await getBatterVsPitcherStats(player_id, startingPitcherId));
         if (s && hasMeaningfulStats(s)) {
           bvpStats = {
             bvp_ab: s.ab ?? s.at_bats ?? null,
@@ -154,20 +127,14 @@ async function processDate(gameDate) {
             bvp_strikeouts: s.strikeouts ?? s.strike_outs ?? null,
             bvp_walks: s.walks ?? s.base_on_balls ?? null,
             bvp_avg: s.avg ?? null,
-            // … (other fields you actually need)
           };
-          //console.log(`✅ Assigned bvpStats for ${fullName}:`, bvpStats);
-        } else {
-          //console.log(`⚠️ No meaningful BvP stats for ${fullName}`);
         }
       }
 
-      /* ----------  PvB  ---------- */
       if (isPitcher) {
         const bats = allPlayers.filter(
           (p) => p.isHome !== isHome && p.stats?.batting
         );
-
         const agg = {
           ab: 0,
           hits: 0,
@@ -176,36 +143,30 @@ async function processDate(gameDate) {
           walks: 0,
           pa: 0,
         };
-
         for (const b of bats) {
-          const { rawStats: rawPvB } =
-            (await resolveStatForPlayer({
+          const raw = (
+            await resolveStatForPlayer({
               mode: "pvb",
               pitcher_id: player_id,
               batter_id: b.id,
-            })) || {};
-
-          const legacy = !rawPvB
-            ? await getPitcherVsBatterStats(player_id, b.id)
-            : null;
-
-          const candidate = isLocallyMeaningful(rawPvB)
-            ? rawPvB
+            })
+          )?.rawStats;
+          const legacy = raw
+            ? null
+            : await getPitcherVsBatterStats(player_id, b.id);
+          const s = isLocallyMeaningful(raw)
+            ? raw
             : isLocallyMeaningful(legacy)
             ? legacy
             : null;
-
-          if (!candidate) continue;
-
-          // Sum PvB into agg
-          agg.ab += candidate.ab || candidate.at_bats || 0;
-          agg.hits += candidate.hits || 0;
-          agg.home_runs += candidate.home_runs || candidate.homeRuns || 0;
-          agg.strikeouts += candidate.strikeouts || candidate.strike_outs || 0;
-          agg.walks += candidate.walks || candidate.base_on_balls || 0;
-          agg.pa += candidate.pa || 0;
+          if (!s) continue;
+          agg.ab += s.ab || s.at_bats || 0;
+          agg.hits += s.hits || 0;
+          agg.home_runs += s.home_runs || s.homeRuns || 0;
+          agg.strikeouts += s.strikeouts || s.strike_outs || 0;
+          agg.walks += s.walks || s.base_on_balls || 0;
+          agg.pa += s.pa || 0;
         }
-
         if (agg.ab > 0) {
           pvbStats = {
             pvb_ab: agg.ab,
@@ -216,20 +177,14 @@ async function processDate(gameDate) {
             pvb_avg: +(agg.hits / agg.ab).toFixed(3),
             pvb_plate_appearances: agg.pa,
           };
-
-          //console.log(`✅ Final PvB stats for ${fullName}:`, pvbStats);
-        } else {
-          //console.log(`⚠️ No aggregated PvB stats for ${fullName}`);
         }
       }
+
+      // ── PER-PROP INSERTION
       for (const propType of VALID_PROP_TYPES) {
         const result = extractStatForPropType(propType, stats);
-        if (result == null || typeof result !== "number" || isNaN(result)) {
-          continue; // silently skip invalid result rows
-        }
-
-        // 🔍 NEW: Track what stats made it past the filter
-        //console.log(`🧩 Prop: ${propType} → result: ${result}`);
+        if (result == null || typeof result !== "number" || isNaN(result))
+          continue;
 
         const line =
           (await getSyntheticLine(propType)) ??
@@ -238,40 +193,21 @@ async function processDate(gameDate) {
             player_id,
             getStaticFallbackLine
           ));
-
         const over_under = Math.random() > 0.5 ? "over" : "under";
+        const outcome = determineOutcome(result, line, over_under);
         if (over_under === "over") overCount++;
         else underCount++;
-
-        const outcome = determineOutcome(result, line, over_under);
         if (outcome === "win") winCount++;
         else lossCount++;
-
         propTypeWins[propType] =
           (propTypeWins[propType] || 0) + (outcome === "win" ? 1 : 0);
         propTypeLosses[propType] =
           (propTypeLosses[propType] || 0) + (outcome === "loss" ? 1 : 0);
 
         const streak = await getStreaksForPlayer(player_id, propType);
-
-        if (!quietMode) {
-          //console.log("📊 BvP Stats:", bvpStats);
-          //console.log("📊 PvB Stats:", pvbStats);
-        }
-
-        // Combine game date + time and get Eastern DateTime object
         const game_time = await getGameStartTimeET(gameId);
-        if (!game_time) {
-          console.warn(`⚠️ No game_time found for game_id ${gameId}`);
-          continue;
-        }
-
+        if (!game_time) continue;
         const gameDateTimeET = toEasternDateTime(gameDate, game_time);
-
-        // Derive time of day and day of week in Eastern Time
-        const time_of_day_bucket = getTimeOfDayBucketET(gameDateTimeET);
-        const game_day_of_week = getDayOfWeekET(gameDateTimeET);
-
         const row = {
           id: crypto.randomUUID(),
           player_id: String(player_id),
@@ -291,64 +227,13 @@ async function processDate(gameDate) {
           opponent,
           opponent_encoded,
           game_date: gameDate,
-          game_day_of_week,
-          time_of_day_bucket,
+          game_day_of_week: getDayOfWeekET(gameDateTimeET),
+          time_of_day_bucket: getTimeOfDayBucketET(gameDateTimeET),
           streak_type: streak?.streak_type ?? null,
           streak_count: streak?.streak_count ?? null,
           ...(bvpStats || {}),
           ...(pvbStats || {}),
-          // d7_hits: getStat("d7", "hits"),
-          // d7_home_runs: getStat("d7", "homeRuns"),
-          // d7_rbis: getStat("d7", "rbi"),
-          // d7_strikeouts: getStat("d7", "strikeOuts"),
-          // d7_walks: getStat("d7", "baseOnBalls"),
-          // d15_hits: getStat("d15", "hits"),
-          // d15_home_runs: getStat("d15", "homeRuns"),
-          // d15_rbis: getStat("d15", "rbi"),
-          // d15_strikeouts: getStat("d15", "strikeOuts"),
-          // d15_walks: getStat("d15", "baseOnBalls"),
-          // d30_hits: getStat("d30", "hits"),
-          // d30_home_runs: getStat("d30", "homeRuns"),
-          // d30_rbis: getStat("d30", "rbi"),
-          // d30_strikeouts: getStat("d30", "strikeOuts"),
-          // d30_walks: getStat("d30", "baseOnBalls"),
         };
-
-        // ░░ Optional or conditional fields ░░
-
-        row.opponent = opponent;
-        row.opponent_encoded = opponent_encoded;
-        row.streak_type = streak?.streak_type;
-        row.streak_count = streak?.streak_count;
-
-        // BvP stats (batting vs pitcher)
-        if (bvpStats) {
-          for (const [k, v] of Object.entries(bvpStats)) {
-            row[k] = v;
-          }
-        }
-
-        // PvB stats (pitcher vs batting lineup)
-        if (pvbStats) {
-          for (const [k, v] of Object.entries(pvbStats)) {
-            row[k] = v;
-          }
-        }
-
-        // 🔍 Debug log: log BvP and PvB stats per player before upsert
-        //console.log(
-        //`\n📤 Prepared row for insert: ${row.player_name}, ${row.prop_type}`
-        //);
-        //console.log("   BvP Stats:", bvpStats);
-        //console.log("   PvB Stats:", pvbStats);
-
-        // Future stats can be re-enabled here:
-        // safeAssign(row, "d7_hits", getStat("d7", "hits"));
-
-        //console.log(
-        //`📤 Final insert row for ${row.player_name}, ${row.prop_type}:`,
-        //row
-        //);
 
         const { error } = await supabase
           .from("model_training_props")
@@ -366,10 +251,10 @@ async function processDate(gameDate) {
             error.message
           );
         }
-        console.log(`✅ Game ${gameId} finished — ${inserted} rows inserted`);
-        await sleep(SLEEP_MS);
       }
     }
+    console.log(`✅ Game ${gameId} finished — ${inserted} rows inserted`);
+    await sleep(SLEEP_MS);
   }
 }
 
@@ -384,7 +269,6 @@ async function processDate(gameDate) {
   console.log("\n🏁 Final Outcome Totals:");
   console.log(`   ✅ Wins:   ${winCount}`);
   console.log(`   ❌ Losses: ${lossCount}`);
-
   console.log("\n📊 Outcome by prop type:");
   for (const type of Object.keys({
     ...propTypeWins,
@@ -393,9 +277,7 @@ async function processDate(gameDate) {
     const w = propTypeWins[type] || 0;
     const l = propTypeLosses[type] || 0;
     console.log(
-      `  ${type.padEnd(20)} ${String(w).padStart(2)}W / ${String(l).padStart(
-        2
-      )}L`
+      `${type.padEnd(20)} ${String(w).padStart(2)}W / ${String(l).padStart(2)}L`
     );
   }
 })();
