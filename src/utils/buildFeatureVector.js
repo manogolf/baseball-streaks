@@ -127,11 +127,14 @@ export async function buildFeatureVector({
       )
       .eq("player_id", player_id)
       .eq("prop_type", prop_type)
-      .filter("bvp_pa", "not.is", null)
       .order("game_date", { ascending: false })
-      .limit(1);
+      .limit(20); // buffer size
 
-    Object.assign(bvpPvB, matchupStats?.[0] ?? {});
+    const validRow = (matchupStats || []).find((row) => row.bvp_pa !== null);
+
+    if (validRow) {
+      Object.assign(bvpPvB, validRow);
+    }
   } catch (e) {
     console.warn(`⚠️ Failed to fetch BvP/PvB stats: ${e.message}`);
   }
