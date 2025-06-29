@@ -1,94 +1,96 @@
-// File: scripts/generateDerivedStats.js
+// 📄 File: backend/scripts/generateDerivedStats.js
 
 import { supabase } from "./shared/supabaseUtils.js";
-import { toISODate } from "./shared/timeUtils.js";
 import { getDerivedStats } from "./shared/getDerivedStats.js";
+import { toISODate } from "./shared/timeUtils.js";
+import { VALID_PROP_TYPES } from "./shared/propUtils.js";
+
+// How many days to look back for newly added props
+const LOOKBACK_DAYS = 30;
 
 /**
- * Fetch distinct players who have had props recently (last 30 days)
+ * Get list of distinct (player_id, game_date) combos from recent model_training_props
+ * to use for computing derived stats.
  */
-async function fetchRecentPlayers(days = 30) {
-  const cutoffDate = toISODate(new Date(Date.now() - days * 86400000));
+async function getRecentPlayerGames() {
+  const cutoffDate = toISODate(new Date(Date.now() - LOOKBACK_DAYS * 86400000));
 
   const { data, error } = await supabase
     .from("model_training_props")
-    .select("player_id", { distinct: true })
-    .gte("game_date", cutoffDate);
-
-  if (error) throw new Error(`❌ Failed to fetch players: ${error.message}`);
-  return data.map((row) => row.player_id);
-}
-
-/**
- * Calculate d7/d15/d30 stats for a player by pulling past game logs
- */
-async function calculateDerivedStatsForPlayer(player_id, game_date) {
-  const windows = [7, 15, 30];
-  const result = {};
-
-  for (const window of windows) {
-    const stats = await getDerivedStats(player_id, window);
-    if (!stats) continue;
-
-    const prefix = `d${window}`;
-    result[`${prefix}_hits`] = stats.hits;
-    result[`${prefix}_homeRuns`] = stats.homeRuns;
-    result[`${prefix}_rbi`] = stats.rbi;
-    result[`${prefix}_strikeOuts`] = stats.strikeOuts;
-    result[`${prefix}_baseOnBalls`] = stats.baseOnBalls;
-  }
-
-  return result;
-}
-
-/**
- * Upsert to a new table like `player_derived_stats` (schema: player_id, stat_type, value, updated_at)
- */
-async function upsertDerivedStats(player_id, game_id, game_date, statsObj) {
-  const enriched = {
-    player_id,
-    game_id, // ✅ required column
-    game_date, // ✅ critical line to fix the null error
-    ...statsObj,
-    updated_at: toISODate(new Date()),
-  };
-
-  const { error } = await supabase
-    .from("player_derived_stats")
-    .upsert(enriched, { onConflict: ["player_id", "game_id", "game_date"] });
+    .select("player_id, game_date, game_id, prop_type")
+    .in("prop_type", VALID_PROP_TYPES)
+    .gte("game_date", cutoffDate)
+    .not("player_id", "is", null)
+    .order("game_date", { ascending: true });
 
   if (error)
-    console.error(`❌ Failed to upsert stats for ${player_id}:`, error.message);
-  else console.log(`✅ Upserted derived stats for ${player_id}`);
+    throw new Error("❌ Failed to fetch recent games: " + error.message);
+
+  const seen = new Set();
+  return data.filter((row) => {
+    const key = `${row.player_id}_${row.game_date}_${row.prop_type}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
+/**
+ * Upserts the computed d7/d15/d30 stats into player_derived_stats for each row.
+ */
+async function updateDerivedStats() {
+  const rows = await getRecentPlayerGames();
+  console.log(
+    `📊 Total distinct (player_id, game_date) combos fetched: ${rows.length}`
+  );
+  console.log(`🔍 Found ${rows.length} player-game combos to backfill...`);
 
-/** Main */
-async function main() {
-  const players = await fetchRecentPlayers();
-  console.log(`🔍 Found ${players.length} recent players to process`);
+  let updated = 0;
+  let skipped = 0;
 
-  for (const player_id of players) {
-    const { data: recentGames, error } = await supabase
-      .from("model_training_props")
-      .select("game_id, game_date")
-      .eq("player_id", player_id)
-      .order("game_date", { ascending: false })
-      .limit(1);
+  for (let i = 0; i < rows.length; i++) {
+    const { player_id, game_date, game_id } = rows[i];
+    console.log(`⏳ Processing ${i + 1} of ${rows.length}`);
 
-    if (error || !recentGames?.length) {
-      console.warn(`⚠️ No recent game found for ${player_id}`);
-      continue;
+    try {
+      const derivedStats = await getDerivedStats(player_id, game_date);
+      console.log(
+        `📋 Derived stats for player ${player_id} on ${game_date}:`,
+        derivedStats
+      );
+
+      const allValuesEmpty =
+        Object.keys(derivedStats).length === 0 ||
+        Object.values(derivedStats).every((v) => v == null);
+
+      if (allValuesEmpty) {
+        console.log(
+          `🟡 Skipped: No non-null derived stats for player ${player_id} on ${game_date}`
+        );
+        skipped++;
+        continue;
+      }
+
+      const { error } = await supabase.from("player_derived_stats").upsert(
+        {
+          player_id,
+          game_date,
+          game_id,
+          ...derivedStats,
+        },
+        { onConflict: ["player_id", "game_date"] }
+      );
+
+      if (!error) updated++;
+      else console.warn(`❌ Supabase error: ${error.message}`);
+    } catch (err) {
+      console.warn(
+        `⚠️ Failed for player ${player_id} on ${game_date}: ${err.message}`
+      );
     }
-
-    const { game_id, game_date } = recentGames[0];
-
-    const stats = await calculateDerivedStatsForPlayer(player_id, game_date);
-    if (Object.keys(stats).length === 0) continue;
-
-    await upsertDerivedStats(player_id, game_id, game_date, stats);
   }
 
-  console.log("🎉 Finished generating derived stats.");
+  console.log(`✅ Updated ${updated} rows.`);
+  console.log(`🟡 Skipped ${skipped} rows with no usable stats.`);
 }
 
-main();
+updateDerivedStats();

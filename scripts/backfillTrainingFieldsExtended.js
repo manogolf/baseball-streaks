@@ -172,7 +172,9 @@ export async function runExtendedBackfill() {
           const avg = await getRollingAverage(
             row.player_id,
             row.prop_type,
-            row.game_date
+            row.game_date,
+            row.game_id,
+            7
           );
           if (avg != null) updates.rolling_result_avg_7 = avg;
         }
@@ -270,5 +272,14 @@ export async function runExtendedBackfill() {
 
 // Allow CLI usage
 if (process.argv[1].includes("backfillTrainingFieldsExtended.js")) {
-  await runTrainingBackfillIfNeeded();
+  const totalBuckets = 16;
+
+  for (let i = 1; i <= totalBuckets; i++) {
+    console.log(`\n⏳ Starting bucket ${i}/${totalBuckets}...\n`);
+    process.argv.push(`--bucket=${i}/${totalBuckets}`);
+    await runTrainingBackfillIfNeeded();
+    process.argv.pop(); // remove --bucket arg before next iteration
+  }
+
+  console.log(`\n✅ All ${totalBuckets} buckets processed.`);
 }

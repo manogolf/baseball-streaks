@@ -87,7 +87,9 @@ export async function upsertUserPropsToTraining(opts = {}) {
       const rollingAvg = await getRollingAverage(
         p.player_id,
         propTypeNorm,
-        p.game_date
+        p.game_date,
+        p.game_id,
+        7
       );
 
       // Simple line-diff helper

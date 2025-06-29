@@ -17,11 +17,6 @@ import {
   determineOutcome,
 } from "./shared/propUtils.js";
 import {
-  buildSyntheticLine,
-  getSyntheticLine,
-  getStaticFallbackLine,
-} from "./shared/syntheticLineUtils.js";
-import {
   getStreaksForPlayer,
   getBatterVsPitcherStats,
   getPitcherVsBatterStats,
@@ -30,8 +25,11 @@ import { fetchBoxscoreStatsForGame } from "./shared/fetchBoxscoreStats.js";
 import { teamNameMap } from "./shared/teamNameMap.js";
 import crypto from "node:crypto";
 
-const START = "2025-04-23";
-const END = "2025-06-24";
+const DAYS_AGO = 2;
+const targetDate = new Date();
+targetDate.setDate(targetDate.getDate() - DAYS_AGO);
+const datesToProcess = [toISODate(targetDate)];
+
 const LOG_EVERY = 150;
 const SLEEP_MS = 10;
 
@@ -44,18 +42,10 @@ let lossCount = 0;
 
 const quietMode = true;
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 const isLocallyMeaningful = (obj) =>
   obj && (Number(obj.ab ?? obj.at_bats ?? 0) > 0 || Number(obj.pa ?? 0) > 0);
-
-function dateRange(start, end) {
-  const out = [];
-  for (let d = new Date(start); d <= new Date(end); d.setDate(d.getDate() + 1))
-    out.push(toISODate(d));
-  return out;
-}
-
-const datesToProcess = dateRange(START, END);
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function processDate(gameDate) {
   console.log(`\n📅 ${gameDate}`);
@@ -186,19 +176,37 @@ async function processDate(gameDate) {
         if (result == null || typeof result !== "number" || isNaN(result))
           continue;
 
-        const line =
-          (await getSyntheticLine(propType)) ??
-          (await buildSyntheticLine(
-            propType,
-            player_id,
-            getStaticFallbackLine
-          ));
-        const over_under = Math.random() > 0.5 ? "over" : "under";
-        const outcome = determineOutcome(result, line, over_under);
+        // 🧠 Force line to match actual value so outcome is deterministic
+        const line = Number(result);
+
+        let over_under;
+        let outcome;
+
+        if (Number.isFinite(line)) {
+          if (Number(result) > line) {
+            over_under = "under"; // Pretend we picked wrong
+            outcome = "win";
+          } else if (Number(result) < line) {
+            over_under = "over"; // Pretend we picked wrong
+            outcome = "win";
+          } else {
+            over_under = "over"; // Arbitrary
+            outcome = "push";
+          }
+        } else {
+          over_under = null;
+          outcome = "push";
+        }
+
+        const was_correct = outcome === "win";
+
+        // Optional: update your counters
         if (over_under === "over") overCount++;
-        else underCount++;
+        else if (over_under === "under") underCount++;
+
         if (outcome === "win") winCount++;
-        else lossCount++;
+        else if (outcome === "loss") lossCount++;
+
         propTypeWins[propType] =
           (propTypeWins[propType] || 0) + (outcome === "win" ? 1 : 0);
         propTypeLosses[propType] =
@@ -223,6 +231,7 @@ async function processDate(gameDate) {
           created_at: now,
           updated_at: now,
           prop_source: "mlb_api",
+          was_correct,
           game_id: gameId,
           opponent,
           opponent_encoded,

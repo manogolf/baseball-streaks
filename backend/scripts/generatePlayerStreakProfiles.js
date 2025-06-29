@@ -1,4 +1,4 @@
-// 📄 File: scripts/generatePlayerStreakProfiles.js
+// 📄 File: backend/scripts/generatePlayerStreakProfiles.js
 
 import { supabase } from "./shared/supabaseUtils.js";
 import { toISODate } from "./shared/timeUtils.js";

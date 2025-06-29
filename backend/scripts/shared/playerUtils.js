@@ -3,7 +3,8 @@ import { supabase } from "./supabaseUtils.js";
 import { normalizePropType } from "./propUtils.js";
 import { getGamePkForTeamOnDate } from "./fetchGameID.js";
 import { toISODate } from "./timeUtils.js";
-import { DateTime } from "luxon";
+import { getBoxscoreFromGameID } from "./mlbApiUtils.js";
+import { getFullTeamAbbreviationFromID } from "./teamNameMap.js";
 
 // 🧠 Flatten boxscore player stats (converts nested MLB format to simpler object)
 export function flattenPlayerBoxscore(player) {
@@ -347,64 +348,17 @@ export async function getPitcherVsBatterStats(pitcherId, batterId) {
   return getBatterVsPitcherStats(batterId, pitcherId);
 }
 
-/* ----------  Recent-Performance Helpers  ---------- */
+export async function getOpponentAbbreviation(teamAbbr, game_id) {
+  const boxscore = await getBoxscoreFromGameID(game_id);
+  const homeTeamId = boxscore?.teams?.home?.team?.id;
+  const awayTeamId = boxscore?.teams?.away?.team?.id;
 
-// /**
-//  * Get recent hitting or pitching stats for a player (last N days, 2025 season).
-//  * MLB StatsAPI uses `timeFrame` param (capital F).
-//  */
-// export async function getRecentStats(playerId, group = "hitting", days = 7) {
-//   const url =
-//     `https://statsapi.mlb.com/api/v1/people/${playerId}/stats` +
-//     `?stats=gameLog&group=${group}&season=2025`;
+  const homeAbbr = getFullTeamAbbreviationFromID(homeTeamId);
+  const awayAbbr = getFullTeamAbbreviationFromID(awayTeamId);
 
-//   try {
-//     const res = await fetch(url);
-//     const json = await res.json();
-//     const games = json?.stats?.[0]?.splits || [];
+  if (homeAbbr === teamAbbr) return awayAbbr;
+  if (awayAbbr === teamAbbr) return homeAbbr;
 
-//     const cutoff = DateTime.now().minus({ days });
-
-//     const recentGames = games.filter((g) => {
-//       const date = DateTime.fromISO(g.date);
-//       return date >= cutoff;
-//     });
-
-//     // Sum stat totals
-//     const totals = {};
-//     for (const g of recentGames) {
-//       const stat = g.stat;
-//       for (const key in stat) {
-//         const val = Number(stat[key]);
-//         if (!isNaN(val)) {
-//           totals[key] = (totals[key] || 0) + val;
-//         }
-//       }
-//     }
-
-//     return totals;
-//   } catch (e) {
-//     console.warn(
-//       `⚠️  Failed to fetch ${group} gameLog for last ${days} days for ${playerId}`,
-//       e
-//     );
-//     return null;
-//   }
-// }
-
-// /**
-//  * Bundle recent stats for hitting & pitching (7 / 15 / 30 days).
-//  */
-// export async function getRecentStatsBundle(playerId) {
-//   const hitting = {
-//     d7: await getRecentStats(playerId, "hitting", 7),
-//     d15: await getRecentStats(playerId, "hitting", 15),
-//     d30: await getRecentStats(playerId, "hitting", 30),
-//   };
-//   const pitching = {
-//     d7: await getRecentStats(playerId, "pitching", 7),
-//     d15: await getRecentStats(playerId, "pitching", 15),
-//     d30: await getRecentStats(playerId, "pitching", 30),
-//   };
-//   return { hitting, pitching };
-// }
+  console.warn(`⚠️ Team ${teamAbbr} not found in game ${game_id}`);
+  return null;
+}

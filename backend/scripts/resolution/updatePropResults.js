@@ -17,6 +17,27 @@
  * - Compute outcome: win/loss/push via determineStatus().
  * - Update Supabase with final result, outcome, and was_correct.
  */
+// ==========================================
+// 📄 File: updatePropResults.js
+// 📌 Purpose: Resolve outcomes for all finalized props (user-added and stat-derived).
+//
+// 🔁 Used by: cronRunner.js (daily run)
+// 📥 Sources:
+//   - player_props → user-added props
+//   - model_training_props → stat-derived props
+//   - MLB Stats API → live boxscores and allPlays data
+//   - player_stats (fallback)
+//
+// 🧠 Why it exists:
+// - Grades props as win/loss/push based on actual player performance.
+// - Computes result values for props using boxscore data or cached player_stats.
+// - Handles DNPs (did not play), participation checks, and edge cases.
+//
+// 🔧 Notes:
+// - Writes status and result updates directly to Supabase.
+// - Skipped/incomplete rows are logged for future inspection.
+// - Fully integrates with shared utilities (e.g., playerUtils, derivePropValue).
+// ==========================================
 
 import "dotenv/config";
 import fs from "fs";

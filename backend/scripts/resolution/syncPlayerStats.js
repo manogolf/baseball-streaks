@@ -1,5 +1,24 @@
 // File: backend/scripts/resolution/syncPlayerStats.js
 
+// ==========================================
+// 📄 File: syncPlayerStats.js
+// 📌 Purpose: Populate the `player_stats` table with core per-player stats
+//            for all finalized MLB games on a given date.
+//
+// 🔁 Used by: cronRunner.js (daily run)
+// 📥 Source: MLB Stats API (boxscore endpoint)
+//
+// 🧠 Why it exists:
+// - Provides a fast, queryable cache of batting/pitching stats per game.
+// - Used by `updatePropResults.js` to resolve actual stat outcomes.
+// - Supports summary stats in player profiles (season + career aggregates).
+//
+// 🔧 Notes:
+// - Table: `player_stats` (Supabase)
+// - Conflict resolution on (player_id, game_id)
+// - Complements newer systems like `model_training_props` and `player_derived_stats`
+// ==========================================
+
 import "dotenv/config";
 import { supabase } from "../shared/index.js";
 import { yesterdayET, toISODate } from "../shared/timeUtils.js";

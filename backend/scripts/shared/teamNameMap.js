@@ -81,3 +81,22 @@ export function getFullTeamAbbreviationFromID(teamId) {
   if (!teamId) return null;
   return teamIdToAbbrMap[parseInt(teamId)] || null;
 }
+
+export async function getOpponentAbbreviation(teamAbbr, gameId) {
+  const url = `https://statsapi.mlb.com/api/v1/game/${gameId}/boxscore`;
+  const res = await fetch(url);
+  const json = await res.json();
+
+  const home = json.teams.home.team;
+  const away = json.teams.away.team;
+
+  if (home.abbreviation === teamAbbr) {
+    return away.abbreviation;
+  } else if (away.abbreviation === teamAbbr) {
+    return home.abbreviation;
+  } else {
+    throw new Error(
+      `Team ${teamAbbr} not found in boxscore for game ${gameId}`
+    );
+  }
+}

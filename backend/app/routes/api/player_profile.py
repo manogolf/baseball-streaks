@@ -1,3 +1,23 @@
+# ==========================================
+# 📄 File: player_profile.py
+# 📌 Purpose: FastAPI route for /player-profile/:player_id
+#            Returns recent props, streaks, and stat summaries
+#
+# 🔁 Used by: PlayerProfileDashboard UI
+# 📤 Outputs: JSON with current performance metrics across prop types
+#
+# 🧠 Why it uses `player_stats`:
+# - Supplies season and career stat rollups using queryable numeric fields.
+# - Avoids reprocessing raw boxscore JSON or training rows during request time.
+# - Fallback when derived stats are incomplete or unavailable.
+#
+# 🔧 Notes:
+# - Pulls recent props from `model_training_props`
+# - Streaks from `player_streak_profiles`
+# - Rollups from `player_stats`
+# ==========================================
+
+
 from fastapi import APIRouter, HTTPException
 from datetime import datetime, timedelta, timezone
 from collections import Counter

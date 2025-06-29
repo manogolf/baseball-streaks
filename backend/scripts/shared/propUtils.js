@@ -112,21 +112,29 @@ export async function determineOpponent(team, gameId) {
   return error || !data ? null : data.team;
 }
 
-export async function getRollingAverage(playerId, propType, gameDate) {
+export async function getRollingAverage(
+  playerId,
+  propType,
+  gameDate,
+  gameId,
+  days = 7
+) {
   const { data, error } = await supabase
     .from("model_training_props")
-    .select("result, game_date")
+    .select("result, game_date, game_id")
     .eq("player_id", playerId)
     .eq("prop_type", propType)
     .lt("game_date", gameDate)
-    .order("game_date", { ascending: false })
-    .limit(7);
+    .order("game_date", { ascending: false });
 
   if (error || !data || data.length === 0) return null;
 
   const values = data
+    .filter((row) => row.game_id !== gameId)
+    .slice(0, days)
     .map((row) => parseFloat(row.result))
     .filter((v) => !isNaN(v));
+
   if (values.length === 0) return null;
 
   const sum = values.reduce((acc, v) => acc + v, 0);

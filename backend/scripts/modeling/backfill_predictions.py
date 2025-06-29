@@ -1,3 +1,5 @@
+# File: backend/scripts/modeling/backfill_predictions.py
+
 import os
 import requests
 import pandas as pd
@@ -59,29 +61,44 @@ def download_model_if_missing(model_name, max_retries=3):
 def predict(prop_type, input_data):
     model_filename = f"{prop_type}_model.pkl"
     model_path = download_model_if_missing(model_filename)
-    print(f"🔍 Resolved model_path: {model_path}")
 
     if not model_path or not os.path.exists(model_path):
         return None, None
 
     model = joblib.load(model_path)
-    features = pd.DataFrame([{
-        "line_diff": (input_data.get("rolling_result_avg_7") or 0) - (input_data.get("prop_value") or 0),
-        "hit_streak": input_data.get("hit_streak", 0),
-        "win_streak": input_data.get("win_streak", 0),
-        "is_home": input_data.get("is_home", 0),
-        "opponent_encoded": input_data.get("opponent_avg_win_rate", 0.5),
-    }])
-
+    features = pd.DataFrame([input_data])
     prob = model.predict_proba(features)[0][1]
     prediction = "win" if prob >= 0.5 else "loss"
     return prediction, round(float(prob), 4)
+
+def extract_features(row):
+    features = {
+        "prop_value": row.get("prop_value", 0),
+        "line_diff": (row.get("rolling_result_avg_7") or 0) - (row.get("prop_value") or 0),
+        "hit_streak": row.get("hit_streak", 0),
+        "win_streak": row.get("win_streak", 0),
+        "is_home": row.get("is_home", 0),
+        "opponent_encoded": row.get("opponent_encoded", 0),
+        "opponent_avg_win_rate": row.get("opponent_avg_win_rate", 0.5),
+
+        # Rolling stats
+        "d7_hits": row.get("d7_hits", 0),
+        "d15_hits": row.get("d15_hits", 0),
+        "d30_hits": row.get("d30_hits", 0),
+
+        # PvB / BvP
+        "bvp_ab": row.get("bvp_ab", 0),
+        "bvp_avg": row.get("bvp_avg", 0),
+        "pvb_ab": row.get("pvb_ab", 0),
+        "pvb_avg": row.get("pvb_avg", 0),
+    }
+    return features
 
 def process_batch(prop_type, batch_size=500):
     response = supabase.table("model_training_props") \
         .select("*") \
         .eq("prop_type", prop_type) \
-        .eq("source", "mlb_api") \
+        .eq("prop_source", "mlb_api") \
         .is_("predicted_outcome", None) \
         .in_("outcome", ["win", "loss"]) \
         .limit(batch_size) \
@@ -101,15 +118,7 @@ def process_batch(prop_type, batch_size=500):
     for player_id, props in grouped.items():
         for row in props:
             try:
-                features = {
-                    "prop_value": row.get("prop_value", 0),
-                    "rolling_result_avg_7": row.get("rolling_result_avg_7", 0),
-                    "hit_streak": row.get("hit_streak", 0),
-                    "win_streak": row.get("win_streak", 0),
-                    "is_home": row.get("is_home", 0),
-                    "opponent_avg_win_rate": row.get("opponent_avg_win_rate", 0.5),
-                }
-
+                features = extract_features(row)
                 prediction, prob = predict(prop_type, features)
                 if prediction is None:
                     continue
