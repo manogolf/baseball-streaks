@@ -139,12 +139,12 @@ export async function buildFeatureVector({
     prop_value,
     over_under,
     player_id,
-    rolling_result_avg_7: avgWinRate,
+    rolling_result_avg_7: avgWinRate ?? 0.5,
     hit_streak: hitStreak,
     win_streak: winStreak,
     is_home: isHome ? 1 : 0,
     opponent_win_rate,
-    opponent_avg_win_rate,
+    opponent_avg_win_rate: opponent_avg_win_rate ?? 0.5,
     ...bvpPvB,
   };
 }
