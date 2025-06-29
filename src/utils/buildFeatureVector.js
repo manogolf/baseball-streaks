@@ -125,7 +125,7 @@ export async function buildFeatureVector({
       )
       .eq("player_id", player_id)
       .eq("prop_type", prop_type)
-      .not("bvp_pa", "is", null)
+      .filter("bvp_pa", "not.is", null)
       .order("game_date", { ascending: false })
       .limit(1);
 
