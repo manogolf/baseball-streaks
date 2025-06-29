@@ -24,7 +24,7 @@ export async function buildFeatureVector({
   // 1. Rolling avg + streaks
   let recentProps = [];
   try {
-    const { data: recentProps = [] } = await supabase
+    const { data = [] } = await supabase
       .from("model_training_props")
       .select("outcome")
       .eq("player_id", player_id)
@@ -32,7 +32,7 @@ export async function buildFeatureVector({
       .lt("game_date", dateISO)
       .order("game_date", { ascending: false })
       .limit(7);
-    recentProps = data || [];
+    recentProps = data;
   } catch (e) {
     console.warn(`⚠️ Failed to fetch recent props: ${e.message}`);
   }
@@ -49,7 +49,7 @@ export async function buildFeatureVector({
     } else break;
   }
 
-  // 2. Game + home/away
+  // 2. Game ID + home/away
   let game_id = null;
   let isHome = false;
   try {
@@ -59,12 +59,13 @@ export async function buildFeatureVector({
     console.warn(`⚠️ Failed home/away check: ${e.message}`);
   }
 
+  // 3. Opponent (now safe after game_id is resolved)
   const opponent = await getOpponentAbbreviation(team, game_id);
 
-  // 3. opponent_win_rate
+  // 4. opponent_win_rate
   let opponent_win_rate = null;
   try {
-    const { data: opponentGames } = await supabase
+    const { data: opponentGames = [] } = await supabase
       .from("model_training_props")
       .select("outcome")
       .eq("player_id", player_id)
@@ -74,17 +75,15 @@ export async function buildFeatureVector({
       .order("game_date", { ascending: false })
       .limit(5);
 
-    const oppWins = (opponentGames || []).filter(
-      (p) => p.outcome === "win"
-    ).length;
-    opponent_win_rate = opponentGames?.length
+    const oppWins = opponentGames.filter((p) => p.outcome === "win").length;
+    opponent_win_rate = opponentGames.length
       ? oppWins / opponentGames.length
       : 0.5;
   } catch (e) {
     console.warn(`⚠️ Failed opponent_win_rate calc: ${e.message}`);
   }
 
-  // 4. opponent_avg_win_rate
+  // 5. opponent_avg_win_rate
   let opponent_avg_win_rate = null;
   try {
     const { data: oppMatchups = [] } = await supabase
@@ -102,7 +101,7 @@ export async function buildFeatureVector({
     console.warn(`⚠️ Failed to calculate opponent_avg_win_rate: ${e.message}`);
   }
 
-  // 5. BvP / PvB
+  // 6. BvP / PvB
   const bvpPvB = {
     bvp_pa: 0,
     bvp_ab: 0,
@@ -146,6 +145,6 @@ export async function buildFeatureVector({
     is_home: isHome ? 1 : 0,
     opponent_win_rate,
     opponent_avg_win_rate,
-    ...bvpPvB, // merged stats
+    ...bvpPvB,
   };
 }
