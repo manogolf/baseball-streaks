@@ -5,6 +5,8 @@ import { getGamePkForTeamOnDate } from "@shared/fetchGameID.js";
 import { todayET, toISODate } from "@shared/timeUtils.js";
 import { getOpponentAbbreviation } from "@shared/teamNameMap.js";
 
+console.log("🧪 buildFeatureVector: LIVE VERSION ACTIVE");
+
 export async function buildFeatureVector({
   player_name,
   team,
