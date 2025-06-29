@@ -1,11 +1,11 @@
-import { supabase } from "../utils/supabaseUtils.js";
-import fetch from "node-fetch";
+// scripts/archive/updatePlayerIds.js
+// ⚠️ DEPRECATED: DO NOT RUN WITHOUT UNDERSTANDING SIDE EFFECTS
+// This script refreshes all player IDs from MLB active rosters and upserts into Supabase.
+// It is safe **only** if you have verified player_id is your unique identifier.
+// Fixes prior bug: previously used (player_name, team) as conflict keys — this caused duplicates.
 
-// Supabase client setup
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { supabase } from "../../backend/scripts/shared/supabaseUtils.js";
+import fetch from "node-fetch";
 
 const MLB_TEAMS_API = "https://statsapi.mlb.com/api/v1/teams?sportId=1";
 
@@ -39,7 +39,7 @@ async function updatePlayerIDs() {
   for (const player of players) {
     const { error } = await supabase
       .from("player_ids")
-      .upsert(player, { onConflict: ["player_name", "team"] });
+      .upsert(player, { onConflict: ["player_id"] }); // ✅ FIXED KEY
 
     if (error) {
       console.error(

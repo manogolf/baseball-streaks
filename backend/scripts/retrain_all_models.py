@@ -97,7 +97,8 @@ def fetch_training_data(prop_type: str) -> pd.DataFrame:
 
         current = next_month
 
-        df = pd.DataFrame(all_rows)
+    df = pd.DataFrame(all_rows)
+    
     if df.empty:
         return df
 

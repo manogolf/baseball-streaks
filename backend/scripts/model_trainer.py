@@ -35,7 +35,7 @@ PROP_TYPES = [
     "hits", "runs_scored", "rbis", "total_bases", "singles", "doubles",
     "triples", "home_runs", "strikeouts_batting", "walks",
     "hits_runs_rbis", "runs_rbis", "hits_allowed", "earned_runs",
-    "walks_allowed", "strikeouts_pitching", "outs_recorded", "at_bats",
+    "walks_allowed", "strikeouts_pitching", "outs_recorded",
 ]
 
 FEATURE_COLS = [

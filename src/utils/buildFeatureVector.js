@@ -15,7 +15,6 @@ export async function buildFeatureVector({
 }) {
   const dateISO = toISODate(game_date);
   const player_id = await getPlayerID(player_name, team);
-  const opponent = await getOpponentAbbreviation(team, game_id);
 
   if (!player_id) {
     console.warn(`⚠️ Could not resolve player_id for ${player_name} (${team})`);
@@ -60,6 +59,8 @@ export async function buildFeatureVector({
     console.warn(`⚠️ Failed home/away check: ${e.message}`);
   }
 
+  const opponent = await getOpponentAbbreviation(team, game_id);
+
   // 3. opponent_win_rate
   let opponent_win_rate = null;
   try {
@@ -86,8 +87,6 @@ export async function buildFeatureVector({
   // 4. opponent_avg_win_rate
   let opponent_avg_win_rate = null;
   try {
-    const opponent = await getOpponentAbbreviation(team, game_id);
-
     const { data: oppMatchups = [] } = await supabase
       .from("model_training_props")
       .select("outcome")
