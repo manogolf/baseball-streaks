@@ -119,6 +119,8 @@ export async function buildFeatureVector({
     pvb_bb: 0,
   };
 
+  console.log("📡 Fetching PvB/BvP stats for", player_id, prop_type);
+
   try {
     const { data: matchupStats } = await supabase
       .from("model_training_props")
@@ -129,6 +131,7 @@ export async function buildFeatureVector({
       .eq("prop_type", prop_type)
       .order("game_date", { ascending: false })
       .limit(20); // buffer size
+    console.log("📦 Raw Supabase query complete", matchupStats?.length);
 
     const validRow = (matchupStats || []).find((row) => row.bvp_pa !== null);
 
