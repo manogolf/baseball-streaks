@@ -25,7 +25,7 @@ import { fetchBoxscoreStatsForGame } from "./shared/fetchBoxscoreStats.js";
 import { teamNameMap } from "./shared/teamNameMap.js";
 import crypto from "node:crypto";
 
-const DAYS_AGO = 2;
+const DAYS_AGO = 1;
 const targetDate = new Date();
 targetDate.setDate(targetDate.getDate() - DAYS_AGO);
 const datesToProcess = [toISODate(targetDate)];
@@ -176,31 +176,21 @@ async function processDate(gameDate) {
         if (result == null || typeof result !== "number" || isNaN(result))
           continue;
 
-        // 🧠 Force line to match actual value so outcome is deterministic
-        const line = Number(result);
+        // ✅ Step 1: Create a .5-offset line so no push is possible
+        const line = Math.random() < 0.5 ? result + 0.5 : result - 0.5;
 
-        let over_under;
-        let outcome;
+        // ✅ Step 2: Randomly pick over or under
+        const over_under = Math.random() < 0.5 ? "over" : "under";
 
-        if (Number.isFinite(line)) {
-          if (Number(result) > line) {
-            over_under = "under"; // Pretend we picked wrong
-            outcome = "win";
-          } else if (Number(result) < line) {
-            over_under = "over"; // Pretend we picked wrong
-            outcome = "win";
-          } else {
-            over_under = "over"; // Arbitrary
-            outcome = "push";
-          }
-        } else {
-          over_under = null;
-          outcome = "push";
-        }
+        // ✅ Step 3: Grade outcome using real function
+        const outcome = determineOutcome(result, line, over_under);
+
+        // ❌ Skip invalid outcomes
+        if (!["win", "loss"].includes(outcome)) continue;
 
         const was_correct = outcome === "win";
 
-        // Optional: update your counters
+        // Optional tracking
         if (over_under === "over") overCount++;
         else if (over_under === "under") underCount++;
 
@@ -216,6 +206,7 @@ async function processDate(gameDate) {
         const game_time = await getGameStartTimeET(gameId);
         if (!game_time) continue;
         const gameDateTimeET = toEasternDateTime(gameDate, game_time);
+
         const row = {
           id: crypto.randomUUID(),
           player_id: String(player_id),
@@ -224,7 +215,7 @@ async function processDate(gameDate) {
           is_home: isHome ? 1 : 0,
           prop_type: propType,
           prop_value: result,
-          result,
+          line,
           over_under,
           outcome,
           status: "resolved",

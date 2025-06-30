@@ -139,7 +139,17 @@ async def generate_fresh_player_profile(player_id: str):
             .eq("player_id", player_id)
             .execute()
         )
-        print(f"📚 training rows: {len(training_rows_resp.data)} rows")
+
+        training_summary = {}
+        for row in training_rows_resp.data:
+            prop = row["prop_type"]
+            training_summary[prop] = training_summary.get(prop, 0) + 1
+
+        training_summary_array = [
+            {"prop_type": prop, "count": count} for prop, count in training_summary.items()
+        ]
+
+        print(f"📚 training rows: {len(training_rows_resp.data)} rows across {len(training_summary_array)} prop types")
     except Exception as e:
         print(f"❌ training summary fetch failed: {e}")
         raise
@@ -152,7 +162,17 @@ async def generate_fresh_player_profile(player_id: str):
         print(f"❌ MLB API fetch failed: {e}")
         raise
 
-    ...
+    return {
+        "player_id": player_id,
+        "player_info": info_resp.data[0] if info_resp.data else None,
+        "recent_props": props_resp.data,
+        "streaks": streak_resp.data,
+        "stat_derived": stat_derived_resp.data,
+        "training_summary": training_summary_array,
+        "mlb_stats": stats
+    }
+
+
 
 
 @router.get("/player-profile/{player_id}")
@@ -160,7 +180,6 @@ async def get_player_profile(player_id: str):
     if not player_id:
         raise HTTPException(status_code=400, detail="Player ID is required")
 
-# ✅ 1. Try cache lookup
     try:
         cached = (
             supabase
@@ -171,11 +190,7 @@ async def get_player_profile(player_id: str):
             .execute()
         )
 
-        cached_row = (
-            cached.data[0]
-            if cached.data and isinstance(cached.data, list) and len(cached.data) > 0
-            else None
-        )
+        cached_row = cached.data[0] if cached.data and len(cached.data) > 0 else None
 
         if cached_row:
             updated_str = cached_row.get("updated_at")
@@ -188,17 +203,20 @@ async def get_player_profile(player_id: str):
     except Exception as e:
         print(f"⚠️ Cache fetch error for {player_id}: {e}")
 
-    # ✅ 2. Fallback: Generate fresh profile
     try:
         profile = await generate_fresh_player_profile(player_id)
 
-        # ✅ 3. Attempt to write to cache
+        if profile is None:
+            print(f"🚫 No profile generated for {player_id}")
+            raise HTTPException(status_code=404, detail=f"No profile found for player {player_id}")
+
         try:
             supabase.from_("player_profiles_cache").upsert({
                 "player_id": player_id,
                 "data": profile,
                 "updated_at": datetime.utcnow().isoformat()
             }).execute()
+            print(f"✅ Cached fresh profile for {player_id}")
         except Exception as e:
             print(f"⚠️ Failed to cache generated profile for {player_id}: {e}")
 

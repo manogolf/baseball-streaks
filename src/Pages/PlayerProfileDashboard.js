@@ -17,6 +17,7 @@ export default function PlayerProfileDashboard() {
         const res = await fetch(`${getBaseURL()}/player-profile/${playerId}`);
         const data = await res.json();
         setProfileData(data);
+        console.log("👀 Profile data:", data);
       } catch (err) {
         console.error("Error fetching player profile:", err);
       } finally {
@@ -109,10 +110,9 @@ export default function PlayerProfileDashboard() {
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">
-          Player Profile: {profileData.player_name || profileData.player_id}{" "}
-          <span className="text-sm font-normal text-gray-500">
-            ({profileData.team})
-          </span>
+          Player Profile: {profileData?.player_info?.player_name || playerId} (
+          {profileData?.player_info?.team || ""})
+          <span className="text-sm font-normal text-gray-500"></span>
         </h1>
         <Link to="/players" className="text-blue-600 hover:underline text-sm">
           ← Back to Player List
@@ -173,9 +173,9 @@ export default function PlayerProfileDashboard() {
       <section className="mb-6">
         <div className="p-2 border border-gray-200 rounded bg-green-50 shadow-sm">
           <h2 className="text-xl font-semibold mb-2">Stat-Derived Props</h2>
-          {profileData.stat_derived_props?.length > 0 ? (
+          {profileData.stat_derived?.length > 0 ? (
             <ul className="space-y-2">
-              {profileData.stat_derived_props.map((prop, i) => (
+              {profileData.stat_derived.map((prop, i) => (
                 <li key={i} className="p-2 bg-green-100 rounded shadow">
                   <div>
                     <span className="font-semibold">{prop.game_date}</span>:{" "}
