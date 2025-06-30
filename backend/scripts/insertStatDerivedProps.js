@@ -25,10 +25,18 @@ import { fetchBoxscoreStatsForGame } from "./shared/fetchBoxscoreStats.js";
 import { teamNameMap } from "./shared/teamNameMap.js";
 import crypto from "node:crypto";
 
-const DAYS_AGO = 1;
-const targetDate = new Date();
-targetDate.setDate(targetDate.getDate() - DAYS_AGO);
-const datesToProcess = [toISODate(targetDate)];
+const DAYS_AGO = 7; // or any number you want
+const today = new Date();
+const endDate = new Date(today);
+endDate.setDate(endDate.getDate() - 1); // yesterday
+
+const startDate = new Date(today);
+startDate.setDate(startDate.getDate() - DAYS_AGO); // DAYS_AGO ago
+
+const datesToProcess = [];
+for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+  datesToProcess.push(toISODate(new Date(d)));
+}
 
 const LOG_EVERY = 150;
 const SLEEP_MS = 10;
@@ -171,7 +179,37 @@ async function processDate(gameDate) {
       }
 
       // ── PER-PROP INSERTION
-      for (const propType of VALID_PROP_TYPES) {
+      let eligiblePropTypes = [];
+
+      if (hasBat) {
+        eligiblePropTypes.push(
+          "hits",
+          "doubles",
+          "triples",
+          "home_runs",
+          "rbis",
+          "runs_scored",
+          "strikeouts_batting",
+          "walks",
+          "stolen_bases",
+          "total_bases",
+          "hits_runs_rbis",
+          "runs_rbis",
+          "singles"
+        );
+      }
+
+      if (isPitcher) {
+        eligiblePropTypes.push(
+          "strikeouts_pitching",
+          "outs_recorded",
+          "walks_allowed",
+          "hits_allowed",
+          "earned_runs"
+        );
+      }
+
+      for (const propType of eligiblePropTypes) {
         const result = extractStatForPropType(propType, stats);
         if (result == null || typeof result !== "number" || isNaN(result))
           continue;
