@@ -160,7 +160,7 @@ async def get_player_profile(player_id: str):
     if not player_id:
         raise HTTPException(status_code=400, detail="Player ID is required")
 
-    # ✅ 1. Try cache lookup
+# ✅ 1. Try cache lookup
     try:
         cached = (
             supabase
@@ -171,14 +171,19 @@ async def get_player_profile(player_id: str):
             .execute()
         )
 
-        if cached.data and isinstance(cached.data, list) and len(cached.data) > 0:
-            cached_row = cached.data[0]
+        cached_row = (
+            cached.data[0]
+            if cached.data and isinstance(cached.data, list) and len(cached.data) > 0
+            else None
+        )
+
+        if cached_row:
             updated_str = cached_row.get("updated_at")
-        if updated_str:
-           updated = datetime.fromisoformat(updated_str.replace("Z", "+00:00"))
-        if datetime.now(timezone.utc) - updated < timedelta(minutes=CACHE_TTL_MINUTES):
-            print("📦 Returning cached profile")
-            return cached_row["data"]
+            if updated_str:
+                updated = datetime.fromisoformat(updated_str.replace("Z", "+00:00"))
+                if datetime.now(timezone.utc) - updated < timedelta(minutes=CACHE_TTL_MINUTES):
+                    print(f"📦 Returning cached profile for {player_id}")
+                    return cached_row["data"]
 
     except Exception as e:
         print(f"⚠️ Cache fetch error for {player_id}: {e}")
@@ -186,7 +191,6 @@ async def get_player_profile(player_id: str):
     # ✅ 2. Fallback: Generate fresh profile
     try:
         profile = await generate_fresh_player_profile(player_id)
-        
 
         # ✅ 3. Attempt to write to cache
         try:
@@ -199,10 +203,7 @@ async def get_player_profile(player_id: str):
             print(f"⚠️ Failed to cache generated profile for {player_id}: {e}")
 
         return profile
+
     except Exception as e:
-            print(f"🔥 Full traceback for player {player_id}:\n{traceback.format_exc()}")
-    raise HTTPException(status_code=500, detail=f"Failed to generate profile for {player_id}")
-
-
-
-
+        print(f"🔥 Full traceback for player {player_id}:\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate profile for {player_id}")
