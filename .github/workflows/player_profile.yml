@@ -22,4 +22,4 @@ jobs:
         run: pip install requests
 
       - name: 🧪 Run player profile test
-        run: python scripts/test_player_profile.py
+        run: python backend/app/routes/player_profile.py

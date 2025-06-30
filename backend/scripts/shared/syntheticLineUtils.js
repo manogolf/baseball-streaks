@@ -24,7 +24,7 @@ export async function getSyntheticLine(propType, daysBack = 60, limit = 1000) {
     .from("player_props")
     .select("prop_value")
     .eq("prop_type", propType)
-    .eq("source", "user_added")
+    .eq("prop_source", "user_added")
     .gte("game_date", cutoffDate)
     .order("game_date", { ascending: false })
     .limit(limit);

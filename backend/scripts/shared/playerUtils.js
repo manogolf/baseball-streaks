@@ -95,7 +95,7 @@ export async function preparePropSubmission({
     game_time,
     game_id,
     player_id: String(player_id),
-    source: "user_added",
+    prop_source: "user_added",
   };
 }
 

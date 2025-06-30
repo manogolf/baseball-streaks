@@ -1,5 +1,5 @@
 # ==========================================
-# 📄 File: player_profile.py
+# 📄 File: backend/app/routes/player_profile.py
 # 📌 Purpose: FastAPI route for /player-profile/:player_id
 #            Returns recent props, streaks, and stat summaries
 #
@@ -24,6 +24,7 @@ from collections import Counter
 import httpx
 from postgrest.exceptions import APIError
 import os
+import traceback
 
 from scripts.shared.supabase_utils import supabase
 
@@ -62,96 +63,97 @@ async def fetch_player_stats(player_id):
 
 
 async def generate_fresh_player_profile(player_id: str):
-    # Fetch player name and team
-    info_resp = (
-        supabase
-        .from_("player_props")
-        .select("player_name, team")
-        .eq("player_id", player_id)
-        .order("game_date", desc=True)
-        .limit(1)
-        .execute()
-    )
-    if not info_resp.data or len(info_resp.data) == 0:
-        raise HTTPException(status_code=404, detail="Player not found")
+    print(f"🚦 Generating profile for player_id: {player_id}")
 
-    player_name = info_resp.data[0].get("player_name", "")
-    team = info_resp.data[0].get("team", "")
+    # Player name + team
+    try:
+        info_resp = (
+            supabase
+            .from_("player_props")
+            .select("player_name, team")
+            .eq("player_id", player_id)
+            .order("game_date", desc=True)
+            .limit(1)
+            .execute()
+        )
+        print(f"✅ player_props → name/team: {info_resp.data}")
+    except Exception as e:
+        print(f"❌ player_props name/team fetch failed: {e}")
+        raise
 
-    # Resolved Props
-    props_resp = (
-        supabase
-        .from_("player_props")
-        .select("*")
-        .eq("player_id", player_id)
-        .neq("outcome", None)
-        .order("game_date", desc=True)
-        .limit(10)
-        .execute()
-    )
-    if props_resp.data is None:
-        raise HTTPException(status_code=500, detail="Failed to fetch recent props")
+    # Recent props
+    try:
+        props_resp = (
+            supabase
+            .from_("player_props")
+            .select("*")
+            .eq("player_id", player_id)
+            .neq("outcome", None)
+            .order("game_date", desc=True)
+            .limit(10)
+            .execute()
+        )
+        print(f"📊 recent_props: {len(props_resp.data)} rows")
+    except Exception as e:
+        print(f"❌ recent_props fetch failed: {e}")
+        raise
 
     # Streaks
-    streak_resp = (
-        supabase
-        .from_("player_streak_profiles")
-        .select("prop_type, streak_type, streak_count")
-        .eq("player_id", player_id)
-        .execute()
-    )
-    if streak_resp.data is None:
-        raise HTTPException(status_code=500, detail="Failed to fetch streaks")
+    try:
+        streak_resp = (
+            supabase
+            .from_("player_streak_profiles")
+            .select("prop_type, streak_type, streak_count")
+            .eq("player_id", player_id)
+            .execute()
+        )
+        print(f"📈 streaks: {len(streak_resp.data)} rows")
+    except Exception as e:
+        print(f"❌ streaks fetch failed: {e}")
+        raise
 
-    # Stat-Derived Props
-    stat_derived_resp = (
-        supabase
-        .from_("model_training_props")
-        .select("game_date, prop_type, prop_value, result, outcome")
-        .eq("player_id", player_id)
-        .eq("source", "mlb_api")
-        .in_("outcome", ["win", "loss", "push"])
-        .order("game_date", desc=True)
-        .limit(10)
-        .execute()
-    )
-    if stat_derived_resp.data is None:
-        raise HTTPException(status_code=500, detail="Failed to fetch stat-derived props")
+    # Stat-derived
+    try:
+        stat_derived_resp = (
+            supabase
+            .from_("model_training_props")
+            .select("game_date, prop_type, prop_value, result, outcome")
+            .eq("player_id", player_id)
+            .eq("prop_source", "mlb_api")
+            .in_("outcome", ["win", "loss", "push"])
+            .order("game_date", desc=True)
+            .limit(10)
+            .execute()
+        )
+        print(f"📦 stat-derived: {len(stat_derived_resp.data)} rows")
+    except Exception as e:
+        print(f"❌ stat_derived fetch failed: {e}")
+        raise
 
-    # Training Summary
-    training_rows_resp = (
-        supabase
-        .from_("model_training_props")
-        .select("prop_type")
-        .eq("player_id", player_id)
-        .execute()
-    )
-    if training_rows_resp.data is None:
-        raise HTTPException(status_code=500, detail="Failed to fetch training data")
-
-    training_counts = Counter(row.get("prop_type") for row in training_rows_resp.data if row.get("prop_type"))
-    training_summary = [{"prop_type": k, "count": v} for k, v in training_counts.items()]
+    # Training summary
+    try:
+        training_rows_resp = (
+            supabase
+            .from_("model_training_props")
+            .select("prop_type")
+            .eq("player_id", player_id)
+            .execute()
+        )
+        print(f"📚 training rows: {len(training_rows_resp.data)} rows")
+    except Exception as e:
+        print(f"❌ training summary fetch failed: {e}")
+        raise
 
     # MLB Stats
-    stats = await fetch_player_stats(player_id)
+    try:
+        stats = await fetch_player_stats(player_id)
+        print(f"📊 MLB stats fetched for player {player_id}")
+    except Exception as e:
+        print(f"❌ MLB API fetch failed: {e}")
+        raise
 
-    return {
-        "player_id": player_id,
-        "player_name": player_name,
-        "team": team,
-        "recent_props": props_resp.data,
-        "streaks": streak_resp.data,
-        "stat_derived_props": stat_derived_resp.data,
-        "training_summary": training_summary,
-        "season_stats": {
-            "hitting": stats["hitting_season"],
-            "pitching": stats["pitching_season"]
-        },
-        "career_stats": {
-            "hitting": stats["hitting_career"],
-            "pitching": stats["pitching_career"]
-        },
-    }
+    ...
+
 
 @router.get("/player-profile/{player_id}")
 async def get_player_profile(player_id: str):
@@ -184,6 +186,7 @@ async def get_player_profile(player_id: str):
     # ✅ 2. Fallback: Generate fresh profile
     try:
         profile = await generate_fresh_player_profile(player_id)
+        
 
         # ✅ 3. Attempt to write to cache
         try:
@@ -197,9 +200,8 @@ async def get_player_profile(player_id: str):
 
         return profile
     except Exception as e:
-        print(f"🔥 Profile generation failed for {player_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to generate profile for {player_id}")
-
+            print(f"🔥 Full traceback for player {player_id}:\n{traceback.format_exc()}")
+    raise HTTPException(status_code=500, detail=f"Failed to generate profile for {player_id}")
 
 
 

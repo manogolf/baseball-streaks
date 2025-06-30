@@ -26,7 +26,7 @@ async function syncTrainingData() {
         game_date: prop.game_date,
         game_id: prop.game_id,
         over_under: prop.over_under,
-        source: "user_added", // ✅ Matches training/metrics logic
+        prop_source: "user_added", // ✅ Matches training/metrics logic
         player_id: prop.player_id ?? null,
         rolling_result_avg_7: prop.rolling_result_avg_7 ?? null,
         line_diff:
