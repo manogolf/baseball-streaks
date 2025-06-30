@@ -1,4 +1,4 @@
-name: Backfill Predictions
+name: Insert Stat Derived Props
 
 on:
   schedule:
