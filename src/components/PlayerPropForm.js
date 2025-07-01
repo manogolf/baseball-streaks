@@ -211,6 +211,13 @@ const PlayerPropForm = ({ onPropAdded }) => {
         return;
       }
 
+      // 🛑 Prevent saving if no prediction was made
+      if (!result || !result.predicted_outcome || !result.confidence_score) {
+        setError("You must make a prediction before adding a prop.");
+        setSubmitting(false);
+        return;
+      }
+
       // 👉 Step 4: Prepare final payload for DB insert
       const preparedData = await preparePropSubmission({
         ...formData,
