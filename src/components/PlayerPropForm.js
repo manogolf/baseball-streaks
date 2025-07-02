@@ -252,15 +252,18 @@ const PlayerPropForm = ({ onPropAdded }) => {
         .from("player_props")
         .insert([payload]);
 
-      if (insertError.code === "23505") {
-        setError("You've already submitted this prop.");
-      } else {
-        setError("Failed to save prop.");
+      if (insertError) {
+        if (insertError.code === "23505") {
+          setError("You've already submitted this prop.");
+        } else {
+          setError("Failed to save prop.");
+        }
+        console.error("❌ Supabase insert error:", insertError.message);
+        setTimeout(() => setError(""), 4000);
+        return; // ✅ Only return on actual error
       }
-      console.error("❌ Supabase insert error:", insertError.message);
-      setTimeout(() => setError(""), 4000);
-      return;
 
+      // ✅ If no error — proceed with success flow
       console.log("✅ Prop successfully added to Supabase.");
       onPropAdded?.();
 
@@ -277,10 +280,6 @@ const PlayerPropForm = ({ onPropAdded }) => {
       });
       setPrediction(null);
       setTimeout(() => setSuccessToast(false), 4000);
-    } catch (err) {
-      console.error("❌ Submission Error:", err);
-      setError("Prediction failed or timed out.");
-      setTimeout(() => setError(""), 4000);
     } finally {
       setSubmitting(false);
     }
