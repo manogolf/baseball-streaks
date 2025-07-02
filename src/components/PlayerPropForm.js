@@ -212,7 +212,11 @@ const PlayerPropForm = ({ onPropAdded }) => {
       }
 
       // 🛑 Prevent saving if no prediction was made
-      if (!result || !result.predicted_outcome || !result.confidence_score) {
+      if (
+        !result ||
+        result.predicted_outcome == null ||
+        result.confidence_score == null
+      ) {
         setError("You must make a prediction before adding a prop.");
         setSubmitting(false);
         return;
