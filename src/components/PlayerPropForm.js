@@ -252,7 +252,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
         .from("player_props")
         .insert([payload]);
 
-      iif (insertError) {
+      if (insertError) {
         if (insertError.code === "23505") {
           // Check if this *exact* prop already exists
           const { data: existing, error: checkError } = await supabase
@@ -263,7 +263,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
             .eq("prop_type", payload.prop_type)
             .eq("prop_value", payload.prop_value)
             .eq("user_id", payload.user_id);
-      
+
           if (!checkError && existing && existing.length > 0) {
             setError("You've already submitted this prop.");
           } else {
@@ -274,12 +274,11 @@ const PlayerPropForm = ({ onPropAdded }) => {
         } else {
           setError("Failed to save prop.");
         }
-      
+
         console.error("❌ Supabase insert error:", insertError.message);
         setTimeout(() => setError(""), 4000);
         return;
       }
-      
 
       console.log("✅ Prop successfully added to Supabase.");
       onPropAdded?.();
