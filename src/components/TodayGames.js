@@ -96,7 +96,7 @@ const TodayGames = ({ games }) => {
   });
 
   return (
-    <div className="w-full bg-white shadow rounded-xl p-4">
+    <div className="w-full bg-gray-200 shadow rounded-xl p-4">
       <h2 className="text-xl font-bold text-indigo-900 text-center mb-1">
         🗓 Today’s Games
       </h2>

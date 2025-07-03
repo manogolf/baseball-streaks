@@ -74,7 +74,7 @@ const StreaksCard = () => {
   }, []);
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow space-y-6">
+    <div className="bg-gray-200 p-6 rounded-xl shadow space-y-6">
       <div className="flex items-center justify-center gap-4 text-4xl font-semibold text-gray-800 mb-4">
         <span className="flex items-center gap-2">🔥 Streaks Dashboard</span>
         <span className="text-4xl">❄️</span>

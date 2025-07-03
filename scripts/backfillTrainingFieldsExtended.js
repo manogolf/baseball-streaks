@@ -86,7 +86,7 @@ export async function runTrainingBackfillIfNeeded() {
   await runExtendedBackfill();
 }
 
-async function fetchAllIncompleteRows() {
+async function fetchAllIncompleteRowsForPlayers(playerIds) {
   const pageSize = 1000;
   let from = 0;
   let to = pageSize - 1;
@@ -99,6 +99,7 @@ async function fetchAllIncompleteRows() {
       .or(
         "rolling_result_avg_7.is.null,hit_streak.is.null,win_streak.is.null,game_time.is.null,is_home.is.null,opponent.is.null,prop_value.is.null,over_under.is.null"
       )
+      .in("player_id", playerIds)
       .range(from, to);
 
     if (error) {
@@ -120,23 +121,20 @@ async function fetchAllIncompleteRows() {
 }
 
 export async function runExtendedBackfill() {
-  const rows = await fetchAllIncompleteRows();
+  const { data: allIncomplete } = await supabase
+    .from("model_training_props")
+    .select("player_id")
+    .or(
+      "rolling_result_avg_7.is.null,hit_streak.is.null,win_streak.is.null,game_time.is.null,is_home.is.null,opponent.is.null,prop_value.is.null,over_under.is.null"
+    );
 
-  if (!rows || rows.length === 0) {
+  if (!allIncomplete || allIncomplete.length === 0) {
     console.log("🎉 No incomplete training rows found.");
     return;
   }
 
-  const grouped = {};
-  for (const row of rows) {
-    if (!grouped[row.player_id]) grouped[row.player_id] = [];
-    grouped[row.player_id].push(row);
-  }
-
-  const playerIds = Object.keys(grouped);
-
-  // 🔢 Bucket filtering logic
-  const filteredPlayerIds = playerIds.filter(
+  const allPlayerIds = [...new Set(allIncomplete.map((row) => row.player_id))];
+  const filteredPlayerIds = allPlayerIds.filter(
     (_, index) => index % totalBuckets === currentBucket
   );
 
@@ -146,14 +144,26 @@ export async function runExtendedBackfill() {
     } players`
   );
 
+  const rows = await fetchAllIncompleteRowsForPlayers(filteredPlayerIds);
+
+  if (!rows || rows.length === 0) {
+    console.log("🎉 No incomplete rows found in this bucket.");
+    return;
+  }
+
+  const grouped = {};
+  for (const row of rows) {
+    if (!grouped[row.player_id]) grouped[row.player_id] = [];
+    grouped[row.player_id].push(row);
+  }
+
   let updated = 0,
     failed = 0;
+  const skippedByProp = {};
 
-  const skippedByProp = {}; // Track skipped rows by prop_type
-
-  // 🔁 Loop through each player in this bucket
-  for (let i = 0; i < filteredPlayerIds.length; i++) {
-    const player_id = filteredPlayerIds[i];
+  const playerIds = Object.keys(grouped);
+  for (let i = 0; i < playerIds.length; i++) {
+    const player_id = playerIds[i];
     const playerProps = grouped[player_id];
 
     console.log(
@@ -271,15 +281,17 @@ export async function runExtendedBackfill() {
 }
 
 // Allow CLI usage
-if (process.argv[1].includes("backfillTrainingFieldsExtended.js")) {
+if (
+  process.argv[1].includes("backfillTrainingFieldsExtended.js") &&
+  !process.argv.some((arg) => arg.startsWith("--bucket="))
+) {
   const totalBuckets = 16;
-
   for (let i = 1; i <= totalBuckets; i++) {
     console.log(`\n⏳ Starting bucket ${i}/${totalBuckets}...\n`);
     process.argv.push(`--bucket=${i}/${totalBuckets}`);
     await runTrainingBackfillIfNeeded();
-    process.argv.pop(); // remove --bucket arg before next iteration
+    process.argv.pop();
   }
-
-  console.log(`\n✅ All ${totalBuckets} buckets processed.`);
+} else {
+  await runTrainingBackfillIfNeeded();
 }

@@ -25,7 +25,7 @@ import { fetchBoxscoreStatsForGame } from "./shared/fetchBoxscoreStats.js";
 import { teamNameMap } from "./shared/teamNameMap.js";
 import crypto from "node:crypto";
 
-const DAYS_AGO = 7; // or any number you want
+const DAYS_AGO = 2; // or any number you want
 const today = new Date();
 const endDate = new Date(today);
 endDate.setDate(endDate.getDate() - 1); // yesterday
