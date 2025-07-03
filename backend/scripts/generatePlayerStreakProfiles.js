@@ -40,49 +40,74 @@ const MAX_DAYS_BACK = 90;
 function computeStreaks(resolvedProps) {
   const grouped = {};
 
+  // Step 1: Group by player + prop + source
   for (const row of resolvedProps) {
     const prop_type = normalizePropType(row.prop_type);
-    const { player_id, outcome, prop_source } = row;
+    const { player_id, outcome, prop_source, game_date } = row;
     if (!player_id || player_id === "None") continue;
 
     const key = `${player_id}_${prop_type}_${prop_source}`;
     if (!grouped[key]) {
-      grouped[key] = {
-        player_id,
-        prop_type,
-        prop_source,
-        streak_count: 0,
-        streak_type: null,
-      };
+      grouped[key] = [];
     }
 
-    const streak = grouped[key];
-    if (streak.streak_type === null) {
-      streak.streak_type = outcome === "win" ? "hot" : "cold";
-      streak.streak_count = 1;
-    } else if (
-      (streak.streak_type === "hot" && outcome === "win") ||
-      (streak.streak_type === "cold" && outcome === "loss")
-    ) {
-      streak.streak_count += 1;
-    } else {
-      streak.streak_type = outcome === "win" ? "hot" : "cold";
-      streak.streak_count = 1;
-    }
+    grouped[key].push({
+      outcome,
+      game_date,
+      player_id,
+      prop_type,
+      prop_source,
+    });
   }
 
-  return Object.values(grouped);
+  const streakProfiles = [];
+
+  // Step 2: For each group, sort and compute streak
+  for (const groupKey in grouped) {
+    const entries = grouped[groupKey];
+    entries.sort((a, b) => new Date(a.game_date) - new Date(b.game_date));
+
+    let streakType = null;
+    let streakCount = 0;
+
+    for (const entry of entries) {
+      if (streakType === null) {
+        streakType = entry.outcome === "win" ? "hot" : "cold";
+        streakCount = 1;
+      } else if (
+        (streakType === "hot" && entry.outcome === "win") ||
+        (streakType === "cold" && entry.outcome === "loss")
+      ) {
+        streakCount += 1;
+      } else {
+        streakType = entry.outcome === "win" ? "hot" : "cold";
+        streakCount = 1;
+      }
+    }
+
+    // Only one final streak per group survives
+    const final = entries[entries.length - 1];
+    streakProfiles.push({
+      player_id: final.player_id,
+      prop_type: final.prop_type,
+      prop_source: final.prop_source,
+      streak_type: streakType,
+      streak_count: streakCount,
+    });
+  }
+
+  return streakProfiles;
 }
 
-async function fetchResolvedProps(offset, limit, cutoffDate) {
+async function fetchResolvedProps(limit, beforeDate) {
   const { data, error } = await supabase
     .from("model_training_props")
     .select("player_id, prop_type, outcome, game_date, prop_source")
     .in("status", ["win", "loss"])
     .not("player_id", "is", null)
-    .gte("game_date", cutoffDate)
+    .lt("game_date", beforeDate)
     .order("game_date", { ascending: false })
-    .range(offset, offset + limit - 1);
+    .limit(limit);
 
   if (error) {
     throw new Error(`❌ Supabase fetch error: ${error.message}`);
@@ -113,24 +138,27 @@ async function upsertStreaks(streakProfiles) {
 }
 
 async function main() {
+  const MAX_DAYS_BACK = 90;
   const cutoffDate = toISODate(new Date(Date.now() - MAX_DAYS_BACK * 86400000));
-  let offset = 0;
+
   let totalProcessed = 0;
   let totalUpserted = 0;
+  let lastSeenDate = toISODate(new Date()); // Start from now
 
   while (true) {
-    const props = await fetchResolvedProps(offset, BATCH_SIZE, cutoffDate);
+    const props = await fetchResolvedProps(BATCH_SIZE, lastSeenDate);
     if (!props.length) break;
 
-    console.log(`📦 Fetched ${props.length} props from offset ${offset}`);
+    console.log(`📦 Fetched ${props.length} props before ${lastSeenDate}`);
     const streaks = computeStreaks(props);
     await upsertStreaks(streaks);
 
     totalProcessed += props.length;
     totalUpserted += streaks.length;
-    offset += BATCH_SIZE;
 
-    if (props.length < BATCH_SIZE) break;
+    lastSeenDate = props[props.length - 1].game_date;
+
+    if (props.length < BATCH_SIZE || lastSeenDate < cutoffDate) break;
   }
 
   console.log(`\n📊 Total props processed: ${totalProcessed}`);
