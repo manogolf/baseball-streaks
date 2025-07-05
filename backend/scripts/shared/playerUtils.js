@@ -221,8 +221,12 @@ export async function getPlayerID(player_name, team_abbr, game_id) {
 
 const missingStreakCache = new Set();
 
-export async function getStreaksForPlayer(player_id, prop_type) {
-  const key = `${player_id}:${prop_type}`;
+export async function getStreaksForPlayer(
+  player_id,
+  prop_type,
+  prop_source = "mlb_api"
+) {
+  const key = `${player_id}:${prop_type}:${prop_source}`;
   if (missingStreakCache.has(key)) return null;
 
   const { data, error } = await supabase
@@ -230,15 +234,11 @@ export async function getStreaksForPlayer(player_id, prop_type) {
     .select("streak_count, streak_type")
     .eq("player_id", player_id)
     .eq("prop_type", prop_type)
+    .eq("prop_source", prop_source) // 🔥 CRITICAL!
     .single();
 
   if (error || !data) {
     missingStreakCache.add(key);
-    // if (process.env.VERBOSE_STREAKS !== "false") {
-    //   console.warn(
-    //     `⚠️ No streak profile found for ${player_id} (${prop_type})`
-    //   );
-    // }
     return null;
   }
 

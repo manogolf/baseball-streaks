@@ -1,7 +1,7 @@
 // File: scripts/backfillOpponentBatterIDs.js
-import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
-import { getBoxscoreFromGameID } from "../backend/scripts/shared/mlbApiUtils.js";
-import { toISODate } from "../backend/scripts/shared/timeUtils.js";
+import { supabase } from "../../backend/scripts/shared/supabaseUtils.js";
+import { getBoxscoreFromGameID } from "../../backend/scripts/shared/mlbApiUtils.js";
+import { toISODate } from "../../backend/scripts/shared/timeUtils.js";
 
 async function fetchRowsToBackfill(limit = 1000) {
   const { data, error } = await supabase

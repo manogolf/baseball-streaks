@@ -1,6 +1,6 @@
 // scripts/testFetch2023.js
 
-import { fetchBoxscoreStatsForGame } from "../backend/scripts/shared/fetchBoxscoreStats.js";
+import { fetchBoxscoreStatsForGame } from "../../backend/scripts/shared/fetchBoxscoreStats.js";
 
 const gamePk = 718715; // Yankees vs Twins, April 15, 2023
 

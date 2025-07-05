@@ -35,7 +35,21 @@ import { toISODate } from "./shared/timeUtils.js";
 import { normalizePropType } from "./shared/propUtils.js";
 
 const BATCH_SIZE = 1000;
-const MAX_DAYS_BACK = 90;
+const MAX_DAYS_BACK = 1000;
+
+// Bucket CLI setup (e.g. --bucket=3/10)
+const bucketArg = process.argv.find((arg) => arg.startsWith("--bucket="));
+const bucketInfo = bucketArg
+  ? bucketArg.replace("--bucket=", "").split("/")
+  : null;
+
+let currentBucket = 0;
+let totalBuckets = 1;
+
+if (bucketInfo && bucketInfo.length === 2) {
+  currentBucket = parseInt(bucketInfo[0]) - 1;
+  totalBuckets = parseInt(bucketInfo[1]);
+}
 
 function computeStreaks(resolvedProps) {
   const grouped = {};
@@ -65,6 +79,8 @@ function computeStreaks(resolvedProps) {
   // Step 2: For each group, sort and compute streak
   for (const groupKey in grouped) {
     const entries = grouped[groupKey];
+    if (entries.length < 2) continue; // ❌ Skip if only 1 resolved prop
+
     entries.sort((a, b) => new Date(a.game_date) - new Date(b.game_date));
 
     let streakType = null;
@@ -99,23 +115,6 @@ function computeStreaks(resolvedProps) {
   return streakProfiles;
 }
 
-async function fetchResolvedProps(limit, beforeDate) {
-  const { data, error } = await supabase
-    .from("model_training_props")
-    .select("player_id, prop_type, outcome, game_date, prop_source")
-    .in("status", ["win", "loss"])
-    .not("player_id", "is", null)
-    .lt("game_date", beforeDate)
-    .order("game_date", { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    throw new Error(`❌ Supabase fetch error: ${error.message}`);
-  }
-
-  return data || [];
-}
-
 async function upsertStreaks(streakProfiles) {
   if (!streakProfiles.length) return;
 
@@ -138,27 +137,75 @@ async function upsertStreaks(streakProfiles) {
 }
 
 async function main() {
-  const MAX_DAYS_BACK = 90;
+  const MAX_DAYS_BACK = 1000;
   const cutoffDate = toISODate(new Date(Date.now() - MAX_DAYS_BACK * 86400000));
 
   let totalProcessed = 0;
   let totalUpserted = 0;
-  let lastSeenDate = toISODate(new Date()); // Start from now
 
-  while (true) {
-    const props = await fetchResolvedProps(BATCH_SIZE, lastSeenDate);
-    if (!props.length) break;
+  const { data: resolvedPairs, error } = await supabase
+    .from("model_training_props")
+    .select("player_id, prop_type, prop_source")
+    .eq("status", "resolved")
+    .in("outcome", ["win", "loss"])
+    .not("player_id", "is", null)
+    .gte("game_date", cutoffDate);
 
-    console.log(`📦 Fetched ${props.length} props before ${lastSeenDate}`);
+  if (error)
+    throw new Error(`❌ Failed to fetch resolved pairs: ${error.message}`);
+
+  const uniqueKeys = [
+    ...new Set(
+      resolvedPairs.map(
+        (row) =>
+          `${row.player_id}__${normalizePropType(row.prop_type)}__${
+            row.prop_source
+          }`
+      )
+    ),
+  ];
+
+  // 🎯 Filter by bucket
+  const bucketedKeys = uniqueKeys; // ← bypass bucketing to check total keys
+
+  console.log(
+    `🧩 Bucket ${currentBucket + 1}/${totalBuckets} → ${
+      bucketedKeys.length
+    } player-prop keys`
+  );
+
+  for (let i = 0; i < bucketedKeys.length; i++) {
+    const [player_id, prop_type, prop_source] = bucketedKeys[i].split("__");
+
+    const { data: props, error } = await supabase
+      .from("model_training_props")
+      .select("player_id, prop_type, outcome, game_date, prop_source")
+      .eq("player_id", player_id)
+      .eq("prop_source", prop_source)
+      .eq("prop_type", prop_type)
+      .eq("status", "resolved")
+      .in("outcome", ["win", "loss"])
+      .gte("game_date", cutoffDate)
+      .order("game_date", { ascending: false });
+
+    if (error) {
+      console.error(`❌ Fetch error for player ${player_id}: ${error.message}`);
+      continue;
+    }
+
+    if (!props.length) continue;
+
     const streaks = computeStreaks(props);
     await upsertStreaks(streaks);
 
     totalProcessed += props.length;
     totalUpserted += streaks.length;
 
-    lastSeenDate = props[props.length - 1].game_date;
-
-    if (props.length < BATCH_SIZE || lastSeenDate < cutoffDate) break;
+    console.log(
+      `(${i + 1}/${bucketedKeys.length}) Player ${player_id} — ${
+        props.length
+      } props → ${streaks.length} streaks`
+    );
   }
 
   console.log(`\n📊 Total props processed: ${totalProcessed}`);

@@ -1,15 +1,15 @@
 // scripts/repairStatDerivedProps.js
 
-import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
+import { supabase } from "../../backend/scripts/shared/supabaseUtils.js";
 import {
   flattenPlayerBoxscore,
   didPlayerParticipate,
-} from "../backend/scripts/shared/playerUtils.js";
-import { getBoxscoreFromGameID } from "../backend/scripts/shared/mlbApiUtils.js";
+} from "../../backend/scripts/shared/playerUtils.js";
+import { getBoxscoreFromGameID } from "../../backend/scripts/shared/mlbApiUtils.js";
 import {
   extractStatForPropType,
   determineOutcome,
-} from "../backend/scripts/shared/propUtils.js";
+} from "../../backend/scripts/shared/propUtils.js";
 import fs from "fs";
 
 const SKIPPED_LOG = "skippedRepairs.log";

@@ -92,32 +92,20 @@ async function fetchAllIncompleteRowsForPlayers(playerIds) {
   let to = pageSize - 1;
   let allRows = [];
 
-  while (true) {
-    const { data, error } = await supabase
-      .from("model_training_props")
-      .select("*")
-      .or(
-        "rolling_result_avg_7.is.null,hit_streak.is.null,win_streak.is.null,game_time.is.null,is_home.is.null,opponent.is.null,prop_value.is.null,over_under.is.null"
-      )
-      .in("player_id", playerIds)
-      .range(from, to);
+  const { data, error } = await supabase
+    .from("model_training_props")
+    .select("*")
+    .eq("player_id", "605137")
+    .eq("prop_type", "hits")
+    .is("hit_streak", null)
+    .order("game_date", { ascending: true });
 
-    if (error) {
-      console.error("❌ Error fetching rows:", error.message);
-      break;
-    }
-
-    if (!data || data.length === 0) break;
-
-    allRows.push(...data);
-
-    if (data.length < pageSize) break;
-
-    from += pageSize;
-    to += pageSize;
+  if (error) {
+    console.error("❌ Error fetching test player rows:", error.message);
+    return [];
   }
 
-  return allRows;
+  return data;
 }
 
 export async function runExtendedBackfill() {
@@ -192,15 +180,18 @@ export async function runExtendedBackfill() {
         if (row.hit_streak == null || row.win_streak == null) {
           const streaks = await getStreaksForPlayer(
             row.player_id,
-            row.prop_type
+            row.prop_type,
+            row.prop_source || "mlb_api"
           );
+
           if (!streaks) {
             skippedByProp[row.prop_type] =
               (skippedByProp[row.prop_type] || 0) + 1;
             continue;
           }
-          if (row.hit_streak == null) updates.hit_streak = streaks.hit_streak;
-          if (row.win_streak == null) updates.win_streak = streaks.win_streak;
+
+          if (row.hit_streak == null) updates.hit_streak = streaks.streak_count;
+          if (row.win_streak == null) updates.win_streak = streaks.streak_count;
         }
 
         if (row.game_time == null && row.game_id) {

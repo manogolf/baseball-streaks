@@ -1,7 +1,7 @@
 // File: scripts/backfillOpponentPlayerIDs.js
 
-import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
-import { getBoxscoreFromGameID } from "../backend/scripts/shared/mlbApiUtils.js";
+import { supabase } from "../../backend/scripts/shared/supabaseUtils.js";
+import { getBoxscoreFromGameID } from "../../backend/scripts/shared/mlbApiUtils.js";
 
 async function fetchRecentProps(days = 30) {
   const cutoff = new Date(Date.now() - days * 86400000)
