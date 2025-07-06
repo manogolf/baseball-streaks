@@ -1,167 +1,97 @@
+// scripts/backfillGameContextFields.js
 import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
-import { getGameTimeFromID } from "../backend/scripts/shared/fetchSchedule.js";
 import {
-  getFullTeamAbbreviationFromID,
-  getOpponentAbbreviation,
-} from "../backend/scripts/shared/teamNameMap.js";
+  getGameStartTimeET,
+  getDayOfWeekET,
+  getTimeOfDayBucketET,
+  toEasternDateTime,
+} from "../backend/scripts/shared/timeUtils.js";
+import { fetchBoxscoreStatsForGame } from "../backend/scripts/shared/fetchBoxscoreStats.js";
+import { getTeamIdFromAbbr } from "../backend/scripts/shared/teamNameMap.js";
 
-const BATCH_SIZE = 10000;
+const BATCH_SIZE = 1000;
 const CONCURRENCY = 4;
-
-console.log("🚀 Starting game context backfill...");
 
 async function fetchNextBatch() {
   const { data, error } = await supabase
     .from("model_training_props")
-    .select(
-      "id, game_id, team_id, opponent, opponent_encoded, is_home, home_away, game_time, time_of_day_bucket, game_day_of_week, player_id, position"
-    )
-    .or(
-      [
-        "game_time.is.null",
-        "time_of_day_bucket.is.null",
-        "game_day_of_week.is.null",
-        "is_home.is.null",
-        "home_away.is.null",
-        "opponent_encoded.is.null",
-        "position.is.null",
-      ].join(",")
-    )
-    .order("id", { ascending: true })
+    .select("id, game_id, game_date, team, is_home")
+    .is("game_time", null)
     .limit(BATCH_SIZE);
 
   if (error) {
-    console.error("❌ Error fetching rows:", error.message);
+    console.error("❌ Failed to fetch batch:", error.message);
     return [];
   }
-
-  console.log(`📤 Fetched ${data.length} rows`);
   return data;
 }
 
-async function processBatch(rows) {
-  console.log(`🔄 Processing batch of ${rows.length} rows...`);
+async function processRow(row) {
+  const { id, game_id, game_date, team } = row;
+  const boxscore = await fetchBoxscoreStatsForGame(game_id);
+  if (!boxscore || !Array.isArray(boxscore)) return null;
+
+  const playerTeam = team;
+  const isHome = boxscore.find((p) => p.teamAbbr === playerTeam)?.isHome;
+  const opponentTeam = boxscore.find(
+    (p) => p.teamAbbr !== playerTeam && p.isHome !== isHome
+  )?.teamAbbr;
+
+  const opponent_encoded = getTeamIdFromAbbr(opponentTeam);
+
+  const game_time = await getGameStartTimeET(game_id);
+  if (!game_time) return null;
+
+  const gameDateTimeET = toEasternDateTime(game_date, game_time);
+  const game_day_of_week = getDayOfWeekET(gameDateTimeET);
+  const time_of_day_bucket = getTimeOfDayBucketET(gameDateTimeET);
+
+  return {
+    id,
+    updates: {
+      game_time: gameDateTimeET,
+      game_day_of_week,
+      time_of_day_bucket,
+      is_home: isHome ? 1 : 0,
+      home_away: isHome ? "home" : "away",
+      opponent: opponentTeam || null,
+      opponent_encoded,
+    },
+  };
+}
+
+async function processBatch(batch) {
   const updates = [];
 
-  for (const row of rows) {
-    const {
-      id,
-      game_id,
-      team_id,
-      opponent,
-      opponent_encoded,
-      is_home,
-      home_away,
-      game_time,
-      time_of_day_bucket,
-      game_day_of_week,
-      player_id,
-      position,
-    } = row;
-
-    const updateFields = {};
-
-    // 🕒 Game time & day of week
-    if (!game_time || !time_of_day_bucket || !game_day_of_week) {
-      try {
-        const time = await getGameTimeFromID(game_id);
-        if (time) {
-          if (!game_time) updateFields.game_time = time;
-          const dt = new Date(time);
-          if (!game_day_of_week) updateFields.game_day_of_week = dt.getUTCDay();
-          if (!time_of_day_bucket) {
-            const hour = dt.getUTCHours();
-            updateFields.time_of_day_bucket =
-              hour < 12
-                ? "morning"
-                : hour < 17
-                ? "afternoon"
-                : hour < 20
-                ? "evening"
-                : "night";
-          }
-        }
-      } catch (err) {
-        console.warn(
-          `⚠️ Failed to get game time for ${game_id}: ${err.message}`
-        );
-      }
-    }
-
-    // 🏟️ Opponent + home/away
-    if ((!opponent_encoded || !is_home || !home_away) && team_id && game_id) {
-      try {
-        const teamAbbr = getFullTeamAbbreviationFromID(team_id);
-        const opponentAbbr = await getOpponentAbbreviation(teamAbbr, game_id);
-        if (opponentAbbr) {
-          if (!opponent_encoded) updateFields.opponent_encoded = opponentAbbr;
-          if (!opponent) updateFields.opponent = opponentAbbr;
-        }
-
-        const homeTeamIsSelf =
-          teamAbbr === (await getHomeTeamAbbreviation(game_id));
-        if (is_home === null || is_home === undefined)
-          updateFields.is_home = homeTeamIsSelf;
-        if (!home_away)
-          updateFields.home_away = homeTeamIsSelf ? "home" : "away";
-      } catch (err) {
-        console.warn(
-          `⚠️ Failed opponent/home check for ${game_id}: ${err.message}`
-        );
-      }
-    }
-
-    // 🧍 Position from player_stats
-    if (!position) {
-      const { data: player } = await supabase
-        .from("player_stats")
-        .select("position")
-        .eq("player_id", player_id)
-        .limit(1)
-        .single();
-
-      if (player?.position) {
-        updateFields.position = player.position;
-      }
-    }
-
-    if (Object.keys(updateFields).length > 0) {
-      updates.push({ id, ...updateFields });
-    }
+  for (const row of batch) {
+    const result = await processRow(row);
+    if (result) updates.push(result);
   }
 
-  for (const chunk of chunkArray(updates, 1000)) {
-    await supabase
+  for (const entry of updates) {
+    const { id, updates: fields } = entry;
+    const { error } = await supabase
       .from("model_training_props")
-      .upsert(chunk, { onConflict: "id" });
-    console.log(`📥 Updated ${chunk.length} rows.`);
-  }
-}
+      .update(fields)
+      .eq("id", id);
 
-function chunkArray(arr, size) {
-  const chunks = [];
-  for (let i = 0; i < arr.length; i += size) {
-    chunks.push(arr.slice(i, i + size));
+    if (error) {
+      console.error(`❌ Update failed for ID ${id}:`, error.message);
+    } else {
+      console.log(`📥 Updated ID ${id}`);
+    }
   }
-  return chunks;
-}
-
-// 🏠 Helper to get home team abbreviation for a game
-async function getHomeTeamAbbreviation(gameId) {
-  const url = `https://statsapi.mlb.com/api/v1/game/${gameId}/boxscore`;
-  const res = await fetch(url);
-  const json = await res.json();
-  const homeTeamId = json.teams?.home?.team?.id;
-  return getFullTeamAbbreviationFromID(homeTeamId);
 }
 
 async function runConcurrent() {
+  console.log("🚀 Starting game context backfill...");
+
   const workers = Array(CONCURRENCY)
     .fill(null)
     .map(async () => {
       while (true) {
         const batch = await fetchNextBatch();
-        if (batch.length === 0) break;
+        if (!batch.length) break;
         await processBatch(batch);
       }
     });
@@ -170,4 +100,6 @@ async function runConcurrent() {
   console.log("✅ All game context backfills complete.");
 }
 
-runConcurrent();
+if (import.meta.url === `file://${process.argv[1]}`) {
+  runConcurrent();
+}

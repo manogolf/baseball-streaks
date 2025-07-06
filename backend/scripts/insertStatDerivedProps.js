@@ -22,7 +22,7 @@ import {
   getPitcherVsBatterStats,
 } from "./shared/playerUtils.js";
 import { fetchBoxscoreStatsForGame } from "./shared/fetchBoxscoreStats.js";
-import { teamNameMap } from "./shared/teamNameMap.js";
+import { getTeamIdFromAbbr } from "./shared/teamNameMap.js";
 import crypto from "node:crypto";
 
 const DAYS_AGO = 2; // or any number you want
@@ -93,10 +93,7 @@ async function processDate(gameDate) {
         : allPlayers.find((p) => p.isHome);
 
       const opponent = opponentTeam?.teamAbbr || null;
-      const opponent_encoded =
-        opponent in teamNameMap
-          ? Object.keys(teamNameMap).indexOf(opponent)
-          : null;
+      const opponent_encoded = getTeamIdFromAbbr(opponent);
 
       const now = new Date().toISOString();
 

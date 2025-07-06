@@ -8,6 +8,7 @@ import { normalizeFeatureKeys } from "../utils/normalizeFeatureKeys.js";
 import { preparePropSubmission } from "@shared/playerUtils.js";
 import { getPropTypeOptions } from "@shared/propUtils.js";
 import { getGamePkForTeamOnDate } from "@shared/fetchGameID.js";
+import { getTeamIdFromAbbr } from "@/shared/teamNameMap.js"; // adjust path if needed
 
 const apiUrl = `${
   process.env.REACT_APP_API_URL || "http://localhost:8000"
@@ -228,6 +229,9 @@ const PlayerPropForm = ({ onPropAdded }) => {
         game_id: resolvedGameId,
       });
 
+      const opponent = preparedData.opponent || null;
+      const opponent_encoded = opponent ? getTeamIdFromAbbr(opponent) : null;
+
       const now = nowET().toISO();
       const payload = {
         player_name: preparedData.player_name || formData.player_name,
@@ -245,6 +249,8 @@ const PlayerPropForm = ({ onPropAdded }) => {
         over_under: preparedData.over_under.toLowerCase(),
         user_id: userId, // 🆕 Enforce per-user uniqueness
         prop_source: "user_added", // ✅ canonical value
+        opponent: opponent,
+        opponent_encoded: opponent_encoded,
       };
 
       // 👉 Step 5: Insert into Supabase

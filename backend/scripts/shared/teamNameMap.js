@@ -101,3 +101,10 @@ export async function getOpponentAbbreviation(teamAbbr, gameId) {
     );
   }
 }
+
+export function getTeamIdFromAbbr(abbr) {
+  for (const [id, info] of Object.entries(teamIdMap)) {
+    if (info.abbr === abbr) return parseInt(id);
+  }
+  return null;
+}

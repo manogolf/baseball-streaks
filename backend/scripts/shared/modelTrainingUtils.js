@@ -101,6 +101,7 @@ export async function upsertUserPropsToTraining(opts = {}) {
       // Current streak (may return undefined / null)
       const streaks = await getStreaksForPlayer(p.player_id, propTypeNorm);
       const opponent = await determineOpponent(p.player_id, p.game_id);
+      const opponent_encoded = opponent ? getTeamIdFromAbbr(opponent) : null;
 
       rowsToUpsert.push({
         ...p,
@@ -110,7 +111,8 @@ export async function upsertUserPropsToTraining(opts = {}) {
         line_diff: lineDiff,
         hit_streak: streaks?.hit_streak ?? null,
         win_streak: streaks?.win_streak ?? null,
-        opponent: opponent ?? null, // ✅ derived and added
+        opponent: opponent ?? null,
+        opponent_encoded: p.opponent_encoded ?? opponent_encoded, // ✅ safe override
       });
     }
 
