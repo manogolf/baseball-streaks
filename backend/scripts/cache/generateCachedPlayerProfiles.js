@@ -1,7 +1,16 @@
+// backend/scripts/cache/generateCachedPlayerProfiles.js
+
 import fetch from "node-fetch";
 import { supabase } from "../shared/supabaseUtils.js";
 import { getBaseURL } from "../shared/getBaseURL.js";
 import "dotenv/config";
+
+const BATCH_SIZE = 10;
+const DELAY_MS = 1000;
+
+async function pause(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function getAllPlayerIds() {
   const { data, error } = await supabase
@@ -39,20 +48,31 @@ async function main() {
   try {
     console.log("🚀 Starting player profile cache generation...");
     const playerIds = await getAllPlayerIds();
+    let successCount = 0;
+    let failureCount = 0;
 
-    const tasks = playerIds.map((id) => warmCacheForPlayer(id));
-    const results = await Promise.allSettled(tasks);
+    for (let i = 0; i < playerIds.length; i += BATCH_SIZE) {
+      const chunk = playerIds.slice(i, i + BATCH_SIZE);
 
-    const successCount = results.filter((r) => r.status === "fulfilled").length;
-    const failedCount = results.length - successCount;
+      const results = await Promise.allSettled(
+        chunk.map((id) => warmCacheForPlayer(id))
+      );
 
-    console.log(
-      `🎯 Cached ${successCount} profiles out of ${playerIds.length}`
-    );
-    if (failedCount > 0) {
-      console.warn(`⚠️ ${failedCount} profiles failed to cache`);
+      for (const result of results) {
+        if (result.status === "fulfilled" && result.value) {
+          successCount++;
+        } else {
+          failureCount++;
+        }
+      }
+
+      console.log(
+        `📊 Progress: ${successCount} success / ${failureCount} failed`
+      );
+      await pause(DELAY_MS); // give server memory a break
     }
 
+    console.log(`🎯 Finished: ${successCount} cached / ${failureCount} failed`);
     process.exit(0);
   } catch (err) {
     console.error("🔥 Fatal error during cache generation:", err);
@@ -60,7 +80,6 @@ async function main() {
   }
 }
 
-// ✅ Only auto-run if called directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   await main();
 }

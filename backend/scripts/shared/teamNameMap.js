@@ -79,7 +79,8 @@ export const getTeamInfoByID = (teamId) => {
 
 export function getFullTeamAbbreviationFromID(teamId) {
   if (!teamId) return null;
-  return teamIdToAbbrMap[parseInt(teamId)] || null;
+  const info = teamIdMap[parseInt(teamId)];
+  return info ? info.abbr : null;
 }
 
 export async function getOpponentAbbreviation(teamAbbr, gameId) {

@@ -37,7 +37,7 @@ import {
   determineOpponent,
 } from "../backend/scripts/shared/propUtils.js";
 import { getStreaksForPlayer } from "../backend/scripts/shared/playerUtils.js";
-import { getGameTimeFromID } from "../src/utils/fetchSchedule.js";
+import { getGameTimeFromID } from "../backend/scripts/shared/fetchSchedule.js";
 
 console.log("🚀 Starting extended backfill for training fields...");
 
