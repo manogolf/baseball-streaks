@@ -9,7 +9,6 @@ import { yesterdayET } from "../backend/scripts/shared/timeUtils.js";
 import { updatePropStatusesForRows } from "../backend/scripts/resolution/updatePropResults.js";
 import { syncStatsForDate } from "../backend/scripts/resolution/syncPlayerStats.js";
 import { downloadModelFromSupabase } from "../backend/scripts/shared/downloadModelFromSupabase.js";
-import { runTrainingBackfillIfNeeded } from "./backfillTrainingFieldsExtended.js";
 
 console.log("⏳ Cron runner starting...");
 
@@ -92,15 +91,6 @@ const safelyRun = async (label) => {
     } else {
       console.log("✅ No pending props to resolve.");
     }
-
-    // Step 3: Backfill training fields
-    console.log("📥 Checking for training backfill needs...");
-    const ranBackfill = await runTrainingBackfillIfNeeded();
-    console.log(
-      ranBackfill
-        ? "✅ Training backfill completed."
-        : "✅ No training rows needed backfill."
-    );
 
     console.log(`✅ ${label}: All tasks complete.\n`);
     if (isGitHubAction) process.exit(0);

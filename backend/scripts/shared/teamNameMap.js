@@ -73,8 +73,17 @@ export const getFullTeamName = (abbr) => {
 };
 
 // Get full name and abbreviation from team ID
-export const getTeamInfoByID = (teamId) => {
-  return teamIdMap[Number(teamId)] || null;
+export const getTeamInfoByID = (abbrOrId) => {
+  if (typeof abbrOrId === "number" || /^\d+$/.test(abbrOrId)) {
+    return teamIdMap[Number(abbrOrId)] || null;
+  }
+
+  const normalized = normalizeTeamAbbreviation(abbrOrId);
+  for (const [id, info] of Object.entries(teamIdMap)) {
+    if (info.abbr === normalized) return info;
+  }
+
+  return null;
 };
 
 export function getFullTeamAbbreviationFromID(teamId) {
@@ -103,8 +112,37 @@ export async function getOpponentAbbreviation(teamAbbr, gameId) {
 }
 
 export function getTeamIdFromAbbr(abbr) {
+  const normalized = normalizeTeamAbbreviation(abbr);
   for (const [id, info] of Object.entries(teamIdMap)) {
-    if (info.abbr === abbr) return parseInt(id);
+    if (info.abbr === normalized) return parseInt(id);
+  }
+  return null;
+}
+
+export function normalizeTeamAbbreviation(abbr) {
+  if (!abbr) return abbr;
+  const upper = abbr.toUpperCase();
+  if (["AZ"].includes(upper)) return "ARI";
+  if (["ATH", "LV", "VIL"].includes(upper)) return "OAK";
+  return upper;
+}
+
+const specialValidTeams = ["OAK", "LV", "VIL", "ATH"];
+
+export const isValidMLBTeam = (abbr) => {
+  const normalized = abbr?.toUpperCase();
+  return (
+    teamNameMap.hasOwnProperty(normalized) ||
+    ["OAK", "LV", "VIL"].includes(normalized)
+  );
+};
+
+export function getTeamInfoByAbbr(abbr) {
+  const normalized = normalizeTeamAbbreviation(abbr);
+  for (const [id, info] of Object.entries(teamIdMap)) {
+    if (info.abbr === normalized) {
+      return { ...info, id: Number(id) };
+    }
   }
   return null;
 }

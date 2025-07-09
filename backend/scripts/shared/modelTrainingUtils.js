@@ -7,6 +7,7 @@ import {
   determineOpponent,
 } from "./propUtils.js";
 import { getStreaksForPlayer } from "./playerUtils.js";
+import { getTeamIdFromAbbr } from "./teamNameMap.js";
 
 /**
  * Up-sert all user-added props from `player_props` into `model_training_props`.

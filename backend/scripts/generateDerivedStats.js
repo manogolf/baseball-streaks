@@ -1,22 +1,16 @@
-// 📄 File: backend/scripts/generateDerivedStats.js
-
 import { supabase } from "./shared/supabaseUtils.js";
 import { getDerivedStats } from "./shared/getDerivedStats.js";
 import { toISODate } from "./shared/timeUtils.js";
+import fetch from "node-fetch";
 
-// Config
 const LOOKBACK_DAYS = 2;
 const TOTAL_BUCKETS = 8;
 
-// Get CLI bucket arg: --bucket=1/8
 const bucketArg = process.argv.find((arg) => arg.startsWith("--bucket="));
 const [currentBucket, totalBuckets] = bucketArg
   ? bucketArg.replace("--bucket=", "").split("/").map(Number)
   : [null, null];
 
-/**
- * Fetch unique (player_id, game_date, game_id) combos to backfill
- */
 async function getRecentPlayerGames() {
   const cutoffDate = toISODate(new Date(Date.now() - LOOKBACK_DAYS * 86400000));
 
@@ -31,17 +25,49 @@ async function getRecentPlayerGames() {
     throw new Error("❌ Failed to fetch recent games: " + error.message);
 
   const seen = new Set();
-  const uniqueRows = data.filter((row) => {
+  return data.filter((row) => {
     const key = `${row.player_id}_${row.game_date}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
-
-  return uniqueRows;
 }
 
-async function updateDerivedStats(rows) {
+async function preloadBoxscores() {
+  const boxscoreCache = new Map();
+  const today = new Date();
+  const from = new Date(today);
+  from.setDate(from.getDate() - 30);
+
+  for (let d = new Date(from); d <= today; d.setDate(d.getDate() + 1)) {
+    const iso = toISODate(d);
+    const schedUrl = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${iso}`;
+
+    try {
+      const schedRes = await fetch(schedUrl).then((r) => r.json());
+      const gameIds = (schedRes?.dates?.[0]?.games || []).map((g) => g.gamePk);
+      if (!Array.isArray(gameIds) || gameIds.length === 0) continue;
+
+      for (const gamePk of gameIds) {
+        if (!boxscoreCache.has(gamePk)) {
+          const boxUrl = `https://statsapi.mlb.com/api/v1/game/${gamePk}/boxscore`;
+          const boxRes = await fetch(boxUrl)
+            .then((r) => r.json())
+            .catch(() => null);
+          if (boxRes) boxscoreCache.set(gamePk, boxRes);
+        }
+      }
+
+      console.log(`📦 Cached boxscores for ${iso} (${gameIds.length} games)`);
+    } catch (err) {
+      console.warn(`⚠️ Failed to preload schedule for ${iso}: ${err.message}`);
+    }
+  }
+
+  return boxscoreCache instanceof Map ? boxscoreCache : new Map();
+}
+
+async function updateDerivedStats(rows, boxscoreCache) {
   let updated = 0;
   let skipped = 0;
 
@@ -52,7 +78,13 @@ async function updateDerivedStats(rows) {
     );
 
     try {
-      const derivedStats = await getDerivedStats(player_id, game_date);
+      const derivedStats = await getDerivedStats(
+        player_id,
+        game_date,
+        game_id,
+        boxscoreCache
+      );
+
       const isEmpty =
         Object.keys(derivedStats).length === 0 ||
         Object.values(derivedStats).every((v) => v == null);
@@ -88,13 +120,21 @@ async function updateDerivedStats(rows) {
   console.log(`\n✅ Bucket complete: ${updated} updated, ${skipped} skipped`);
 }
 
-// Main execution entry point
 async function run() {
+  console.log("📥 Fetching recent player-game combinations...");
   const allRows = await getRecentPlayerGames();
   console.log(`📦 Total unique (player_id, game_date): ${allRows.length}`);
 
+  console.log("🚀 Preloading boxscores into cache...");
+  const boxscoreCache = await preloadBoxscores();
+
+  if (!boxscoreCache || typeof boxscoreCache.entries !== "function") {
+    throw new Error("❌ preloadBoxscores() failed or returned invalid cache");
+  }
+
+  console.log(`📊 Boxscore cache size: ${boxscoreCache.size}`);
+
   if (currentBucket && totalBuckets) {
-    // Run single bucket
     const bucketSize = Math.ceil(allRows.length / totalBuckets);
     const start = (currentBucket - 1) * bucketSize;
     const end = currentBucket * bucketSize;
@@ -103,9 +143,8 @@ async function run() {
     console.log(
       `🔢 Running bucket ${currentBucket}/${totalBuckets} [${start} → ${end}]`
     );
-    await updateDerivedStats(bucketRows);
+    await updateDerivedStats(bucketRows, boxscoreCache);
   } else {
-    // Run all buckets sequentially
     for (let i = 1; i <= TOTAL_BUCKETS; i++) {
       const bucketSize = Math.ceil(allRows.length / TOTAL_BUCKETS);
       const start = (i - 1) * bucketSize;
@@ -115,7 +154,7 @@ async function run() {
       console.log(
         `\n⏳ Starting bucket ${i}/${TOTAL_BUCKETS} [${start} → ${end}]...\n`
       );
-      await updateDerivedStats(bucketRows);
+      await updateDerivedStats(bucketRows, boxscoreCache);
     }
 
     console.log(`\n🎉 All ${TOTAL_BUCKETS} buckets processed.`);

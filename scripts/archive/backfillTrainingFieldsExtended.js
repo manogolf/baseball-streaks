@@ -1,4 +1,30 @@
 /**
+ * 🛑 DEPRECATION NOTICE — July 2025
+ *
+ * This script is officially deprecated and should no longer be used.
+ *
+ * 🧹 Reason for deprecation:
+ * All training fields previously handled here — including:
+ *   - rolling_result_avg_7
+ *   - hit_streak / win_streak
+ *   - game_time
+ *   - is_home / home_away
+ *   - opponent / opponent_team_id / opponent_encoded
+ *   - prop_value / over_under
+ * — are now handled by specialized, reliable, and faster scripts:
+ *   ✅ insertStatDerivedProps.js
+ *   ✅ generateDerivedStats.js
+ *   ✅ generatePlayerStreakProfiles.js
+ *   ✅ backfillGameContextFields.js
+ *
+ * 🛑 Running this script may override accurate values with incomplete or outdated logic.
+ * It is retained for reference only and should not be invoked by cron or CLI.
+ *
+ * 🔒 To enforce deprecation, disable or remove any use of:
+ *   node scripts/backfillTrainingFieldsExtended.js
+ */
+
+/**
  * 📄 File: scripts/backfillTrainingFieldsExtended.js
  *
  * 🔍 Description:
@@ -87,21 +113,19 @@ export async function runTrainingBackfillIfNeeded() {
 }
 
 async function fetchAllIncompleteRowsForPlayers(playerIds) {
-  const pageSize = 1000;
-  let from = 0;
-  let to = pageSize - 1;
-  let allRows = [];
+  if (!playerIds || playerIds.length === 0) return [];
 
   const { data, error } = await supabase
     .from("model_training_props")
     .select("*")
-    .eq("player_id", "605137")
-    .eq("prop_type", "hits")
-    .is("hit_streak", null)
+    .in("player_id", playerIds)
+    .or(
+      "rolling_result_avg_7.is.null,hit_streak.is.null,win_streak.is.null,game_time.is.null,is_home.is.null,opponent.is.null,prop_value.is.null,over_under.is.null"
+    )
     .order("game_date", { ascending: true });
 
   if (error) {
-    console.error("❌ Error fetching test player rows:", error.message);
+    console.error("❌ Error fetching incomplete rows:", error.message);
     return [];
   }
 
@@ -147,6 +171,7 @@ export async function runExtendedBackfill() {
 
   let updated = 0,
     failed = 0;
+  const rowUpdates = [];
   const skippedByProp = {};
 
   const playerIds = Object.keys(grouped);
@@ -159,6 +184,10 @@ export async function runExtendedBackfill() {
         playerProps.length
       } rows`
     );
+
+    let streaks = null;
+    const rollingAvgPromises = [];
+    const rowUpdates = [];
 
     for (const row of playerProps) {
       if (isTrainingRowComplete(row)) continue;
@@ -174,7 +203,9 @@ export async function runExtendedBackfill() {
             row.game_id,
             7
           );
-          if (avg != null) updates.rolling_result_avg_7 = avg;
+          if (avg != null && !isNaN(avg)) {
+            updates.rolling_result_avg_7 = avg;
+          }
         }
 
         if (row.hit_streak == null || row.win_streak == null) {
@@ -184,7 +215,7 @@ export async function runExtendedBackfill() {
             row.prop_source || "mlb_api"
           );
 
-          if (!streaks) {
+          if (!streaks || streaks.streak_count == null) {
             skippedByProp[row.prop_type] =
               (skippedByProp[row.prop_type] || 0) + 1;
             continue;
@@ -196,7 +227,7 @@ export async function runExtendedBackfill() {
 
         if (row.game_time == null && row.game_id) {
           const gameTime = await getGameTimeFromID(row.game_id);
-          if (gameTime) updates.game_time = gameTime;
+          if (gameTime != null) updates.game_time = gameTime;
         }
 
         if (row.is_home == null && row.team && row.game_id) {
@@ -206,53 +237,77 @@ export async function runExtendedBackfill() {
 
         if (row.opponent == null && row.team && row.game_id) {
           const opponent = await determineOpponent(row.team, row.game_id);
-          if (opponent) updates.opponent = opponent;
+          if (opponent != null) updates.opponent = opponent;
         }
 
+        const parsedValue = parseFloat(row.result);
         if (
           row.prop_value == null &&
           row.result != null &&
+          !isNaN(parsedValue) &&
           row.source === "mlb_api"
         ) {
-          updates.prop_value = parseFloat(row.result);
+          updates.prop_value = parsedValue;
         }
 
+        const actual = parseFloat(row.result);
+        const line = parseFloat(row.prop_value);
         if (
           row.over_under == null &&
           row.predicted_outcome &&
-          row.prop_value != null &&
-          row.result != null
+          !isNaN(actual) &&
+          !isNaN(line)
         ) {
-          const actual = parseFloat(row.result);
-          const line = parseFloat(row.prop_value);
           updates.over_under =
             actual > line ? "over" : actual < line ? "under" : "push";
         }
 
+        // ✅ Collect update if changes exist
         if (Object.keys(updates).length > 0) {
-          const { error: updateError } = await supabase
-            .from("model_training_props")
-            .update(updates)
-            .eq("id", row.id);
+          // Only include non-null updates
+          const cleanUpdates = {};
+          for (const [key, val] of Object.entries(updates)) {
+            if (val !== null && val !== undefined) {
+              cleanUpdates[key] = val;
+            }
+          }
 
-          if (updateError) {
-            console.warn(
-              "⚠️ Failed to update row:",
-              row.id,
-              updateError.message
-            );
-            failed++;
-          } else {
-            updated++;
+          if (Object.keys(cleanUpdates).length > 0) {
+            rowUpdates.push({ id: row.id, updates: cleanUpdates });
           }
         }
       } catch (err) {
-        console.error(`❌ Failed to update row ${row.id}:`, err.message);
+        console.error(`❌ Failed to prepare row ${row.id}:`, err.message);
         failed++;
       }
     }
 
-    // Optional: report every 100 players
+    // Wait for all rolling averages to resolve
+    await Promise.all(rollingAvgPromises);
+
+    // Apply updates
+    if (rowUpdates.length > 0) {
+      const { error: rpcError } = await supabase.rpc(
+        "batch_update_training_props",
+        {
+          rows: rowUpdates.map(({ id, updates }) => ({
+            id,
+            ...updates,
+          })),
+        }
+      );
+
+      if (rpcError) {
+        console.error("❌ Batch update failed:", rpcError.message);
+        failed += rowUpdates.length;
+      } else {
+        updated += rowUpdates.length;
+      }
+
+      // Clear for next player
+      rowUpdates.length = 0;
+    }
+
     if ((i + 1) % 100 === 0) {
       console.log(`⏳ Player progress: ${i + 1}/${filteredPlayerIds.length}`);
       console.log(`   → ✅ ${updated} | ❌ ${failed}`);

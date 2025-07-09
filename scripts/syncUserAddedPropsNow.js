@@ -2,6 +2,7 @@
 // script syncs user_added from player_props with model_training_props
 
 import { upsertUserPropsToTraining } from "../backend/scripts/shared/modelTrainingUtils.js";
+import { getTeamIdFromAbbr } from "../backend/scripts/shared/teamNameMap.js";
 
 const DEFAULT_BATCH_SIZE = 1000;
 const DEFAULT_DAYS_BACK = 2; // ⏱️ Only sync user-added props from last 2 days

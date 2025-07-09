@@ -75,7 +75,6 @@ export function getTimeOfDayBucketET(isoDateTime) {
  */
 export async function getGameStartTimeET(gameId) {
   try {
-    /* 1️⃣  Schedule endpoint */
     let res = await fetch(
       `https://statsapi.mlb.com/api/v1/schedule?sportId=1&gamePk=${gameId}`
     );
@@ -83,13 +82,10 @@ export async function getGameStartTimeET(gameId) {
       const schedJson = await res.json();
       const schedISO = schedJson?.dates?.[0]?.games?.[0]?.gameDate;
       if (schedISO) {
-        return DateTime.fromISO(schedISO)
-          .setZone("America/New_York")
-          .toFormat("HH:mm");
+        return DateTime.fromISO(schedISO).setZone("America/New_York").toISO(); // ✅ ISO 8601 full timestamp
       }
     }
 
-    /* 2️⃣  Boxscore fallback */
     res = await fetch(
       `https://statsapi.mlb.com/api/v1/game/${gameId}/boxscore`
     );
@@ -97,13 +93,10 @@ export async function getGameStartTimeET(gameId) {
       const boxJson = await res.json();
       const boxISO = boxJson?.gameData?.datetime?.dateTime;
       if (boxISO) {
-        return DateTime.fromISO(boxISO)
-          .setZone("America/New_York")
-          .toFormat("HH:mm");
+        return DateTime.fromISO(boxISO).setZone("America/New_York").toISO(); // ✅ ISO 8601 full timestamp
       }
     }
 
-    // Still nothing
     return null;
   } catch (err) {
     console.warn(`⚠️ Could not get game time for ${gameId}:`, err.message);

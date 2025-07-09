@@ -94,6 +94,7 @@ async function processDate(gameDate) {
 
       const opponent = opponentTeam?.teamAbbr || null;
       const opponent_encoded = getTeamIdFromAbbr(opponent);
+      const contextFields = await getGameContextFields(gameId, team);
 
       const now = new Date().toISOString();
 
@@ -244,6 +245,7 @@ async function processDate(gameDate) {
 
         const row = {
           id: crypto.randomUUID(),
+          game_id,
           player_id: String(player_id),
           player_name: fullName,
           team,
@@ -268,6 +270,7 @@ async function processDate(gameDate) {
           streak_count: streak?.streak_count ?? null,
           ...(bvpStats || {}),
           ...(pvbStats || {}),
+          ...contextFields,
         };
 
         const { error } = await supabase

@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@shared/supabaseUtils.js";
-import { nowET, todayET } from "@shared/timeUtils.js";
+import { supabase } from "../../backend/scripts/shared/supabaseUtils.js";
+import { nowET, todayET } from "../../backend/scripts/shared/timeUtils.js";
 import { useAuth } from "../context/AuthContext.js";
 import { buildFeatureVector } from "../utils/buildFeatureVector.js";
 import { requiredFeatures } from "../config/predictionSchema.js";
 import { normalizeFeatureKeys } from "../utils/normalizeFeatureKeys.js";
-import { preparePropSubmission } from "@shared/playerUtils.js";
-import { getPropTypeOptions } from "@shared/propUtils.js";
-import { getGamePkForTeamOnDate } from "@shared/fetchGameID.js";
-import { getTeamIdFromAbbr } from "@/shared/teamNameMap.js"; // adjust path if needed
+import { preparePropSubmission } from "../../backend/scripts/shared/playerUtils.js";
+import { getPropTypeOptions } from "../../backend/scripts/shared/propUtils.js";
+import { getGamePkForTeamOnDate } from "../../backend/scripts/shared/fetchGameID.js";
+import { getTeamIdFromAbbr } from "../../backend/scripts/shared/teamNameMap.js"; // adjust path if needed
+import { getGameContextFields } from "@/scripts/shared/mlbApiUtils";
 
 const apiUrl = `${
   process.env.REACT_APP_API_URL || "http://localhost:8000"
@@ -212,6 +213,8 @@ const PlayerPropForm = ({ onPropAdded }) => {
         return;
       }
 
+      const contextFields = await getGameContextFields(gameId, teamAbbr);
+
       // 🛑 Prevent saving if no prediction was made
       if (
         !result ||
@@ -251,6 +254,8 @@ const PlayerPropForm = ({ onPropAdded }) => {
         prop_source: "user_added", // ✅ canonical value
         opponent: opponent,
         opponent_encoded: opponent_encoded,
+        ...formValues,
+        ...contextFields,
       };
 
       // 👉 Step 5: Insert into Supabase
@@ -366,6 +371,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
           value={formData.prop_type}
           onChange={handleChange}
           required
+          className="w-full p-2 bg-gray-50 border border-gray-300 rounded-md"
         >
           <option value="">Select a prop type</option>
           {propTypeOptions.map((opt) => (
