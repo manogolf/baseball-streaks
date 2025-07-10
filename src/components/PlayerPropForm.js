@@ -9,7 +9,7 @@ import { preparePropSubmission } from "../../backend/scripts/shared/playerUtils.
 import { getPropTypeOptions } from "../../backend/scripts/shared/propUtils.js";
 import { getGamePkForTeamOnDate } from "../../backend/scripts/shared/fetchGameID.js";
 import { getTeamIdFromAbbr } from "../../backend/scripts/shared/teamNameMap.js"; // adjust path if needed
-import { getGameContextFields } from "@/scripts/shared/mlbApiUtils";
+import { getGameContextFields } from "../../backend/scripts/shared/mlbApiUtils.js";
 
 const apiUrl = `${
   process.env.REACT_APP_API_URL || "http://localhost:8000"

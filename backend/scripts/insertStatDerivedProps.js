@@ -22,6 +22,7 @@ import {
   getPitcherVsBatterStats,
 } from "./shared/playerUtils.js";
 import { fetchBoxscoreStatsForGame } from "./shared/fetchBoxscoreStats.js";
+import { getGameContextFields } from "./shared/mlbApiUtils.js";
 import { getTeamIdFromAbbr } from "./shared/teamNameMap.js";
 import crypto from "node:crypto";
 
@@ -245,7 +246,7 @@ async function processDate(gameDate) {
 
         const row = {
           id: crypto.randomUUID(),
-          game_id,
+          game_id: gameId,
           player_id: String(player_id),
           player_name: fullName,
           team,

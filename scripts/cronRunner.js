@@ -1,4 +1,4 @@
-// 📄 File: scripts/cron-runner.js
+// 📄 File: scripts/cronRunner.js
 
 import "dotenv/config";
 import cron from "node-cron";

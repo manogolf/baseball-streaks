@@ -1,4 +1,4 @@
-// statResolvers.js
+// backend/scripts/resolution/statResolvers.js
 
 import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
 import {
