@@ -10,37 +10,68 @@ import fetch from "node-fetch";
 const DELAY_MS = 200;
 
 const MISSING_CONDITIONS = [
-  "pvb_ab.is.null",
-  "pvb_hits.is.null",
-  "pvb_hr.is.null",
-  "pvb_strikeouts.is.null",
-  "pvb_walks.is.null",
-  "bvp_ab.is.null",
-  "bvp_hits.is.null",
-  "bvp_hr.is.null",
-  "bvp_strikeouts.is.null",
-  "bvp_walks.is.null",
-].join(",");
+  "pvb_at_bats=is.null",
+  "pvb_hits=is.null",
+  "pvb_home_runs=is.null",
+  "pvb_strikeouts=is.null",
+  "pvb_walks=is.null",
+  "pvb_plate_appearances=is.null",
+  "pvb_rbi=is.null",
+  "pvb_total_bases=is.null",
+  "pvb_sac_flies=is.null",
+  "bvp_at_bats=is.null",
+  "bvp_hits=is.null",
+  "bvp_home_runs=is.null",
+  "bvp_strikeouts=is.null",
+  "bvp_walks=is.null",
+  "bvp_plate_appearances=is.null",
+  "bvp_rbi=is.null",
+];
+
+// Break into 2 OR groups
+const orGroup1 = MISSING_CONDITIONS.slice(0, 8).join(",");
+const orGroup2 = MISSING_CONDITIONS.slice(8).join(",");
 
 function sleep(ms) {
   return new Promise((res) => setTimeout(res, ms));
 }
 
-async function fetchRowsNeedingStats(offset = 0, limit = 1000) {
+async function fetchRowsNeedingStats(offset, limit) {
   const { data, error } = await supabase
     .from("model_training_props")
     .select("id, player_id, prop_type, game_id")
-    .or(MISSING_CONDITIONS)
     .not("player_id", "is", null)
     .not("game_id", "is", null)
-    .range(offset, offset + limit - 1); // fetch 1000 rows
+    .range(offset, offset + limit - 1);
 
   if (error) {
-    console.error("❌ Failed to fetch rows:", error.message);
+    console.error("❌ Failed to fetch base rows:", error.message);
     return [];
   }
 
-  return data;
+  // Filter in JS: keep rows where at least one target field is null
+  const columnsToCheck = [
+    "pvb_at_bats",
+    "pvb_hits",
+    "pvb_home_runs",
+    "pvb_strikeouts",
+    "pvb_walks",
+    "pvb_plate_appearances",
+    "pvb_rbi",
+    "pvb_total_bases",
+    "pvb_sac_flies",
+    "bvp_at_bats",
+    "bvp_hits",
+    "bvp_home_runs",
+    "bvp_strikeouts",
+    "bvp_walks",
+    "bvp_plate_appearances",
+    "bvp_rbi",
+  ];
+
+  return data.filter((row) =>
+    columnsToCheck.some((col) => row[col] === null || row[col] === undefined)
+  );
 }
 
 async function processRow(row) {
@@ -54,23 +85,14 @@ async function processRow(row) {
   let box;
   try {
     box = await getBoxscoreFromGameID(game_id);
-    if (
-      !box ||
-      !box.teams?.home?.players ||
-      !box.teams?.away?.players ||
-      Object.keys(box.teams.home.players).length === 0 ||
-      Object.keys(box.teams.away.players).length === 0
-    ) {
+    if (!box || !box.teams?.home?.players || !box.teams?.away?.players) {
       console.warn(
         `❌ Skipping ${id} — incomplete boxscore for game ${game_id}`
       );
       return;
     }
   } catch (err) {
-    console.error(
-      `❌ Exception while fetching boxscore for game ${game_id}:`,
-      err
-    );
+    console.error(`❌ Error fetching boxscore for game ${game_id}:`, err);
     return;
   }
 
@@ -123,19 +145,23 @@ async function processRow(row) {
   const updates = {};
 
   if (mode === "bvp") {
-    updates.bvp_ab = stats.ab;
+    updates.bvp_at_bats = stats.ab;
     updates.bvp_hits = stats.hits;
-    updates.bvp_hr = stats.home_runs;
+    updates.bvp_home_runs = stats.home_runs;
     updates.bvp_strikeouts = stats.strikeouts;
     updates.bvp_walks = stats.walks;
     updates.bvp_plate_appearances = stats.pa;
+    updates.bvp_rbi = stats.rbi;
   } else {
-    updates.pvb_ab = stats.ab;
+    updates.pvb_at_bats = stats.ab;
     updates.pvb_hits = stats.hits;
-    updates.pvb_hr = stats.home_runs;
+    updates.pvb_home_runs = stats.home_runs;
     updates.pvb_strikeouts = stats.strikeouts;
     updates.pvb_walks = stats.walks;
     updates.pvb_plate_appearances = stats.pa;
+    updates.pvb_rbi = stats.rbi;
+    updates.pvb_total_bases = stats.total_bases;
+    updates.pvb_sac_flies = stats.sac_flies;
   }
 
   const allValues = Object.values(updates);
@@ -153,14 +179,18 @@ async function processRow(row) {
   if (error) {
     console.error(`❌ Update failed for ${id}: ${error.message}`);
   } else {
-    console.log(`✅ Updated ${id} | ${mode.toUpperCase()} | PA: ${stats.pa}`);
+    console.log(
+      `✅ Updated ${id} | ${mode.toUpperCase()} | PA: ${stats.plateAppearances}`
+    );
   }
 }
 
 async function run() {
-  let offset = 0;
+  let offset = parseInt(process.env.START_OFFSET || "0", 10);
   const batchSize = 1000;
   let batchCount = 0;
+
+  console.log(`🟢 Starting at offset: ${offset}`);
 
   while (true) {
     const rows = await fetchRowsNeedingStats(offset, batchSize);
@@ -173,7 +203,7 @@ async function run() {
     );
 
     for (let i = 0; i < rows.length; i++) {
-      await processRow(rows[i], i, rows.length);
+      await processRow(rows[i]);
     }
 
     offset += batchSize;

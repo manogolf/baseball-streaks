@@ -102,6 +102,7 @@ async function processDate(gameDate) {
       // ── BvP and PvB STATS
       let bvpStats = {};
       let pvbStats = {};
+
       const startingPitcher = allPlayers.find(
         (p) => p.isHome !== isHome && p.stats?.pitching?.gamesStarted > 0
       );
@@ -118,12 +119,14 @@ async function processDate(gameDate) {
           (await getBatterVsPitcherStats(player_id, startingPitcherId));
         if (s && hasMeaningfulStats(s)) {
           bvpStats = {
-            bvp_ab: s.ab ?? s.at_bats ?? null,
+            bvp_at_bats: s.ab ?? s.at_bats ?? null,
             bvp_hits: s.hits ?? null,
             bvp_home_runs: s.home_runs ?? s.homeRuns ?? null,
             bvp_strikeouts: s.strikeouts ?? s.strike_outs ?? null,
             bvp_walks: s.walks ?? s.base_on_balls ?? null,
-            bvp_avg: s.avg ?? null,
+            bvp_batting_avg:
+              s.avg ?? (s.ab > 0 ? +(s.hits / s.ab).toFixed(3) : null),
+            bvp_plate_appearances: s.pa ?? null,
           };
         }
       }
@@ -133,13 +136,14 @@ async function processDate(gameDate) {
           (p) => p.isHome !== isHome && p.stats?.batting
         );
         const agg = {
-          ab: 0,
-          hits: 0,
-          home_runs: 0,
-          strikeouts: 0,
-          walks: 0,
-          pa: 0,
+          pvb_at_bats: 0,
+          pvb_hits: 0,
+          pvb_home_runs: 0,
+          pvb_strikeouts: 0,
+          pvb_walks: 0,
+          pvb_plate_appearances: 0,
         };
+
         for (const b of bats) {
           const raw = (
             await resolveStatForPlayer({
@@ -164,14 +168,14 @@ async function processDate(gameDate) {
           agg.walks += s.walks || s.base_on_balls || 0;
           agg.pa += s.pa || 0;
         }
-        if (agg.ab > 0) {
+        if (agg.pvb_at_bats > 0) {
           pvbStats = {
-            pvb_ab: agg.ab,
+            pvb_at_bats: agg.ab,
             pvb_hits: agg.hits,
             pvb_home_runs: agg.home_runs,
             pvb_strikeouts: agg.strikeouts,
             pvb_walks: agg.walks,
-            pvb_avg: +(agg.hits / agg.ab).toFixed(3),
+            pvb_batting_avg: +(agg.hits / agg.ab).toFixed(3),
             pvb_plate_appearances: agg.pa,
           };
         }
