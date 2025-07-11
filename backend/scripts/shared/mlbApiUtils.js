@@ -39,13 +39,15 @@ export async function getGameContextFields(gameId, teamAbbr) {
     return null;
   }
 
-  const is_home = teamAbbr === homeTeam;
+  const normalizedTeamAbbr = teamAbbr.toUpperCase();
+  const is_home = normalizedTeamAbbr === homeTeam.toUpperCase();
   const home_away = is_home ? "home" : "away";
-  const opponent = is_home ? awayTeam : homeTeam;
+  const opponentAbbr = is_home ? awayTeam : homeTeam;
 
-  const teamInfo = getTeamInfoByAbbr(opponent);
-  const opponent_encoded = teamInfo?.abbr || null;
-  const opponent_team_id = teamInfo?.id || null;
+  const teamInfo = getTeamInfoByAbbr(opponentAbbr?.toUpperCase());
+  console.log("🔬 teamInfo returned:", teamInfo);
+
+  const opponent_encoded = teamInfo?.id != null ? String(teamInfo.id) : null;
 
   const game_time = await getGameStartTimeET(gameId);
   const game_day_of_week = game_time ? getDayOfWeekET(game_time) : null;
@@ -54,9 +56,8 @@ export async function getGameContextFields(gameId, teamAbbr) {
   return {
     is_home,
     home_away,
-    opponent,
+    opponent: opponentAbbr,
     opponent_encoded,
-    opponent_team_id,
     game_time,
     game_day_of_week,
     time_of_day_bucket,

@@ -362,3 +362,21 @@ export async function getOpponentAbbreviation(teamAbbr, game_id) {
   console.warn(`⚠️ Team ${teamAbbr} not found in game ${game_id}`);
   return null;
 }
+
+// ✅ Safe new function: no changes to existing exports
+export function getPlayerTeamFromBoxscoreData(boxscore, playerId) {
+  const normalizedId = Number(playerId); // ensure numeric comparison
+
+  const homePlayers = boxscore?.teams?.home?.players || {};
+  const awayPlayers = boxscore?.teams?.away?.players || {};
+
+  for (const player of Object.values(homePlayers)) {
+    if (Number(player?.person?.id) === normalizedId) return "home";
+  }
+
+  for (const player of Object.values(awayPlayers)) {
+    if (Number(player?.person?.id) === normalizedId) return "away";
+  }
+
+  return null;
+}

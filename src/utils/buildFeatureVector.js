@@ -103,20 +103,23 @@ export async function buildFeatureVector({
     console.warn(`⚠️ Failed to calculate opponent_avg_win_rate: ${e.message}`);
   }
 
-  // 6. BvP / PvB
+  // 6. BvP / PvB (MLB API–supported only)
   const bvpPvB = {
-    bvp_pa: 0,
-    bvp_ab: 0,
+    bvp_avg: 0,
+    bvp_at_bats: 0,
     bvp_hits: 0,
-    bvp_hr: 0,
-    bvp_so: 0,
-    bvp_bb: 0,
-    pvb_pa: 0,
-    pvb_ab: 0,
+    bvp_home_runs: 0,
+    bvp_rbi: 0,
+    bvp_strikeouts: 0,
+    bvp_walks: 0,
+    bvp_plate_appearances: 0,
+    pvb_avg: 0,
+    pvb_at_bats: 0,
     pvb_hits: 0,
-    pvb_hr: 0,
-    pvb_so: 0,
-    pvb_bb: 0,
+    pvb_home_runs: 0,
+    pvb_strikeouts: 0,
+    pvb_walks: 0,
+    pvb_plate_appearances: 0,
   };
 
   console.log("📡 Fetching PvB/BvP stats for", player_id, prop_type);

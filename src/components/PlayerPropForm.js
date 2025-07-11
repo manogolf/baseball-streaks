@@ -8,7 +8,7 @@ import { normalizeFeatureKeys } from "../utils/normalizeFeatureKeys.js";
 import { preparePropSubmission } from "../../backend/scripts/shared/playerUtils.js";
 import { getPropTypeOptions } from "../../backend/scripts/shared/propUtils.js";
 import { getGamePkForTeamOnDate } from "../../backend/scripts/shared/fetchGameID.js";
-import { getTeamIdFromAbbr } from "../../backend/scripts/shared/teamNameMap.js"; // adjust path if needed
+import { getTeamInfoByAbbr } from "../../backend/scripts/shared/teamNameMap.js"; // adjust path if needed
 import { getGameContextFields } from "../../backend/scripts/shared/mlbApiUtils.js";
 
 const apiUrl = `${
@@ -213,8 +213,6 @@ const PlayerPropForm = ({ onPropAdded }) => {
         return;
       }
 
-      const contextFields = await getGameContextFields(gameId, teamAbbr);
-
       // 🛑 Prevent saving if no prediction was made
       if (
         !result ||
@@ -232,8 +230,14 @@ const PlayerPropForm = ({ onPropAdded }) => {
         game_id: resolvedGameId,
       });
 
-      const opponent = preparedData.opponent || null;
-      const opponent_encoded = opponent ? getTeamIdFromAbbr(opponent) : null;
+      console.log("🧪 Prepared Data:", preparedData);
+
+      const contextFields = await getGameContextFields(
+        resolvedGameId,
+        preparedData.team
+      );
+
+      console.log("🎯 Context Fields:", contextFields);
 
       const now = nowET().toISO();
       const payload = {
@@ -250,13 +254,20 @@ const PlayerPropForm = ({ onPropAdded }) => {
         confidence_score: result?.confidence_score ?? null,
         prediction_timestamp: result ? now : null,
         over_under: preparedData.over_under.toLowerCase(),
-        user_id: userId, // 🆕 Enforce per-user uniqueness
-        prop_source: "user_added", // ✅ canonical value
-        opponent: opponent,
-        opponent_encoded: opponent_encoded,
-        ...formValues,
-        ...contextFields,
+        user_id: userId,
+        prop_source: "user_added",
+        ...contextFields, // ✅ merged
       };
+
+      for (const [key, value] of Object.entries(payload)) {
+        console.log(`📌 ${key}: ${value} (${typeof value})`);
+      }
+
+      console.log(
+        "📦 opponent_encoded type:",
+        typeof contextFields.opponent_encoded
+      );
+      console.log("📦 Final payload:", payload);
 
       // 👉 Step 5: Insert into Supabase
       const { error: insertError } = await supabase

@@ -4,7 +4,6 @@
 // It is now restored to populate ALL of the following fields:
 // - opponent
 // - opponent_encoded
-// - opponent_team_id
 // - home_away
 // - is_home
 // - game_time
@@ -58,7 +57,6 @@ async function processRow(row) {
     home_away,
     opponent,
     opponent_encoded,
-    opponent_team_id,
     game_time,
     game_day_of_week,
     time_of_day_bucket,
@@ -73,7 +71,6 @@ async function processRow(row) {
     home_away,
     opponent,
     opponent_encoded,
-    opponent_team_id,
     game_time,
     game_day_of_week,
     time_of_day_bucket,

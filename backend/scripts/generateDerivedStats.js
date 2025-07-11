@@ -1,3 +1,5 @@
+//  backend/scripts/generateDerivedStats.js
+
 import { supabase } from "./shared/supabaseUtils.js";
 import { getDerivedStats } from "./shared/getDerivedStats.js";
 import { toISODate } from "./shared/timeUtils.js";
