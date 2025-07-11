@@ -127,6 +127,7 @@ async function processDate(gameDate) {
             bvp_batting_avg:
               s.avg ?? (s.ab > 0 ? +(s.hits / s.ab).toFixed(3) : null),
             bvp_plate_appearances: s.pa ?? null,
+            pvb_sac_flies: agg.sac_flies,
           };
         }
       }
@@ -142,6 +143,7 @@ async function processDate(gameDate) {
           pvb_strikeouts: 0,
           pvb_walks: 0,
           pvb_plate_appearances: 0,
+          sac_flies: 0,
         };
 
         for (const b of bats) {

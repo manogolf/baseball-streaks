@@ -145,20 +145,20 @@ async function processRow(row) {
   const updates = {};
 
   if (mode === "bvp") {
-    updates.bvp_at_bats = stats.ab;
+    updates.bvp_at_bats = stats.at_bats ?? null;
     updates.bvp_hits = stats.hits;
     updates.bvp_home_runs = stats.home_runs;
     updates.bvp_strikeouts = stats.strikeouts;
     updates.bvp_walks = stats.walks;
-    updates.bvp_plate_appearances = stats.pa;
+    updates.bvp_plate_appearances = stats.plate_appearances ?? null;
     updates.bvp_rbi = stats.rbi;
   } else {
-    updates.pvb_at_bats = stats.ab;
+    updates.pvb_at_bats = stats.at_bats ?? null;
     updates.pvb_hits = stats.hits;
     updates.pvb_home_runs = stats.home_runs;
     updates.pvb_strikeouts = stats.strikeouts;
     updates.pvb_walks = stats.walks;
-    updates.pvb_plate_appearances = stats.pa;
+    updates.pvb_plate_appearances = stats.plate_appearances ?? null;
     updates.pvb_rbi = stats.rbi;
     updates.pvb_total_bases = stats.total_bases;
     updates.pvb_sac_flies = stats.sac_flies;
@@ -180,7 +180,7 @@ async function processRow(row) {
     console.error(`❌ Update failed for ${id}: ${error.message}`);
   } else {
     console.log(
-      `✅ Updated ${id} | ${mode.toUpperCase()} | PA: ${stats.plateAppearances}`
+      `✅ Updated ${id} | ${mode.toUpperCase()} | PA: $PA: ${stats.pa}`
     );
   }
 }
