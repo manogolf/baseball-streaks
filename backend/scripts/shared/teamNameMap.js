@@ -48,7 +48,7 @@ export const teamIdMap = {
   119: { abbr: "LAD", fullName: "Los Angeles Dodgers" },
   120: { abbr: "WSH", fullName: "Washington Nationals" },
   121: { abbr: "NYM", fullName: "New York Mets" },
-  133: { abbr: "OAK", fullName: "Athletics" }, // OAK/LV
+  133: { abbr: "ATH", fullName: "Athletics" }, // OAK/LV
   134: { abbr: "PIT", fullName: "Pittsburgh Pirates" },
   135: { abbr: "SD", fullName: "San Diego Padres" },
   136: { abbr: "SEA", fullName: "Seattle Mariners" },

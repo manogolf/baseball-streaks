@@ -5,8 +5,6 @@ import { getGamePkForTeamOnDate } from "@shared/fetchGameID.js";
 import { todayET, toISODate } from "@shared/timeUtils.js";
 import { getOpponentAbbreviation } from "@shared/teamNameMap.js";
 
-console.log("🧪 buildFeatureVector: LIVE VERSION ACTIVE");
-
 export async function buildFeatureVector({
   player_name,
   team,
@@ -128,7 +126,20 @@ export async function buildFeatureVector({
     const { data: matchupStats } = await supabase
       .from("model_training_props")
       .select(
-        "bvp_pa, bvp_ab, bvp_hits, bvp_hr, bvp_so, bvp_bb, pvb_pa, pvb_ab, pvb_hits, pvb_hr, pvb_so, pvb_bb"
+        [
+          "bvp_plate_appearances",
+          "bvp_at_bats",
+          "bvp_hits",
+          "bvp_home_runs",
+          "bvp_strikeouts",
+          "bvp_walks",
+          "pvb_plate_appearances",
+          "pvb_at_bats",
+          "pvb_hits",
+          "pvb_home_runs",
+          "pvb_strikeouts",
+          "pvb_walks",
+        ].join(",")
       )
       .eq("player_id", player_id)
       .eq("prop_type", prop_type)
