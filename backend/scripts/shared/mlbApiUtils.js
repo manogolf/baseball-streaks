@@ -63,3 +63,19 @@ export async function getGameContextFields(gameId, teamAbbr) {
     time_of_day_bucket,
   };
 }
+
+/**
+ * Fetches the full live game feed for a given game ID.
+ * Includes liveData.plays.allPlays, needed for BvP and PvB analysis.
+ */
+export async function getLiveFeedFromGameID(gameId) {
+  const url = `https://statsapi.mlb.com/api/v1.1/game/${gameId}/feed/live`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error(`❌ Failed to fetch live feed for game ${gameId}:`, err);
+    return null;
+  }
+}

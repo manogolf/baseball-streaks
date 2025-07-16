@@ -4,8 +4,7 @@ import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
 import {
   flattenPlayerBoxscore,
   getPlayerStatsFromBoxscore,
-  getBatterVsPitcherStats,
-  getPitcherVsBatterStats,
+  getPvBStats,
 } from "../shared/playerUtils.js";
 import { derivePropValue } from "./derivePropValue.js";
 
@@ -40,9 +39,19 @@ export function hasMeaningfulStats(stats) {
   return hasBatting || hasPitching;
 }
 
-export async function resolveStatForPlayer(options) {
-  //console.log("🧪 Calling resolveStatForPlayer with:", options);
+export function hasMeaningfulBvPStats(stats) {
+  if (!stats || typeof stats !== "object") return false;
 
+  return (
+    typeof stats.hits === "number" ||
+    typeof stats.rbi === "number" ||
+    typeof stats.total_bases === "number" ||
+    typeof stats.pa === "number" ||
+    typeof stats.ab === "number"
+  );
+}
+
+export async function resolveStatForPlayer(options) {
   const {
     player_id,
     player_name,
@@ -54,20 +63,7 @@ export async function resolveStatForPlayer(options) {
     pitcher_id,
   } = options;
 
-  // ✅ Handle BvP logic
-  if (mode === "bvp") {
-    const stats = await getBatterVsPitcherStats(batter_id, pitcher_id);
-    //console.log("🎯 BvP resolved stats:", stats);
-    return { rawStats: stats };
-  }
-
-  // ✅ Handle PvB logic
-  if (mode === "pvb") {
-    const stats = await getPitcherVsBatterStats(pitcher_id, batter_id);
-    //console.log("🎯 PvB resolved stats:", stats);
-    return { rawStats: stats };
-  }
-
+  // ✅ Default path for regular boxscore-resolvable props
   console.log(
     `📡 Resolving stat for ${player_name} (${prop_type}) — Game ID: ${game_id}`
   );

@@ -1,9 +1,11 @@
+// backend/scripts/shared/playerUtils.js
+
 import fetch from "node-fetch";
 import { supabase } from "./supabaseUtils.js";
 import { normalizePropType } from "./propUtils.js";
 import { getGamePkForTeamOnDate } from "./fetchGameID.js";
 import { toISODate } from "./timeUtils.js";
-import { getBoxscoreFromGameID } from "./mlbApiUtils.js";
+import { getBoxscoreFromGameID, getLiveFeedFromGameID } from "./mlbApiUtils.js";
 import { getFullTeamAbbreviationFromID } from "./teamNameMap.js";
 
 // 🧠 Flatten boxscore player stats (converts nested MLB format to simpler object)
@@ -286,70 +288,9 @@ export async function upsertPlayerID({ player_id, player_name, team = null }) {
  * }
  * or `null` if no data.
  */
-export async function getBatterVsPitcherStats(batterId, pitcherId) {
-  if (!batterId || !pitcherId) return null;
-
-  /* 1️⃣  Try cached row first */
-  const { data: cached } = await supabase
-    .from("batter_vs_pitcher_stats")
-    .select("*")
-    .eq("batter_id", batterId)
-    .eq("pitcher_id", pitcherId)
-    .maybeSingle();
-
-  if (cached) return cached; // ✅ cache hit
-
-  /* 2️⃣  Fallback to live StatsAPI */
-  try {
-    const url = `https://statsapi.mlb.com/api/v1/people/${batterId}/stats?stats=vsPlayer&opposingPlayerId=${pitcherId}`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-
-    const json = await res.json();
-    const stat = json?.stats?.[0]?.splits?.[0]?.stat;
-    if (!stat) return null;
-
-    const record = {
-      batter_id: batterId,
-      pitcher_id: pitcherId,
-      pa: parseInt(stat.plateAppearances ?? 0, 10),
-      ab: parseInt(stat.atBats ?? 0, 10),
-      hits: parseInt(stat.hits ?? 0, 10),
-      home_runs: parseInt(stat.homeRuns ?? 0, 10),
-      strikeouts: parseInt(stat.strikeOuts ?? 0, 10),
-      walks: parseInt(stat.baseOnBalls ?? 0, 10),
-      avg: stat.avg ? parseFloat(stat.avg) : null,
-      obp: stat.obp ? parseFloat(stat.obp) : null,
-      slg: stat.slg ? parseFloat(stat.slg) : null,
-      ops: stat.ops ? parseFloat(stat.ops) : null,
-    };
-
-    /* Optional: cache it */
-    const { error: cacheErr } = await supabase
-      .from("batter_vs_pitcher_stats")
-      .insert([record]);
-
-    if (cacheErr && process.env.DEBUG_BVP === "true") {
-      console.warn("⚠️  BvP cache insert error:", cacheErr.message);
-    }
-
-    return record;
-  } catch (err) {
-    console.warn(
-      `⚠️  Exception in BvP fetch for ${batterId} vs ${pitcherId}`,
-      err
-    );
-    return null;
-  }
-}
-
-/** Pitcher-vs-Batter: just reverse the IDs */
-export async function getPitcherVsBatterStats(pitcherId, batterId) {
-  return getBatterVsPitcherStats(batterId, pitcherId);
-}
 
 export async function getOpponentAbbreviation(teamAbbr, game_id) {
-  const boxscore = await getBoxscoreFromGameID(game_id);
+  const boxscore = await getLiveFeedFromGameID(gameId);
   const homeTeamId = boxscore?.teams?.home?.team?.id;
   const awayTeamId = boxscore?.teams?.away?.team?.id;
 
@@ -364,19 +305,13 @@ export async function getOpponentAbbreviation(teamAbbr, game_id) {
 }
 
 // ✅ Safe new function: no changes to existing exports
+
 export function getPlayerTeamFromBoxscoreData(boxscore, playerId) {
-  const normalizedId = Number(playerId); // ensure numeric comparison
-
-  const homePlayers = boxscore?.teams?.home?.players || {};
-  const awayPlayers = boxscore?.teams?.away?.players || {};
-
-  for (const player of Object.values(homePlayers)) {
-    if (Number(player?.person?.id) === normalizedId) return "home";
+  for (const team of ["home", "away"]) {
+    const players = boxscore?.teams?.[team]?.players || {};
+    for (const player of Object.values(players)) {
+      if (player?.person?.id === Number(playerId)) return team;
+    }
   }
-
-  for (const player of Object.values(awayPlayers)) {
-    if (Number(player?.person?.id) === normalizedId) return "away";
-  }
-
   return null;
 }

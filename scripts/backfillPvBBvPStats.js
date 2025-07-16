@@ -2,9 +2,11 @@
 
 import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
 import { resolveStatForPlayer } from "../backend/scripts/resolution/statResolvers.js";
-import { getBoxscoreFromGameID } from "../backend/scripts/shared/mlbApiUtils.js";
+import {
+  getBoxscoreFromGameID,
+  getLiveFeedFromGameID,
+} from "../backend/scripts/shared/mlbApiUtils.js";
 import { getPlayerTeamFromBoxscoreData } from "../backend/scripts/shared/playerUtils.js";
-
 import fetch from "node-fetch";
 
 const DELAY_MS = 200;
@@ -28,9 +30,7 @@ const MISSING_CONDITIONS = [
   "bvp_rbi=is.null",
 ];
 
-// Break into 2 OR groups
-const orGroup1 = MISSING_CONDITIONS.slice(0, 8).join(",");
-const orGroup2 = MISSING_CONDITIONS.slice(8).join(",");
+const columnsToCheck = MISSING_CONDITIONS.map((c) => c.split("=")[0]);
 
 function sleep(ms) {
   return new Promise((res) => setTimeout(res, ms));
@@ -39,7 +39,7 @@ function sleep(ms) {
 async function fetchRowsNeedingStats(offset, limit) {
   const { data, error } = await supabase
     .from("model_training_props")
-    .select("id, player_id, prop_type, game_id")
+    .select(`id, player_id, prop_type, game_id, ${columnsToCheck.join(", ")}`)
     .not("player_id", "is", null)
     .not("game_id", "is", null)
     .range(offset, offset + limit - 1);
@@ -49,28 +49,23 @@ async function fetchRowsNeedingStats(offset, limit) {
     return [];
   }
 
-  // Filter in JS: keep rows where at least one target field is null
-  const columnsToCheck = [
-    "pvb_at_bats",
-    "pvb_hits",
-    "pvb_home_runs",
-    "pvb_strikeouts",
-    "pvb_walks",
-    "pvb_plate_appearances",
-    "pvb_rbi",
-    "pvb_total_bases",
-    "pvb_sac_flies",
-    "bvp_at_bats",
-    "bvp_hits",
-    "bvp_home_runs",
-    "bvp_strikeouts",
-    "bvp_walks",
-    "bvp_plate_appearances",
-    "bvp_rbi",
-  ];
-
   return data.filter((row) =>
     columnsToCheck.some((col) => row[col] === null || row[col] === undefined)
+  );
+}
+
+function hasMeaningfulBvPStats(stats) {
+  return !!(
+    stats &&
+    typeof stats === "object" &&
+    (typeof stats.hits === "number" ||
+      typeof stats.rbi === "number" ||
+      typeof stats.total_bases === "number" ||
+      typeof stats.home_runs === "number" ||
+      typeof stats.strikeouts === "number" ||
+      typeof stats.walks === "number" ||
+      typeof stats.pa === "number" ||
+      typeof stats.ab === "number")
   );
 }
 
@@ -85,7 +80,7 @@ async function processRow(row) {
   let box;
   try {
     box = await getBoxscoreFromGameID(game_id);
-    if (!box || !box.teams?.home?.players || !box.teams?.away?.players) {
+    if (!box?.teams?.home?.players || !box.teams.away?.players) {
       console.warn(
         `❌ Skipping ${id} — incomplete boxscore for game ${game_id}`
       );
@@ -105,69 +100,157 @@ async function processRow(row) {
   }
 
   const opponentTeam = playerTeam === "home" ? "away" : "home";
-  const options = { mode };
+  const options = { mode, game_id };
+
+  // Load live feed and allPlays early
+  const liveFeed = await getLiveFeedFromGameID(game_id);
+  const allPlays = liveFeed?.liveData?.plays?.allPlays || [];
+  options.allPlays = allPlays;
 
   if (mode === "bvp") {
     options.batter_id = player_id;
-    const pitcherEntry = Object.values(
-      box.teams[opponentTeam].players || {}
-    ).find((p) => p?.stats?.pitching?.inningsPitched);
-    if (!pitcherEntry) {
+
+    const bvpPlays = allPlays.filter(
+      (play) =>
+        play?.matchup?.batter?.id === player_id &&
+        play?.matchup?.pitcher?.id != null
+    );
+
+    if (bvpPlays.length === 0) {
       console.warn(
-        `⚠️ Skipping ${id} — missing opponent pitcher in game ${game_id}`
+        `⚠️ Skipping ${id} — no plays found where batter ${player_id} faced any pitcher`
+      );
+
+      // 🔍 Add debug block here
+      const batterPlays = allPlays.filter(
+        (p) => p?.matchup?.batter?.id === player_id
+      );
+
+      const pitcherPlays = allPlays.filter(
+        (p) => p?.matchup?.pitcher?.id != null
+      );
+
+      console.log(`📊 Summary for ${id} — batter ${player_id}:`);
+      console.log(`  batterMatch=${batterPlays.length}`);
+      console.log(`  pitcherMatch=${pitcherPlays.length}`);
+      console.log(
+        `  bothMatch=${
+          allPlays.filter(
+            (p) =>
+              p?.matchup?.batter?.id === player_id &&
+              p?.matchup?.pitcher?.id != null
+          ).length
+        }`
+      );
+
+      for (const [i, play] of allPlays.entries()) {
+        const batterMatch = play?.matchup?.batter?.id === player_id;
+        const pitcherMatch = !!play?.matchup?.pitcher?.id;
+        if (batterMatch || pitcherMatch) {
+          console.log(
+            `🧪 Play ${i} → batter=${play?.matchup?.batter?.id} (${batterMatch}), pitcher=${play?.matchup?.pitcher?.id} (${pitcherMatch}), desc=${play?.result?.description}`
+          );
+        }
+      }
+
+      return;
+    }
+
+    // Collect all unique pitchers this batter faced
+    const pitcherIds = [...new Set(bvpPlays.map((p) => p.matchup.pitcher.id))];
+    if (pitcherIds.length > 1) {
+      console.log(
+        `🔍 Batter ${player_id} faced multiple pitchers: [${pitcherIds.join(
+          ", "
+        )}]`
+      );
+    }
+
+    options.pitcher_id = pitcherIds[0]; // pick the first for consistency (or enhance later)
+
+    if (!bvpPlay) {
+      console.warn(
+        `⚠️ Skipping ${id} — no plays found where batter ${player_id} faced any pitcher`
       );
       return;
     }
-    options.pitcher_id = pitcherEntry.person.id;
+
+    options.pitcher_id = bvpPlay.matchup.pitcher.id;
+    console.log(
+      `🔍 Using opponent pitcher from play data: ${options.pitcher_id}`
+    );
   } else {
     options.pitcher_id = player_id;
-    const batterEntry = Object.values(
-      box.teams[opponentTeam].players || {}
-    ).find((p) => p?.stats?.batting?.atBats > 0);
-    if (!batterEntry) {
+
+    const pvbPlay = allPlays.find(
+      (play) =>
+        play?.matchup?.pitcher?.id === player_id &&
+        play?.matchup?.batter?.id != null
+    );
+
+    if (!pvbPlay) {
       console.warn(
-        `⚠️ Skipping ${id} — missing opponent batter in game ${game_id}`
+        `⚠️ Skipping ${id} — no plays found where pitcher ${player_id} faced any batter`
       );
       return;
     }
-    options.batter_id = batterEntry.person.id;
+
+    options.batter_id = pvbPlay.matchup.batter.id;
+    console.log(
+      `🔍 Using opponent batter from play data: ${options.batter_id}`
+    );
   }
 
   const result = await resolveStatForPlayer(options);
-  if (!result || !result.rawStats) {
+  const stats = result?.rawStats;
+
+  if (!hasMeaningfulBvPStats(stats)) {
     console.warn(
-      `⚠️ Skipping ${id} — no stats returned from resolveStatForPlayer`
+      `⚠️ Skipping ${id} — no meaningful stats from resolveStatForPlayer`
     );
     return;
   }
 
-  const stats = result.rawStats;
   const updates = {};
+  const setIfDefined = (obj, key, value, existing) => {
+    if (
+      value !== undefined &&
+      value !== null &&
+      (existing === null || existing === undefined)
+    ) {
+      obj[key] = value;
+    }
+  };
 
-  if (mode === "bvp") {
-    updates.bvp_at_bats = stats.at_bats ?? null;
-    updates.bvp_hits = stats.hits;
-    updates.bvp_home_runs = stats.home_runs;
-    updates.bvp_strikeouts = stats.strikeouts;
-    updates.bvp_walks = stats.walks;
-    updates.bvp_plate_appearances = stats.plate_appearances ?? null;
-    updates.bvp_rbi = stats.rbi;
-  } else {
-    updates.pvb_at_bats = stats.at_bats ?? null;
-    updates.pvb_hits = stats.hits;
-    updates.pvb_home_runs = stats.home_runs;
-    updates.pvb_strikeouts = stats.strikeouts;
-    updates.pvb_walks = stats.walks;
-    updates.pvb_plate_appearances = stats.plate_appearances ?? null;
-    updates.pvb_rbi = stats.rbi;
-    updates.pvb_total_bases = stats.total_bases;
-    updates.pvb_sac_flies = stats.sac_flies;
+  const map =
+    mode === "bvp"
+      ? {
+          bvp_plate_appearances: stats.pa ?? stats.plate_appearances,
+          bvp_at_bats: stats.ab ?? stats.at_bats,
+          bvp_hits: stats.hits,
+          bvp_home_runs: stats.home_runs,
+          bvp_strikeouts: stats.strikeouts,
+          bvp_walks: stats.walks,
+          bvp_rbi: stats.rbi,
+          bvp_total_bases: stats.total_bases,
+        }
+      : {
+          pvb_plate_appearances: stats.pa ?? stats.plate_appearances,
+          pvb_at_bats: stats.ab ?? stats.at_bats,
+          pvb_hits: stats.hits,
+          pvb_home_runs: stats.home_runs,
+          pvb_strikeouts: stats.strikeouts,
+          pvb_walks: stats.walks,
+          pvb_rbi: stats.rbi,
+          pvb_total_bases: stats.total_bases,
+        };
+
+  for (const [k, v] of Object.entries(map)) {
+    setIfDefined(updates, k, v, row[k]);
   }
 
-  const allValues = Object.values(updates);
-  const allUndefined = allValues.every((v) => v === undefined);
-  if (allUndefined) {
-    console.warn(`⚠️ Skipping ${id} — all stat values undefined`);
+  if (!Object.keys(updates).length) {
+    console.warn(`⚠️ Skipping ${id} — no new values to update`);
     return;
   }
 
@@ -175,12 +258,11 @@ async function processRow(row) {
     .from("model_training_props")
     .update(updates)
     .eq("id", id);
-
   if (error) {
-    console.error(`❌ Update failed for ${id}: ${error.message}`);
+    console.error(`❌ Failed to update row ${id}:`, error);
   } else {
     console.log(
-      `✅ Updated ${id} | ${mode.toUpperCase()} | PA: $PA: ${stats.pa}`
+      `✅ Updated row ${id} with fields: ${Object.keys(updates).join(", ")}`
     );
   }
 }
@@ -190,28 +272,20 @@ async function run() {
   const batchSize = 1000;
   let batchCount = 0;
 
-  console.log(`🟢 Starting at offset: ${offset}`);
-
   while (true) {
     const rows = await fetchRowsNeedingStats(offset, batchSize);
     if (!rows.length) break;
 
     console.log(
-      `🚀 Batch ${++batchCount}: Processing ${
-        rows.length
-      } rows (offset ${offset})`
+      `🚀 Batch ${++batchCount} | Offset ${offset} | Rows: ${rows.length}`
     );
-
-    for (let i = 0; i < rows.length; i++) {
-      await processRow(rows[i]);
-    }
-
+    for (const row of rows) await processRow(row);
     offset += batchSize;
   }
 
-  console.log("🏁 All batches complete");
+  console.log("🏁 All done");
 }
 
 run().catch((err) => {
-  console.error("💥 Script crashed during run():", err.message);
+  console.error("💥 Fatal crash:", err);
 });

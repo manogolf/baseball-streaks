@@ -6,23 +6,18 @@ import {
   toISODate,
   toEasternDateTime,
 } from "./shared/timeUtils.js";
-import {
-  resolveStatForPlayer,
-  hasMeaningfulStats,
-} from "./resolution/statResolvers.js";
 import { supabase } from "./shared/supabaseUtils.js";
 import {
   extractStatForPropType,
   VALID_PROP_TYPES,
   determineOutcome,
 } from "./shared/propUtils.js";
-import {
-  getStreaksForPlayer,
-  getBatterVsPitcherStats,
-  getPitcherVsBatterStats,
-} from "./shared/playerUtils.js";
+import { getStreaksForPlayer } from "./shared/playerUtils.js";
 import { fetchBoxscoreStatsForGame } from "./shared/fetchBoxscoreStats.js";
-import { getGameContextFields } from "./shared/mlbApiUtils.js";
+import {
+  getGameContextFields,
+  getLiveFeedFromGameID,
+} from "./shared/mlbApiUtils.js";
 import { getTeamIdFromAbbr } from "./shared/teamNameMap.js";
 import crypto from "node:crypto";
 
@@ -53,9 +48,6 @@ const quietMode = true;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const isLocallyMeaningful = (obj) =>
-  obj && (Number(obj.ab ?? obj.at_bats ?? 0) > 0 || Number(obj.pa ?? 0) > 0);
-
 async function processDate(gameDate) {
   console.log(`\n📅 ${gameDate}`);
   const schedURL = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${gameDate}`;
@@ -66,8 +58,14 @@ async function processDate(gameDate) {
     .filter((g) => g.status?.detailedState === "Final")
     .map((g) => g.gamePk);
 
+  const teamContextCache = new Map(); // key: `${gameId}_${team}`
+
   for (const gameId of gameIds) {
     console.log(`📍  Game ${gameId}`);
+
+    const liveData = await getLiveFeedFromGameID(gameId);
+    const allPlays = liveData?.liveData?.plays?.allPlays || [];
+
     const allPlayers = await fetchBoxscoreStatsForGame(gameId);
     if (!allPlayers) continue;
 
@@ -95,91 +93,99 @@ async function processDate(gameDate) {
 
       const opponent = opponentTeam?.teamAbbr || null;
       const opponent_encoded = getTeamIdFromAbbr(opponent);
-      const contextFields = await getGameContextFields(gameId, team);
+      const contextKey = `${gameId}_${team}`;
+      let contextFields;
+
+      if (teamContextCache.has(contextKey)) {
+        contextFields = teamContextCache.get(contextKey);
+      } else {
+        contextFields = await getGameContextFields(gameId, team);
+        teamContextCache.set(contextKey, contextFields);
+      }
 
       const now = new Date().toISOString();
 
-      // ── BvP and PvB STATS
+      // ── BvP STATS
       let bvpStats = {};
-      let pvbStats = {};
 
-      const startingPitcher = allPlayers.find(
-        (p) => p.isHome !== isHome && p.stats?.pitching?.gamesStarted > 0
-      );
-      const startingPitcherId = startingPitcher?.id ?? null;
-
-      if (hasBat && startingPitcherId) {
-        const resBvp = await resolveStatForPlayer({
-          mode: "bvp",
-          batter_id: player_id,
-          pitcher_id: startingPitcherId,
-        });
-        const s =
-          resBvp?.rawStats ??
-          (await getBatterVsPitcherStats(player_id, startingPitcherId));
-        if (s && hasMeaningfulStats(s)) {
-          bvpStats = {
-            bvp_at_bats: s.ab ?? s.at_bats ?? null,
-            bvp_hits: s.hits ?? null,
-            bvp_home_runs: s.home_runs ?? s.homeRuns ?? null,
-            bvp_strikeouts: s.strikeouts ?? s.strike_outs ?? null,
-            bvp_walks: s.walks ?? s.base_on_balls ?? null,
-            bvp_batting_avg:
-              s.avg ?? (s.ab > 0 ? +(s.hits / s.ab).toFixed(3) : null),
-            bvp_plate_appearances: s.pa ?? null,
-            pvb_sac_flies: agg.sac_flies,
-          };
-        }
-      }
-
-      if (isPitcher) {
-        const bats = allPlayers.filter(
-          (p) => p.isHome !== isHome && p.stats?.batting
+      if (hasBat) {
+        const matchup = allPlays.find(
+          (p) => p.matchup?.batter?.id === player_id
         );
-        const agg = {
-          pvb_at_bats: 0,
-          pvb_hits: 0,
-          pvb_home_runs: 0,
-          pvb_strikeouts: 0,
-          pvb_walks: 0,
-          pvb_plate_appearances: 0,
-          sac_flies: 0,
-        };
+        const pitcherId = matchup?.matchup?.pitcher?.id;
 
-        for (const b of bats) {
-          const raw = (
-            await resolveStatForPlayer({
-              mode: "pvb",
-              pitcher_id: player_id,
-              batter_id: b.id,
-            })
-          )?.rawStats;
-          const legacy = raw
-            ? null
-            : await getPitcherVsBatterStats(player_id, b.id);
-          const s = isLocallyMeaningful(raw)
-            ? raw
-            : isLocallyMeaningful(legacy)
-            ? legacy
-            : null;
-          if (!s) continue;
-          agg.ab += s.ab || s.at_bats || 0;
-          agg.hits += s.hits || 0;
-          agg.home_runs += s.home_runs || s.homeRuns || 0;
-          agg.strikeouts += s.strikeouts || s.strike_outs || 0;
-          agg.walks += s.walks || s.base_on_balls || 0;
-          agg.pa += s.pa || 0;
-        }
-        if (agg.pvb_at_bats > 0) {
-          pvbStats = {
-            pvb_at_bats: agg.ab,
-            pvb_hits: agg.hits,
-            pvb_home_runs: agg.home_runs,
-            pvb_strikeouts: agg.strikeouts,
-            pvb_walks: agg.walks,
-            pvb_batting_avg: +(agg.hits / agg.ab).toFixed(3),
-            pvb_plate_appearances: agg.pa,
-          };
+        if (pitcherId) {
+          const stats = allPlays
+            .filter(
+              (play) =>
+                play.matchup?.batter?.id === player_id &&
+                play.matchup?.pitcher?.id === pitcherId &&
+                play.result?.eventType !== "walkIntentional"
+            )
+            .reduce(
+              (acc, play) => {
+                acc.pa++;
+                const result = play.result;
+                const event = result?.eventType;
+                if (!event) return acc;
+
+                if (result.isOut || event === "strikeout") acc.ab++;
+
+                if (event === "single") {
+                  acc.hits++;
+                  acc.ab++;
+                  acc.total_bases += 1;
+                } else if (event === "double") {
+                  acc.hits++;
+                  acc.ab++;
+                  acc.total_bases += 2;
+                } else if (event === "triple") {
+                  acc.hits++;
+                  acc.ab++;
+                  acc.total_bases += 3;
+                } else if (event === "home_run") {
+                  acc.hits++;
+                  acc.ab++;
+                  acc.home_runs++;
+                  acc.total_bases += 4;
+                } else if (event === "walk") {
+                  acc.walks++;
+                } else if (event === "strikeout") {
+                  acc.strikeouts++;
+                }
+
+                if (result.rbi) acc.rbi += result.rbi;
+                return acc;
+              },
+              {
+                pa: 0,
+                ab: 0,
+                hits: 0,
+                home_runs: 0,
+                strikeouts: 0,
+                walks: 0,
+                rbi: 0,
+                total_bases: 0,
+              }
+            );
+
+          if (stats.pa > 0) {
+            bvpStats = {
+              bvp_plate_appearances: stats.pa,
+              bvp_at_bats: stats.ab,
+              bvp_hits: stats.hits,
+              bvp_home_runs: stats.home_runs,
+              bvp_strikeouts: stats.strikeouts,
+              bvp_walks: stats.walks,
+              bvp_rbi: stats.rbi,
+              bvp_total_bases: stats.total_bases,
+            };
+            console.log(`✅ BvP stats for ${fullName}:`, bvpStats);
+          } else {
+            console.warn(`⚠️ No BvP plays found for ${fullName}`);
+          }
+        } else {
+          console.warn(`⚠️ Could not determine pitcher for ${fullName}`);
         }
       }
 
@@ -250,6 +256,34 @@ async function processDate(gameDate) {
         if (!game_time) continue;
         const gameDateTimeET = toEasternDateTime(gameDate, game_time);
 
+        // 🛡️ Prevent overwriting existing derived data
+        const { data: existingRows, error: fetchErr } = await supabase
+          .from("model_training_props")
+          .select("id, prop_value, outcome")
+          .eq("player_id", String(player_id))
+          .eq("game_id", gameId)
+          .eq("prop_type", propType)
+          .eq("prop_source", "mlb_api")
+          .maybeSingle();
+
+        if (fetchErr) {
+          console.warn(
+            `⚠️ Fetch error for ${fullName}, ${propType}:`,
+            fetchErr.message
+          );
+        } else if (
+          existingRows &&
+          existingRows.prop_value != null &&
+          existingRows.outcome != null
+        ) {
+          if (!quietMode) {
+            console.log(
+              `⏭️ Skipping existing derived prop for ${fullName} | ${propType}`
+            );
+          }
+          continue; // ✅ Skip this insert
+        }
+
         const row = {
           id: crypto.randomUUID(),
           game_id: gameId,
@@ -275,8 +309,6 @@ async function processDate(gameDate) {
           time_of_day_bucket: getTimeOfDayBucketET(gameDateTimeET),
           streak_type: streak?.streak_type ?? null,
           streak_count: streak?.streak_count ?? null,
-          ...(bvpStats || {}),
-          ...(pvbStats || {}),
           ...contextFields,
         };
 
