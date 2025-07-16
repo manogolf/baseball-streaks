@@ -1,26 +1,13 @@
 // scripts/backfillGameContextFields.js
-// ⚠️ DEPRECATED WARNING:
-// This script was previously stripped down to focus only on `opponent_encoded` for debugging.
-// It is now restored to populate ALL of the following fields:
-// - opponent
-// - opponent_encoded
-// - home_away
-// - is_home
-// - game_time
-// - game_day_of_week
-// - time_of_day_bucket
 
 import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
-import {
-  getGameStartTimeET,
-  getDayOfWeekET,
-  getTimeOfDayBucketET,
-} from "../backend/scripts/shared/timeUtils.js";
 import { getGameContextFields } from "../backend/scripts/shared/mlbApiUtils.js";
-import { getTeamInfoByAbbr } from "../backend/scripts/shared/teamNameMap.js";
 
 const BATCH_SIZE = 100;
 const CONCURRENCY = 1;
+
+let updateCount = 0;
+let skipCount = 0;
 
 async function fetchNextBatch() {
   const { data, error } = await supabase
@@ -37,22 +24,19 @@ async function fetchNextBatch() {
     return [];
   }
 
-  console.log(`📦 Fetched ${data.length} rows needing context fields`);
   return data;
 }
 
 async function processRow(row) {
   const { id, game_id, team } = row;
-  let { is_home } = row; // This is the *original* value from the DB
-
-  console.log(`🔍 Processing row ID ${id} | team=${team} | is_home=${is_home}`);
+  let { is_home } = row;
 
   if (!team) {
     console.warn(`⚠️ Skipping row ${id}: missing team`);
+    skipCount++;
     return;
   }
 
-  // 🚀 Fetch *all* context fields from a single utility call
   const {
     home_away,
     opponent,
@@ -60,10 +44,9 @@ async function processRow(row) {
     game_time,
     game_day_of_week,
     time_of_day_bucket,
-    is_home: resolvedIsHome, // ⚠️ This is the *new* computed value
+    is_home: resolvedIsHome,
   } = await getGameContextFields(game_id, team, is_home);
 
-  // ✅ Use the resolved value instead of the stale one
   is_home = resolvedIsHome;
 
   const updates = {
@@ -89,46 +72,41 @@ async function processRow(row) {
     if (error) {
       console.error(`❌ Failed to update row ${id}:`, error.message);
     } else {
-      console.log(`✅ Updated row ${id}`);
-      console.log("🧪 Context fields applied:", cleanedUpdates);
+      updateCount++;
     }
   } else {
-    console.warn(`⚠️ Skipping update for ${id}: no valid fields`);
+    skipCount++;
   }
 }
 
-async function runConcurrent() {
-  console.log("🚀 Starting concurrent game context backfill...");
+export async function runConcurrent() {
+  console.log("🚀 Starting game context backfill...");
 
   const workers = Array(CONCURRENCY)
     .fill(null)
     .map(async (_, i) => {
       while (true) {
-        console.log(`🧵 Worker ${i + 1}: fetching next batch...`);
         const batch = await fetchNextBatch();
 
         if (!batch.length) {
-          console.log(`✅ Worker ${i + 1}: no more rows, exiting.`);
           break;
         }
-
-        console.log(`🔧 Worker ${i + 1}: processing ${batch.length} rows...`);
 
         for (const row of batch) {
           try {
             await processRow(row);
           } catch (err) {
-            console.error(
-              `❌ Worker ${i + 1}: error in row ${row.id}:`,
-              err.message
-            );
+            console.error(`❌ Error in row ${row.id}:`, err.message);
           }
         }
       }
     });
 
   await Promise.all(workers);
-  console.log("🎉 All concurrent game context backfills complete.");
+
+  console.log("🎉 Game context backfill complete.");
+  console.log(`📈 Rows updated: ${updateCount}`);
+  console.log(`⏭️ Rows skipped: ${skipCount}`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

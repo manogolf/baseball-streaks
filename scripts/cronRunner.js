@@ -9,6 +9,7 @@ import { yesterdayET } from "../backend/scripts/shared/timeUtils.js";
 import { updatePropStatusesForRows } from "../backend/scripts/resolution/updatePropResults.js";
 import { syncStatsForDate } from "../backend/scripts/resolution/syncPlayerStats.js";
 import { downloadModelFromSupabase } from "../backend/scripts/shared/downloadModelFromSupabase.js";
+import { runConcurrent as runContextBackfill } from "./backfillGameContextFields.js";
 
 console.log("⏳ Cron runner starting...");
 
@@ -91,6 +92,11 @@ const safelyRun = async (label) => {
     } else {
       console.log("✅ No pending props to resolve.");
     }
+
+    // Step 3: Backfill game context fields
+    console.log("📍 Backfilling game context fields...");
+    await runContextBackfill();
+    console.log("✅ Game context backfill complete.");
 
     console.log(`✅ ${label}: All tasks complete.\n`);
     if (isGitHubAction) process.exit(0);

@@ -21,6 +21,9 @@ import {
 import { getTeamIdFromAbbr } from "./shared/teamNameMap.js";
 import crypto from "node:crypto";
 
+const verbose = process.argv.includes("--verbose");
+const log = (...args) => verbose && console.log(...args);
+
 const DAYS_AGO = 2; // or any number you want
 const today = new Date();
 const endDate = new Date(today);
@@ -49,7 +52,7 @@ const quietMode = true;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function processDate(gameDate) {
-  console.log(`\n📅 ${gameDate}`);
+  log(`\n📅 ${gameDate}`);
   const schedURL = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${gameDate}`;
   const schedRes = await fetch(schedURL)
     .then((r) => r.json())
@@ -61,7 +64,7 @@ async function processDate(gameDate) {
   const teamContextCache = new Map(); // key: `${gameId}_${team}`
 
   for (const gameId of gameIds) {
-    console.log(`📍  Game ${gameId}`);
+    log(`📍  Game ${gameId}`);
 
     const liveData = await getLiveFeedFromGameID(gameId);
     const allPlays = liveData?.liveData?.plays?.allPlays || [];
@@ -78,7 +81,7 @@ async function processDate(gameDate) {
       return true;
     });
 
-    console.log(`🔍 ${players.length} players to process`);
+    log(`🔍 ${players.length} players to process`);
     let inserted = 0;
 
     for (const pl of players) {
@@ -193,7 +196,7 @@ async function processDate(gameDate) {
           existingRows.outcome != null
         ) {
           if (!quietMode) {
-            console.log(
+            log(
               `⏭️ Skipping existing derived prop for ${fullName} | ${propType}`
             );
           }
@@ -237,7 +240,7 @@ async function processDate(gameDate) {
         if (!error) {
           inserted++;
           if (inserted % LOG_EVERY === 0)
-            console.log(`   ↳ ${inserted} rows so far for ${gameDate}…`);
+            log(`   ↳ ${inserted} rows so far for ${gameDate}…`);
         } else {
           console.error(
             `❌ Upsert failed (${fullName}, ${propType}):`,
@@ -246,7 +249,7 @@ async function processDate(gameDate) {
         }
       }
     }
-    console.log(`✅ Game ${gameId} finished — ${inserted} rows inserted`);
+    log(`✅ Game ${gameId} finished — ${inserted} rows inserted`);
     await sleep(SLEEP_MS);
   }
 }
@@ -256,20 +259,20 @@ async function processDate(gameDate) {
     await processDate(d);
   }
 
-  console.log("\n🎯 Over/Under Pick Distribution:");
-  console.log(`   ➕ Over:  ${overCount}`);
-  console.log(`   ➖ Under: ${underCount}`);
-  console.log("\n🏁 Final Outcome Totals:");
-  console.log(`   ✅ Wins:   ${winCount}`);
-  console.log(`   ❌ Losses: ${lossCount}`);
-  console.log("\n📊 Outcome by prop type:");
+  log("\n🎯 Over/Under Pick Distribution:");
+  log(`   ➕ Over:  ${overCount}`);
+  log(`   ➖ Under: ${underCount}`);
+  log("\n🏁 Final Outcome Totals:");
+  log(`   ✅ Wins:   ${winCount}`);
+  log(`   ❌ Losses: ${lossCount}`);
+  log("\n📊 Outcome by prop type:");
   for (const type of Object.keys({
     ...propTypeWins,
     ...propTypeLosses,
   }).sort()) {
     const w = propTypeWins[type] || 0;
     const l = propTypeLosses[type] || 0;
-    console.log(
+    log(
       `${type.padEnd(20)} ${String(w).padStart(2)}W / ${String(l).padStart(2)}L`
     );
   }

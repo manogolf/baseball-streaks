@@ -8,6 +8,18 @@ import fetch from "node-fetch";
 const LOOKBACK_DAYS = 2;
 const TOTAL_BUCKETS = 8;
 
+const verbose = process.argv.includes("--verbose");
+const log = (...args) => verbose && console.log(...args);
+
+function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("⏱️ Fetch timed out")), timeoutMs)
+    ),
+  ]);
+}
+
 const bucketArg = process.argv.find((arg) => arg.startsWith("--bucket="));
 const [currentBucket, totalBuckets] = bucketArg
   ? bucketArg.replace("--bucket=", "").split("/").map(Number)
@@ -46,7 +58,7 @@ async function preloadBoxscores() {
     const schedUrl = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${iso}`;
 
     try {
-      const schedRes = await fetch(schedUrl).then((r) => r.json());
+      const schedRes = await fetchWithTimeout(schedUrl).then((r) => r.json());
       const gameIds = (schedRes?.dates?.[0]?.games || []).map((g) => g.gamePk);
       if (!Array.isArray(gameIds) || gameIds.length === 0) continue;
 
@@ -60,7 +72,7 @@ async function preloadBoxscores() {
         }
       }
 
-      console.log(`📦 Cached boxscores for ${iso} (${gameIds.length} games)`);
+      log(`📦 Cached boxscores for ${iso} (${gameIds.length} games)`);
     } catch (err) {
       console.warn(`⚠️ Failed to preload schedule for ${iso}: ${err.message}`);
     }
@@ -75,9 +87,7 @@ async function updateDerivedStats(rows, boxscoreCache) {
 
   for (let i = 0; i < rows.length; i++) {
     const { player_id, game_date, game_id } = rows[i];
-    console.log(
-      `⏳ (${i + 1}/${rows.length}) Player ${player_id} on ${game_date}`
-    );
+    log(`⏳ (${i + 1}/${rows.length}) Player ${player_id} on ${game_date}`);
 
     try {
       const derivedStats = await getDerivedStats(
@@ -92,7 +102,7 @@ async function updateDerivedStats(rows, boxscoreCache) {
         Object.values(derivedStats).every((v) => v == null);
 
       if (isEmpty) {
-        console.log(`🟡 Skipped: No usable stats`);
+        log(`🟡 Skipped: No usable stats`);
         skipped++;
         continue;
       }
@@ -107,11 +117,11 @@ async function updateDerivedStats(rows, boxscoreCache) {
         { onConflict: ["player_id", "game_date"] }
       );
 
-      if (!error) {
-        updated++;
-      } else {
-        console.warn(`❌ Supabase error: ${error.message}`);
+      if (error) {
+        throw new Error(`❌ Supabase error: ${error.message}`);
       }
+
+      updated++;
     } catch (err) {
       console.warn(
         `⚠️ Failed for player ${player_id} on ${game_date}: ${err.message}`
@@ -119,22 +129,22 @@ async function updateDerivedStats(rows, boxscoreCache) {
     }
   }
 
-  console.log(`\n✅ Bucket complete: ${updated} updated, ${skipped} skipped`);
+  log(`\n✅ Bucket complete: ${updated} updated, ${skipped} skipped`);
 }
 
 async function run() {
-  console.log("📥 Fetching recent player-game combinations...");
+  log("📥 Fetching recent player-game combinations...");
   const allRows = await getRecentPlayerGames();
-  console.log(`📦 Total unique (player_id, game_date): ${allRows.length}`);
+  log(`📦 Total unique (player_id, game_date): ${allRows.length}`);
 
-  console.log("🚀 Preloading boxscores into cache...");
+  log("🚀 Preloading boxscores into cache...");
   const boxscoreCache = await preloadBoxscores();
 
   if (!boxscoreCache || typeof boxscoreCache.entries !== "function") {
     throw new Error("❌ preloadBoxscores() failed or returned invalid cache");
   }
 
-  console.log(`📊 Boxscore cache size: ${boxscoreCache.size}`);
+  log(`📊 Boxscore cache size: ${boxscoreCache.size}`);
 
   if (currentBucket && totalBuckets) {
     const bucketSize = Math.ceil(allRows.length / totalBuckets);
@@ -142,7 +152,7 @@ async function run() {
     const end = currentBucket * bucketSize;
     const bucketRows = allRows.slice(start, end);
 
-    console.log(
+    log(
       `🔢 Running bucket ${currentBucket}/${totalBuckets} [${start} → ${end}]`
     );
     await updateDerivedStats(bucketRows, boxscoreCache);
@@ -153,14 +163,17 @@ async function run() {
       const end = i * bucketSize;
       const bucketRows = allRows.slice(start, end);
 
-      console.log(
+      log(
         `\n⏳ Starting bucket ${i}/${TOTAL_BUCKETS} [${start} → ${end}]...\n`
       );
       await updateDerivedStats(bucketRows, boxscoreCache);
     }
 
-    console.log(`\n🎉 All ${TOTAL_BUCKETS} buckets processed.`);
+    log(`\n🎉 All ${TOTAL_BUCKETS} buckets processed.`);
   }
 }
 
-run();
+run().catch((err) => {
+  console.error("❌ generateDerivedStats failed:", err);
+  process.exit(1);
+});
