@@ -5,7 +5,7 @@ import { upsertUserPropsToTraining } from "../backend/scripts/shared/modelTraini
 import { getTeamIdFromAbbr } from "../backend/scripts/shared/teamNameMap.js";
 
 const DEFAULT_BATCH_SIZE = 1000;
-const DEFAULT_DAYS_BACK = 2; // ⏱️ Only sync user-added props from last 2 days
+const DEFAULT_DAYS_BACK = 120; // ⏱️ Only sync user-added props from last 2 days
 
 await upsertUserPropsToTraining({
   batchSize: DEFAULT_BATCH_SIZE,

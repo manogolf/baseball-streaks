@@ -3,6 +3,9 @@
 import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
 
 const BATCH_SIZE = 2000;
+const TWO_DAYS_AGO = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+  .toISOString()
+  .slice(0, 10); // YYYY-MM-DD
 
 async function loadPositionMap() {
   console.log("📥 Loading known positions from player_stats...");
@@ -18,7 +21,7 @@ async function loadPositionMap() {
 
   const map = {};
   for (const row of data) {
-    map[row.player_id] = row.position?.abbreviation;
+    map[row.player_id] = row.position; // FIXED: position is already a string
   }
 
   console.log(`✅ Loaded ${Object.keys(map).length} unique player positions`);
@@ -33,7 +36,8 @@ async function run() {
   const { data: rows, error } = await supabase
     .from("model_training_props")
     .select("id, player_id")
-    .is("position", null);
+    .is("position", null)
+    .gte("game_date", TWO_DAYS_AGO); // LIMIT TO LAST 2 DAYS
 
   if (error) {
     console.error("❌ Failed to fetch model_training_props:", error.message);
@@ -72,4 +76,8 @@ async function run() {
   console.log(`🎉 Done! Total positions updated: ${totalUpdated}`);
 }
 
-run();
+export default run;
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  run(); // Run only if executed directly
+}

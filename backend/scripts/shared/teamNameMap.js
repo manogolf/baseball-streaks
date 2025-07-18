@@ -1,3 +1,5 @@
+//  backend/scripts/shared/teamNameMap.js
+
 // Map of team abbreviations to full names
 export const teamNameMap = {
   ATH: "Athletics",
@@ -48,7 +50,7 @@ export const teamIdMap = {
   119: { abbr: "LAD", fullName: "Los Angeles Dodgers" },
   120: { abbr: "WSH", fullName: "Washington Nationals" },
   121: { abbr: "NYM", fullName: "New York Mets" },
-  133: { abbr: "ATH", fullName: "Athletics" }, // OAK/LV
+  133: { abbr: "OAK", fullName: "Athletics" }, // OAK/LV
   134: { abbr: "PIT", fullName: "Pittsburgh Pirates" },
   135: { abbr: "SD", fullName: "San Diego Padres" },
   136: { abbr: "SEA", fullName: "Seattle Mariners" },
@@ -68,8 +70,9 @@ export const teamIdMap = {
 
 // Normalize special cases and get full name from abbreviation
 export const getFullTeamName = (abbr) => {
-  if (["OAK", "LV", "VIL"].includes(abbr)) return "Athletics";
-  return teamNameMap[abbr] || abbr;
+  const normalized = normalizeTeamAbbreviation(abbr);
+  if (["OAK", "LV", "VIL"].includes(normalized)) return "Athletics";
+  return teamNameMap[normalized] || normalized;
 };
 
 // Get full name and abbreviation from team ID
@@ -123,7 +126,7 @@ export function normalizeTeamAbbreviation(abbr) {
   if (!abbr) return abbr;
   const upper = abbr.toUpperCase();
   if (["AZ"].includes(upper)) return "ARI";
-  if (["ATH", "LV", "VIL"].includes(upper)) return "OAK";
+  if (["ATH", "LV", "VIL"].includes(upper)) return "OAK"; // ✅ this handles it
   return upper;
 }
 

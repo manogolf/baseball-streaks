@@ -10,6 +10,7 @@ import { updatePropStatusesForRows } from "../backend/scripts/resolution/updateP
 import { syncStatsForDate } from "../backend/scripts/resolution/syncPlayerStats.js";
 import { downloadModelFromSupabase } from "../backend/scripts/shared/downloadModelFromSupabase.js";
 import { runConcurrent as runContextBackfill } from "./backfillGameContextFields.js";
+import runBackfillPlayerPositions from "./backfillPlayerPositions.js";
 
 console.log("⏳ Cron runner starting...");
 
@@ -104,6 +105,8 @@ const safelyRun = async (label) => {
     console.error(`❌ ${label}: Failed with error:`, err);
     if (isGitHubAction) process.exit(1);
   }
+
+  await runBackfillPlayerPositions();
 };
 
 // Run once immediately

@@ -1,4 +1,26 @@
 # File: backend/scripts/modeling/backfill_predictions.py
+"""
+📄 File: backfill_predictions.py
+
+This script backfills model predictions into the `model_training_props` table.
+
+It does so by:
+- Loading trained models for supported prop types
+- Generating feature vectors for past resolved props (with full stats)
+- Running inference to compute predicted probabilities and classes
+- Upserting the predictions into the `model_training_props` table
+
+⚠️ This script assumes:
+- `prop_value`, `line`, `outcome`, and all derived stats are already present
+- Models are pre-downloaded and locally available
+
+🔄 Only these fields are updated:
+- predicted_outcome
+- confidence_score
+- was_correct
+
+🛡️ User-added predictions (with `prop_source = user_added`) are never overwritten.
+"""
 
 import os
 import requests
@@ -9,6 +31,8 @@ from pathlib import Path
 from supabase import create_client
 from collections import defaultdict
 import time
+from datetime import datetime, timezone
+from build_feature_vector import build_feature_vector
 
 # Load environment variables
 load_dotenv()
@@ -66,74 +90,65 @@ def predict(prop_type, input_data):
         return None, None
 
     model = joblib.load(model_path)
-    features = pd.DataFrame([input_data])
+
+      # ⬇️ DEBUG THIS
+    print("📊 Feature input type:", type(input_data))
+    print("📊 Feature input contents:", input_data)
+
+
+    # ✅ Always wrap in DataFrame
+    try:
+        features = build_feature_vector(row)  # returns dict
+    except Exception as e:
+        print(f"❌ Failed to convert to DataFrame: {e}")
+        print(f"Raw input: {input_data}")
+        return None, None
+
+    print(f"📊 Feature input type: {type(features)} | Columns: {list(features.columns)}")
+
     prob = model.predict_proba(features)[0][1]
     prediction = "win" if prob >= 0.5 else "loss"
     return prediction, round(float(prob), 4)
 
-def extract_features(row):
-    features = {
-        "prop_value": row.get("prop_value", 0),
-        "line_diff": (row.get("rolling_result_avg_7") or 0) - (row.get("prop_value") or 0),
-        "hit_streak": row.get("hit_streak", 0),
-        "win_streak": row.get("win_streak", 0),
-        "is_home": row.get("is_home", 0),
-        "opponent_encoded": row.get("opponent_encoded", 0),
-        "opponent_avg_win_rate": row.get("opponent_avg_win_rate", 0.5),
+def process_batch(prop_type, batch_size=1):
+    TEST_ROW_ID = "88748464-cba1-42b7-b685-5b3919049960"
 
-        # Rolling stats
-        "d7_hits": row.get("d7_hits", 0),
-        "d15_hits": row.get("d15_hits", 0),
-        "d30_hits": row.get("d30_hits", 0),
-
-        # PvB / BvP
-        "bvp_ab": row.get("bvp_ab", 0),
-        "bvp_avg": row.get("bvp_avg", 0),
-        "pvb_ab": row.get("pvb_ab", 0),
-        "pvb_avg": row.get("pvb_avg", 0),
-    }
-    return features
-
-def process_batch(prop_type, batch_size=500):
     response = supabase.table("model_training_props") \
         .select("*") \
-        .eq("prop_type", prop_type) \
-        .eq("prop_source", "mlb_api") \
-        .is_("predicted_outcome", None) \
-        .in_("outcome", ["win", "loss"]) \
-        .limit(batch_size) \
+        .eq("id", TEST_ROW_ID) \
+        .maybe_single() \
         .execute()
 
-    rows = response.data
-    if not rows:
+    row = response.data
+    if not row:
+        print(f"❌ No row found with ID: {TEST_ROW_ID}")
         return 0
 
-    grouped = defaultdict(list)
-    for row in rows:
-        grouped[row["player_id"]].append(row)
+    print(f"🔍 Testing row: {row['id']} | Player: {row.get('player_name')} | Date: {row.get('game_date')}")
+    try:
+        features = build_feature_vector(row)
+        prediction, prob = predict(prop_type, pd.DataFrame([features]))
 
-    print(f"🔍 {prop_type}: {len(rows)} unresolved props fetched")
+        if prediction is None:
+            print("⚠️ Prediction failed.")
+            return 0
 
-    updates = 0
-    for player_id, props in grouped.items():
-        for row in props:
-            try:
-                features = extract_features(row)
-                prediction, prob = predict(prop_type, features)
-                if prediction is None:
-                    continue
+        was_correct = prediction == row["outcome"]
+        timestamp = datetime.now(timezone.utc).isoformat()
 
-                was_correct = prediction == row["outcome"]
-                supabase.table("model_training_props").update({
-                    "predicted_outcome": prediction,
-                    "confidence_score": prob,
-                    "was_correct": was_correct,
-                }).eq("id", row["id"]).execute()
+        supabase.table("model_training_props").update({
+            "predicted_outcome": prediction,
+            "confidence_score": prob,
+            "was_correct": was_correct,
+            "prediction_timestamp": timestamp
+        }).eq("id", row["id"]).execute()
 
-                updates += 1
-            except Exception as e:
-                print(f"⚠️ Error processing row ID {row['id']}: {e}")
-    return updates
+        print(f"✅ Prediction complete → {prediction} ({prob}) | Correct? {was_correct}")
+        return 1
+
+    except Exception as e:
+        print(f"❌ Error during prediction: {e}")
+        return 0
 
 def main():
     print("📆 Starting batch prediction loop for stat_derived props...")

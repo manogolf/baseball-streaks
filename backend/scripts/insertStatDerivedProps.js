@@ -90,6 +90,11 @@ async function processDate(gameDate) {
       const hasBat = stats?.batting && Object.keys(stats.batting).length > 0;
       const isPitcher = stats?.pitching && stats.pitching.gamesStarted > 0;
 
+      // Enforce mutually exclusive prop eligibility
+      const isBatterOnly = hasBat && !isPitcher;
+      const isPitcherOnly = isPitcher && !hasBat;
+      const isTwoWayPlayer = hasBat && isPitcher;
+
       const opponentTeam = isHome
         ? allPlayers.find((p) => !p.isHome)
         : allPlayers.find((p) => p.isHome);
@@ -111,7 +116,7 @@ async function processDate(gameDate) {
       // ── PER-PROP INSERTION
       let eligiblePropTypes = [];
 
-      if (hasBat) {
+      if (isBatterOnly || isTwoWayPlayer) {
         eligiblePropTypes.push(
           "hits",
           "doubles",
@@ -129,7 +134,7 @@ async function processDate(gameDate) {
         );
       }
 
-      if (isPitcher) {
+      if (isPitcherOnly || isTwoWayPlayer) {
         eligiblePropTypes.push(
           "strikeouts_pitching",
           "outs_recorded",

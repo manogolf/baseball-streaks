@@ -1,6 +1,6 @@
 // backend/scripts/shared/mlbApiUtils.js
 import fetch from "node-fetch";
-import { getTeamInfoByAbbr } from "./teamNameMap.js";
+import { getTeamInfoByAbbr, normalizeTeamAbbreviation } from "./teamNameMap.js";
 import {
   getGameStartTimeET,
   getDayOfWeekET,
@@ -44,7 +44,16 @@ export async function getGameContextFields(gameId, teamAbbr) {
   const home_away = is_home ? "home" : "away";
   const opponentAbbr = is_home ? awayTeam : homeTeam;
 
-  const teamInfo = getTeamInfoByAbbr(opponentAbbr?.toUpperCase());
+  if (!opponentAbbr) {
+    console.warn(`⚠️ Missing opponentAbbr for game ${gameId} and team ${team}`);
+    return {};
+  }
+
+  const normalizedOpponentAbbr = normalizeTeamAbbreviation(opponentAbbr);
+  console.log("🏷️ Original opponentAbbr:", opponentAbbr);
+  console.log("🎯 Normalized opponentAbbr:", normalizedOpponentAbbr);
+
+  const teamInfo = getTeamInfoByAbbr(normalizedOpponentAbbr);
   console.log("🔬 teamInfo returned:", teamInfo);
 
   const opponent_encoded = teamInfo?.id != null ? String(teamInfo.id) : null;
