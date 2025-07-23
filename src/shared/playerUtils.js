@@ -1,11 +1,14 @@
-// backend/scripts/shared/playerUtils.js
+// src/shared/playerUtils.js
 
 import fetch from "node-fetch";
-import { supabase } from "./supabaseUtils.js";
+import { supabase } from "../utils/supabaseFrontend.js";
 import { normalizePropType } from "./propUtils.js";
-import { getGamePkForTeamOnDate } from "./fetchGameID.js";
+import { getGamePkForTeamOnDate } from "../../backend/scripts/shared/fetchGameID.js";
 import { toISODate } from "./timeUtils.js";
-import { getBoxscoreFromGameID, getLiveFeedFromGameID } from "./mlbApiUtils.js";
+import {
+  getBoxscoreFromGameID,
+  getLiveFeedFromGameID,
+} from "../../backend/scripts/shared/mlbApiUtils.js";
 import { getFullTeamAbbreviationFromID } from "./teamNameMap.js";
 
 // 🧠 Flatten boxscore player stats (converts nested MLB format to simpler object)

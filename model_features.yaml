@@ -35,11 +35,17 @@ features:
     description: Start time of game (ET)
 
   # ────────── Streaks ──────────
-  streak_type:
-    type: categorical
+  streak_type_hot:
+    type: numeric
     required: false
-    transform: one_hot
-    description: hot, cold, neutral
+
+  streak_type_cold:
+    type: numeric
+    required: false
+
+  streak_type_neutral:
+    type: numeric
+    required: false
 
   streak_count:
     type: numeric
@@ -106,6 +112,106 @@ features:
     required: false
   d30_walks:
     type: numeric
+    required:
+      false
+
+      # ────────── Total Bases ──────────
+  d7_total_bases:
+    type: numeric
+    required: false
+  d15_total_bases:
+    type: numeric
+    required: false
+  d30_total_bases:
+    type: numeric
+    required: false
+
+  # ────────── Hits + Runs + RBI Combo ──────────
+  d7_hits_runs_rbis:
+    type: numeric
+    required: false
+  d15_hits_runs_rbis:
+    type: numeric
+    required: false
+  d30_hits_runs_rbis:
+    type: numeric
+    required: false
+
+  # ────────── Stolen Bases ──────────
+  d7_stolen_bases:
+    type: numeric
+    required: false
+  d15_stolen_bases:
+    type: numeric
+    required: false
+  d30_stolen_bases:
+    type: numeric
+    required: false
+
+  # ────────── Walks (Batting) ──────────
+  #d7_walks:
+  #  type: numeric
+  #  required: false
+  #d15_walks:
+  #  type: numeric
+  #  required: false
+  #d30_walks:
+  #  type: numeric
+  #  required: false
+
+  # ────────── Strikeouts (Batting) ──────────
+  d7_strikeouts_batting:
+    type: numeric
+    required: false
+  d15_strikeouts_batting:
+    type: numeric
+    required: false
+  d30_strikeouts_batting:
+    type: numeric
+    required: false
+
+  # ────────── Strikeouts (Pitching) ──────────
+  d7_strikeouts_pitching:
+    type: numeric
+    required: false
+  d15_strikeouts_pitching:
+    type: numeric
+    required: false
+  d30_strikeouts_pitching:
+    type: numeric
+    required: false
+
+  # ────────── Walks Allowed (Pitching) ──────────
+  d7_walks_allowed:
+    type: numeric
+    required: false
+  d15_walks_allowed:
+    type: numeric
+    required: false
+  d30_walks_allowed:
+    type: numeric
+    required: false
+
+  # ────────── Earned Runs (Pitching) ──────────
+  d7_earned_runs:
+    type: numeric
+    required: false
+  d15_earned_runs:
+    type: numeric
+    required: false
+  d30_earned_runs:
+    type: numeric
+    required: false
+
+  # ────────── Hits Allowed (Pitching) ──────────
+  d7_hits_allowed:
+    type: numeric
+    required: false
+  d15_hits_allowed:
+    type: numeric
+    required: false
+  d30_hits_allowed:
+    type: numeric
     required: false
 
   # ────────── BvP ──────────
@@ -134,46 +240,46 @@ features:
     type: numeric
     required: false
 
-  # ────────── PvB ──────────
-  pvb_at_bats:
-    type: numeric
-    required: false
-  pvb_hits:
-    type: numeric
-    required: false
-  pvb_home_runs:
-    type: numeric
-    required: false
-  pvb_strikeouts:
-    type: numeric
-    required: false
-  pvb_walks:
-    type: numeric
-    required: false
-  pvb_avg:
-    type: numeric
-    required: false
-  pvb_plate_appearances:
-    type: numeric
-    required: false
-  pvb_hits_allowed:
-    type: numeric
-    required: false
-  pvb_home_runs_allowed:
-    type: numeric
-    required: false
-  pvb_walks_issued:
-    type: numeric
-    required: false
+  # ──────────── PvB ────────────
+  # pvb_at_bats:
+  #   type: numeric
+  #   required: false
+  # pvb_hits:
+  #   type: numeric
+  #   required: false
+  # pvb_home_runs:
+  #   type: numeric
+  #   required: false
+  # pvb_strikeouts:
+  #   type: numeric
+  #   required: false
+  # pvb_walks:
+  #   type: numeric
+  #   required: false
+  # pvb_avg:
+  #   type: numeric
+  #   required: false
+  # pvb_plate_appearances:
+  #   type: numeric
+  #   required: false
+  # pvb_hits_allowed:
+  #   type: numeric
+  #   required: false
+  # pvb_home_runs_allowed:
+  #   type: numeric
+  #   required: false
+  # pvb_walks_issued:
+  #   type: numeric
+  #   required: false
 
   # ────────── Team Context ──────────
-  opponent_avg_result_vs_player:
-    type: numeric
-    required: false
+  #opponent_avg_result_vs_player:
+  #  type: numeric
+  #  required: false
 
-  opponent_avg_win_rate:
-    type: numeric
-    required: false
+  #opponent_avg_win_rate:
+  #  type: numeric
+  #  required: false
 
   # ────────── Line Info ──────────
   line:

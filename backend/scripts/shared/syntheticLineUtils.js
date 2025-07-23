@@ -11,8 +11,8 @@
  * ------------------------------------------------------------
  */
 
-import { supabase } from "./supabaseUtils.js";
-import { toISODate } from "./timeUtils.js";
+import { supabase } from "./supabaseBackend.js";
+import { toISODate } from "../../../src/shared/timeUtils.js";
 
 /* -----------------------------------------------------------
    1)  Median of user-added lines from the last N days

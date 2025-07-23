@@ -1,13 +1,13 @@
 // backend/scripts/shared/modelTrainingUtils.js
 import crypto from "node:crypto";
-import { supabase } from "./supabaseUtils.js";
+import { supabase } from "./supabaseBackend.js";
 import {
   normalizePropType,
   getRollingAverage,
   determineOpponent,
-} from "./propUtils.js";
-import { getStreaksForPlayer } from "./playerUtils.js";
-import { getTeamIdFromAbbr } from "./teamNameMap.js";
+} from "../../../src/shared/propUtils.js";
+import { getStreaksForPlayer } from "../../../src/shared/playerUtils.js";
+import { getTeamIdFromAbbr } from "../../../src/shared/teamNameMap.js";
 
 /**
  * Up-sert all user-added props from `player_props` into `model_training_props`.

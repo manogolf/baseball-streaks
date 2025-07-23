@@ -23,16 +23,16 @@
 //
 // ✅ Dependencies:
 // - model_training_props: must contain resolved props with valid outcomes
-// - supabase client: defined in shared/supabaseUtils.js
+// - supabase client: defined in shared/supabaseBackend.js
 // - normalizePropType: maps legacy prop names consistently
 // - timeUtils.toISODate: generates UTC timestamps
 //
 // 🔒 Uniqueness enforced on (player_id, prop_type, prop_source)
 // ==========================================
 
-import { supabase } from "./shared/supabaseUtils.js";
-import { toISODate } from "./shared/timeUtils.js";
-import { normalizePropType } from "./shared/propUtils.js";
+import { supabase } from "./shared/supabaseBackend.js";
+import { toISODate } from "../../src/shared/timeUtils.js";
+import { normalizePropType } from "../../src/shared/propUtils.js";
 
 const BATCH_SIZE = 1000;
 const MAX_DAYS_BACK = 1000;

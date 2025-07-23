@@ -1,16 +1,17 @@
-//
+// File: backend/scripts/shared/supabaseBackend.js
+
+import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
-import { nowET, todayET, currentTimeET } from "./timeUtils.js";
+import {
+  nowET,
+  todayET,
+  currentTimeET,
+} from "../../../src/shared/timeUtils.js";
 
-const isFrontend = typeof window !== "undefined";
+dotenv.config();
 
-const supabaseUrl = isFrontend
-  ? process.env.REACT_APP_SUPABASE_URL
-  : process.env.SUPABASE_URL;
-
-const supabaseKey = isFrontend
-  ? process.env.REACT_APP_SUPABASE_ANON_KEY
-  : process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.warn(
@@ -24,7 +25,10 @@ if (!supabaseUrl || !supabaseKey) {
 export const supabase =
   supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
-// 📌 Fetch Resolved Props
+// ─────────────────────────────────────────────
+// Retain all backend helper functions below
+// ─────────────────────────────────────────────
+
 export async function fetchResolvedProps() {
   const { data, error } = await supabase
     .from("player_props")
@@ -38,7 +42,6 @@ export async function fetchResolvedProps() {
   return data;
 }
 
-// 📌 Fetch Pending Props
 export async function getPendingProps() {
   const { data, error } = await supabase
     .from("player_props")
@@ -62,7 +65,6 @@ export async function getPendingProps() {
   );
 }
 
-// 📌 Delete Old Pending Props
 export async function expireOldPendingProps() {
   const twoDaysAgo = nowET().minus({ days: 2 }).toISODate();
   const { data, error } = await supabase
@@ -79,7 +81,6 @@ export async function expireOldPendingProps() {
   }
 }
 
-// 📌 Update Prop Statuses Using a Callback
 export async function updatePropStatuses(updatePropStatusFn) {
   const props = await getPendingProps();
   console.log(`🔎 Found ${props.length} pending props to update.`);
@@ -106,7 +107,6 @@ export async function updatePropStatuses(updatePropStatusFn) {
   );
 }
 
-// 📌 Sync Resolved Props to Training Table
 export async function syncTrainingData() {
   const resolvedProps = await fetchResolvedProps();
 
@@ -152,7 +152,6 @@ export async function syncTrainingData() {
   }
 }
 
-// 📌 NEW: Fetch Recent Props for Feature Engineering
 export async function fetchRecentProps(
   player_name,
   prop_type,
@@ -178,7 +177,6 @@ export async function fetchRecentProps(
   return data;
 }
 
-// 📌 NEW: Fetch Opponent-Level Outcomes for Feature Engineering
 export async function fetchOpponentGames(
   player_name,
   prop_type,

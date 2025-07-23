@@ -1,3 +1,5 @@
+// src/shared/getBaseURL.js
+
 export function getBaseURL() {
   const isLocal =
     typeof window !== "undefined" && window.location.hostname === "localhost";

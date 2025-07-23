@@ -4,7 +4,7 @@
 // It is safe **only** if you have verified player_id is your unique identifier.
 // Fixes prior bug: previously used (player_name, team) as conflict keys — this caused duplicates.
 
-import { supabase } from "../../backend/scripts/shared/supabaseUtils.js";
+import { supabase } from "../../backend/scripts/shared/supabaseBackend.js";
 import fetch from "node-fetch";
 
 const MLB_TEAMS_API = "https://statsapi.mlb.com/api/v1/teams?sportId=1";

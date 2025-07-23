@@ -3,7 +3,7 @@ import { DateTime } from "luxon";
 import { fetchSchedule } from "../../src/utils/fetchSchedule.js";
 import { fetchBoxscoreStatsForGame } from "../../src/utils/fetchBoxscoreStats.js";
 import { derivePropValue } from "../../backend/scripts/resolution/derivePropValue.js";
-import { supabase } from "../../backend/scripts/shared/supabaseUtils.js";
+import { supabase } from "../../backend/scripts/shared/supabaseBackend.js";
 
 const DAYS_BACK = 5;
 const propType = "runs_rbis"; // ✅ correct normalized name

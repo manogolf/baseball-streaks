@@ -1,6 +1,6 @@
 // backend/app/routes/api/model-metrics.js
 
-import { supabase } from "../../../backend/scripts/shared/supabaseUtils.js";
+import { supabase } from "../../../backend/scripts/shared/supabaseBackend.js";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {

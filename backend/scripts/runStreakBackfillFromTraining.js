@@ -1,9 +1,7 @@
 // backend/scripts/runStreakBackfillFromTraining.js
 import { createClient } from "@supabase/supabase-js";
-import { normalizePropType } from "../scripts/shared/propUtils.js";
-import { toISODate } from "../scripts/shared/timeUtils.js";
-import dotenv from "dotenv";
-dotenv.config();
+import { normalizePropType } from "../../src/shared/propUtils.js";
+import { toISODate } from "../../src/shared/timeUtils.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,

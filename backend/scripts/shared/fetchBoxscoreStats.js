@@ -1,7 +1,7 @@
 // fetchBoxscoreStats.js
 
 import fetch from "node-fetch";
-import { flattenPlayerBoxscore } from "../shared/playerUtils.js"; // adjust path as needed
+import { flattenPlayerBoxscore } from "../../../src/shared/playerUtils.js"; // adjust path as needed
 
 // 🔍 Fetch entire boxscore and flatten all players
 export async function fetchBoxscoreStatsForGame(gamePk) {

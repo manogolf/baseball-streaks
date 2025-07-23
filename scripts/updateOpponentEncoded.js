@@ -1,5 +1,5 @@
 // scripts/updateOpponentEncoded.js
-import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
+import { supabase } from "../backend/scripts/shared/supabaseBackend.js";
 
 (async () => {
   await supabase

@@ -1,4 +1,4 @@
-import { supabase } from "../shared/supabaseUtils.js";
+import { supabase } from "../shared/supabaseBackend.js";
 
 async function syncTrainingData() {
   try {

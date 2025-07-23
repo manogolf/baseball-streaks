@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../backend/scripts/shared/supabaseUtils.js";
-import { nowET, todayET } from "../../backend/scripts/shared/timeUtils.js";
+import { supabase } from "../utils/supabaseFrontend.js";
+import { nowET, todayET } from "../shared/timeUtils.js";
 import { useAuth } from "../context/AuthContext.js";
 import { buildFeatureVector } from "../utils/buildFeatureVector.js";
 import { requiredFeatures } from "../config/predictionSchema.js";
 import { normalizeFeatureKeys } from "../utils/normalizeFeatureKeys.js";
-import { preparePropSubmission } from "../../backend/scripts/shared/playerUtils.js";
-import { getPropTypeOptions } from "../../backend/scripts/shared/propUtils.js";
+import { preparePropSubmission } from "../shared/playerUtils.js";
+import { getPropTypeOptions } from "../shared/propUtils.js";
 import { getGamePkForTeamOnDate } from "../../backend/scripts/shared/fetchGameID.js";
-import { getTeamInfoByAbbr } from "../../backend/scripts/shared/teamNameMap.js"; // adjust path if needed
+import { getTeamInfoByAbbr } from "../shared/teamNameMap.js"; // adjust path if needed
 import { getGameContextFields } from "../../backend/scripts/shared/mlbApiUtils.js";
 
 const apiUrl = `${
@@ -182,25 +182,25 @@ const PlayerPropForm = ({ onPropAdded }) => {
       return;
     }
 
-    try {
-      // 👉 Step 1: Build feature vector for prediction (optional second call here)
-      const predictionPayload = await buildFeatureVector({
-        player_name: formData.player_name,
-        team: formData.team,
-        prop_type: formData.prop_type,
-        prop_value: formData.prop_value,
-        over_under: formData.over_under,
-        game_date: formData.game_date,
-      });
+    if (!prediction) {
+      setError("Please make a prediction before submitting.");
+      setSubmitting(false);
+      return;
+    }
 
-      // 👉 Step 2: Get prediction result
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(predictionPayload),
-      });
-      if (!response.ok) throw new Error("Prediction API returned error");
-      const result = await response.json();
+    try {
+      // ✅ Use existing prediction from handlePredict
+      if (
+        !prediction ||
+        prediction.predicted_outcome == null ||
+        prediction.confidence_score == null
+      ) {
+        setError("You must make a prediction before adding a prop.");
+        setSubmitting(false);
+        return;
+      }
+
+      const result = prediction;
 
       // 👉 Step 3: Resolve MLB game ID
       const resolvedGameId = await getGamePkForTeamOnDate(

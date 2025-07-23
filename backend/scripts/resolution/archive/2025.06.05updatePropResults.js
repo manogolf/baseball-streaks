@@ -2,12 +2,15 @@
 
 import "dotenv/config";
 import { supabase } from "../../shared/index.js";
-import { todayET, yesterdayET } from "../../shared/timeUtils.js";
-import { expireOldPendingProps } from "../../shared/propUtils.js";
-import { getPendingProps } from "../../shared/supabaseUtils.js";
+import { todayET, yesterdayET } from "../../../../src/shared/timeUtils.js";
+import { expireOldPendingProps } from "../../../../src/shared/propUtils.js";
+import { getPendingProps } from "../../shared/supabaseBackend.js";
 import { getStatFromLiveFeed } from "../getStatFromLiveFeed.js";
-import { propExtractors } from "../../shared/propUtils.js";
-import { determineStatus, normalizePropType } from "../../shared/propUtils.js";
+import { propExtractors } from "../../../../src/shared/propUtils.js";
+import {
+  determineStatus,
+  normalizePropType,
+} from "../../../../src/shared/propUtils.js";
 import fs from "fs";
 
 const affectedPlayerIds = new Set();

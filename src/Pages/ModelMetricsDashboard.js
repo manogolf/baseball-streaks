@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "../components/ui/card.js";
-import { getBaseURL } from "@shared/getBaseURL.js";
-import { normalizePropType, getPropDisplayLabel } from "@shared/propUtils.js";
-import { formatDateET } from "@shared/timeUtils.js";
+import { getBaseURL } from "../shared/getBaseURL.js";
+import { normalizePropType, getPropDisplayLabel } from "../shared/propUtils.js";
+import { formatDateET } from "../shared/timeUtils.js";
 import MetricsTable from "../components/MetricsTable.js";
 import MetricsBarChart from "../components/MetricsBarChart.js";
 import ModelAccuracyTable from "../components/ModelAccuracyTable.js";

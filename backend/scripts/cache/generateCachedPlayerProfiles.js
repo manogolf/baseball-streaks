@@ -1,8 +1,8 @@
 // backend/scripts/cache/generateCachedPlayerProfiles.js
 
 import fetch from "node-fetch";
-import { supabase } from "../shared/supabaseUtils.js";
-import { getBaseURL } from "../shared/getBaseURL.js";
+import { supabase } from "../shared/supabaseBackend.js";
+import { getBaseURL } from "../../../src/shared/getBaseURL.js";
 import "dotenv/config";
 
 const BATCH_SIZE = 10;

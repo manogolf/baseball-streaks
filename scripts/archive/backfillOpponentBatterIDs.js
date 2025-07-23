@@ -1,5 +1,5 @@
 // File: scripts/backfillOpponentBatterIDs.js
-import { supabase } from "../../backend/scripts/shared/supabaseUtils.js";
+import { supabase } from "../../backend/scripts/shared/supabaseBackend.js";
 import { getBoxscoreFromGameID } from "../../backend/scripts/shared/mlbApiUtils.js";
 import { toISODate } from "../../backend/scripts/shared/timeUtils.js";
 

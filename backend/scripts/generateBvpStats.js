@@ -1,60 +1,111 @@
 // backend/scripts/generateBvpStats.js
 
-import { supabase } from "./shared/supabaseUtils.js";
+import { supabase } from "./shared/supabaseBackend.js";
 import { getLiveFeedFromGameID } from "./shared/mlbApiUtils.js";
-import { setIfMissing } from "./shared/objectUtils.js";
+import { setIfMissing } from "../../src/shared/objectUtils.js";
 import dayjs from "dayjs";
 
-const BATCH_DELAY_MS = 200;
+const BATCH_DELAY_MS = 500;
+const BUCKET_SIZE = 10000;
 
-const argDate = process.argv.find((arg) => arg.startsWith("--startDate="));
-const startDate = argDate
-  ? argDate.split("=")[1]
-  : dayjs().subtract(1, "day").format("YYYY-MM-DD");
+async function runFullBackfill() {
+  const argStart = process.argv.find((arg) => arg.startsWith("--startDate="));
+  const argEnd = process.argv.find((arg) => arg.startsWith("--endDate="));
 
-async function runRecentBackfill() {
-  console.log(`🚀 Starting BvP backfill from ${startDate}`);
+  const startDate = argStart
+    ? argStart.split("=")[1]
+    : dayjs().subtract(1, "day").format("YYYY-MM-DD");
 
-  const { data: games, error: fetchError } = await supabase
-    .from("model_training_props")
-    .select("game_id")
-    .eq("prop_source", "mlb_api")
-    .gte("game_date", startDate)
-    .order("game_date", { ascending: false });
+  const endDate = argEnd ? argEnd.split("=")[1] : null;
 
-  if (fetchError) {
-    console.error("❌ Failed to fetch recent games:", fetchError);
-    return;
-  }
+  console.log(
+    `🚀 Starting full BvP backfill from ${startDate}${
+      endDate ? ` to ${endDate}` : ""
+    }`
+  );
 
-  const uniqueGameIds = [...new Set(games.map((g) => g.game_id))];
-  for (const gameId of uniqueGameIds) {
-    const { count } = await supabase
-      .from("bvp_stats")
-      .select("id", { count: "exact", head: true })
-      .eq("game_id", gameId);
+  let offset = 0;
 
-    if (count > 0) {
-      console.log(`⏭️ Skipping already-processed game ${gameId}`);
-      continue;
+  while (true) {
+    console.log(`📦 Fetching batch at offset ${offset}`);
+
+    // Build Supabase query with dynamic date filters
+    let query = supabase
+      .from("model_training_props")
+      .select("game_id")
+      .eq("prop_source", "mlb_api")
+      .gte("game_date", startDate);
+
+    if (endDate) {
+      query = query.lte("game_date", endDate);
     }
 
-    try {
-      await processGame(gameId);
-    } catch (e) {
-      console.error(`❌ Error processing game ${gameId}:`, e);
+    query = query
+      .order("game_date", { ascending: false })
+      .range(offset, offset + BUCKET_SIZE - 1);
+
+    const { data: games, error: fetchError } = await query;
+
+    if (fetchError) {
+      if (fetchError.message?.includes("timeout")) {
+        console.warn(`⚠️ Timeout at offset ${offset}, skipping to next batch`);
+        offset += BUCKET_SIZE;
+        await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+        continue;
+      } else {
+        console.error("❌ Failed to fetch recent games:", fetchError);
+        break;
+      }
     }
 
-    await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+    if (!games || games.length === 0) {
+      console.log("✅ No more games to process. Done.");
+      break;
+    }
+
+    const uniqueGameIds = [...new Set(games.map((g) => g.game_id))];
+
+    for (const gameId of uniqueGameIds) {
+      try {
+        await processGame(gameId);
+      } catch (e) {
+        console.error(`❌ Error processing game ${gameId}:`, e);
+      }
+
+      await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+    }
+
+    offset += BUCKET_SIZE;
   }
 
-  console.log("🏁 Recent BvP backfill complete");
+  console.log("🏁 Full BvP backfill complete");
 }
 
 async function processGame(gameId) {
   console.log(`🎯 Target game: ${gameId}`);
 
   const liveFeed = await getLiveFeedFromGameID(gameId);
+
+  const gameType = liveFeed?.gameData?.game?.type;
+  if (gameType !== "R") {
+    console.warn(
+      `⏩ Skipping non-regular season game ${gameId} (type=${gameType})`
+    );
+    return;
+  }
+
+  const homeStarterId =
+    liveFeed?.liveData?.boxscore?.teams?.home?.pitchers?.[0];
+  const awayStarterId =
+    liveFeed?.liveData?.boxscore?.teams?.away?.pitchers?.[0];
+
+  if (!homeStarterId || !awayStarterId) {
+    console.warn(`⚠️ Missing starting pitcher data for game ${gameId}`);
+    return;
+  }
+
+  const starters = new Set([homeStarterId, awayStarterId]);
+
   const allPlays = liveFeed?.liveData?.plays?.allPlays || [];
   console.log(`🎮 Loaded ${allPlays.length} plays`);
 
@@ -71,21 +122,32 @@ async function processGame(gameId) {
 
   const bvpStatsCache = new Map();
 
+  let inserted = 0;
+  let skipped = 0;
+  let failed = 0;
+
   for (const row of rows) {
     const batterId = parseInt(row.player_id);
 
     if (!bvpStatsCache.has(batterId)) {
-      const matchup = allPlays.find((p) => p.matchup?.batter?.id === batterId);
-      const pitcherId = matchup?.pitcher?.id;
+      const matchup = allPlays.find(
+        (p) =>
+          p.matchup?.batter?.id === batterId &&
+          starters.has(p.matchup?.pitcher?.id)
+      );
+
+      const pitcherId = matchup?.matchup?.pitcher?.id || matchup?.pitcher?.id;
 
       if (!pitcherId) {
         console.warn(`⚠️ Could not find pitcher for batter ${batterId}`);
+        skipped++;
         continue;
       }
 
       const stats = computeBvpStats(batterId, pitcherId, allPlays);
       if (!stats) {
         console.warn(`⚠️ No BvP stats found for batter ${batterId}`);
+        skipped++;
         continue;
       }
 
@@ -93,7 +155,10 @@ async function processGame(gameId) {
     }
 
     const cached = bvpStatsCache.get(batterId);
-    if (!cached) continue;
+    if (!cached) {
+      skipped++;
+      continue;
+    }
 
     const { pitcherId, stats } = cached;
     const upsertPayload = {
@@ -150,16 +215,22 @@ async function processGame(gameId) {
         `❌ Failed to upsert BvP for batter ${row.player_id}:`,
         upsertError
       );
+      failed++;
     } else if (Object.keys(upsertPayload).length > 3) {
       console.log(
         `📦 Upserted (setIfMissing) BvP stats for batter ${row.player_id}`
       );
+      inserted++;
     } else {
       console.log(
         `⚠️ Skipped upsert — no new BvP values for batter ${row.player_id}`
       );
+      skipped++;
     }
   }
+  console.log(
+    `✅ Game ${gameId} complete: Inserted=${inserted}, Skipped=${skipped}, Failed=${failed}`
+  );
 }
 
 function computeBvpStats(batterId, pitcherId, allPlays) {
@@ -226,6 +297,6 @@ function computeBvpStats(batterId, pitcherId, allPlays) {
 }
 
 // 🔁 Run
-runRecentBackfill().catch((err) => {
-  console.error("❌ Uncaught error in recent BvP backfill:", err);
+runFullBackfill().catch((err) => {
+  console.error("❌ Uncaught error in full BvP backfill:", err);
 });

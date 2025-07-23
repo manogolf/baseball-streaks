@@ -1,6 +1,6 @@
 // scripts/repairStatDerivedProps.js
 
-import { supabase } from "../../backend/scripts/shared/supabaseUtils.js";
+import { supabase } from "../../backend/scripts/shared/supabaseBackend.js";
 import {
   flattenPlayerBoxscore,
   didPlayerParticipate,

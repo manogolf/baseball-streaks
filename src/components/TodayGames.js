@@ -1,12 +1,6 @@
 // src/components/TodayGames.js
 import React, { useState, useEffect } from "react";
-import { supabase } from "@shared/supabaseUtils.js";
-import {
-  todayET,
-  formatGameTime,
-  getEasternDateFromISO,
-  toISODate,
-} from "@shared/timeUtils.js";
+import { todayET, toISODate } from "../shared/timeUtils.js";
 import { getStatusDisplay, getStatusColor } from "@shared/gameStatusUtils.js";
 
 const TodayGames = ({ games }) => {

@@ -1,7 +1,7 @@
 // backend/routes/playerProfile.js
 
 import { Router } from "express";
-import { supabase } from "@shared/supabaseUtils.js";
+import { supabase } from "@shared/supabaseBackend.js";
 
 const router = Router();
 

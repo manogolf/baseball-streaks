@@ -1,11 +1,5 @@
 // scripts/syncStreakProfiles.js
-import "dotenv/config";
-import { supabase } from "../src/shared/supabaseUtils.js";
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { supabase } from "@shared/supabaseFrontend.js";
 
 export async function syncStreakProfiles() {
   console.log("🔄 Starting sync to player_streak_profiles...");

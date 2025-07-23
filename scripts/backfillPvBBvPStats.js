@@ -1,6 +1,6 @@
 // File: scripts/backfillPvBBvPStats.js
 
-import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
+import { supabase } from "../backend/scripts/shared/supabaseBackend.js";
 import { resolveStatForPlayer } from "../backend/scripts/resolution/statResolvers.js";
 import {
   getBoxscoreFromGameID,

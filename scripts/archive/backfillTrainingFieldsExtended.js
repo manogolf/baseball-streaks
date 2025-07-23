@@ -56,7 +56,7 @@
  * retraining or evaluation. Critical to maintain feature consistency across rows.
  */
 
-import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
+import { supabase } from "../backend/scripts/shared/supabaseBackend.js";
 import {
   getRollingAverage,
   determineHomeAway,

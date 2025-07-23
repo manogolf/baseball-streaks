@@ -1,9 +1,12 @@
 // 📁 getStatFromLiveFeed.js
 
 import fetch from "node-fetch";
-import { normalizePropType, derivePropValue } from "../shared/propUtils.js";
+import {
+  normalizePropType,
+  derivePropValue,
+} from "../../../src/shared/propUtils.js";
 import { extractStatFromPlays } from "../shared/extractStatFromPlays.js";
-import { flattenPlayerBoxscore } from "../shared/playerUtils.js";
+import { flattenPlayerBoxscore } from "../../../src/shared/playerUtils.js";
 
 // 🧠 Prop types that rely on pitching stats
 const PITCHING_PROPS = new Set([

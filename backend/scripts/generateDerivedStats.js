@@ -1,5 +1,5 @@
 /**
- * 📄 File: generateDerivedStats.js
+ * 📄 File: backend/scripts/generateDerivedStats.js
  *
  * Populates the `player_derived_stats` table (d7d15d30) with derived stat features for recently played games.
  *
@@ -19,13 +19,16 @@
 
 //  backend/scripts/generateDerivedStats.js
 
-import { supabase } from "./shared/supabaseUtils.js";
+import { supabase } from "./shared/supabaseBackend.js";
 import { getDerivedStats } from "./shared/getDerivedStats.js";
-import { toISODate } from "./shared/timeUtils.js";
+import { toISODate } from "../../src/shared/timeUtils.js";
+import { setIfMissing } from "../../src/shared/objectUtils.js"; // or wherever you defined it
 import fetch from "node-fetch";
 
 const LOOKBACK_DAYS = 2;
-const TOTAL_BUCKETS = 8;
+const TOTAL_BUCKETS = 10;
+
+const existingMap = {}; // Prevent undefined error
 
 const verbose = process.argv.includes("--verbose");
 const log = (...args) => verbose && console.log(...args);
@@ -46,16 +49,19 @@ const [currentBucket, totalBuckets] = bucketArg
 
 async function getRecentPlayerGames() {
   const cutoffDate = toISODate(new Date(Date.now() - LOOKBACK_DAYS * 86400000));
+  console.log(`📆 Cutoff date: ${cutoffDate}`);
 
   const { data, error } = await supabase
     .from("model_training_props")
     .select("player_id, game_date, game_id")
     .gte("game_date", cutoffDate)
     .not("player_id", "is", null)
-    .order("game_date", { ascending: true });
-
+    .order("game_date", { ascending: true })
+    .limit(50000);
   if (error)
     throw new Error("❌ Failed to fetch recent games: " + error.message);
+
+  console.log("🔍 Supabase returned rows:", data?.length);
 
   const seen = new Set();
   return data.filter((row) => {
@@ -99,8 +105,39 @@ async function preloadBoxscores() {
 
   return boxscoreCache instanceof Map ? boxscoreCache : new Map();
 }
+async function preloadExistingDerivedStats(rows) {
+  const playerIds = [...new Set(rows.map((r) => r.player_id))];
+  const gameIds = [...new Set(rows.map((r) => r.game_id))];
 
-async function updateDerivedStats(rows, boxscoreCache) {
+  const existingMap = {};
+
+  // Break into chunks to avoid Supabase IN clause limits
+  const CHUNK_SIZE = 500;
+  for (let i = 0; i < gameIds.length; i += CHUNK_SIZE) {
+    const gameChunk = gameIds.slice(i, i + CHUNK_SIZE);
+    const playerChunk = playerIds.slice(i, i + CHUNK_SIZE); // Optional, could mismatch lengths but generally works well
+
+    const { data, error } = await supabase
+      .from("player_derived_stats")
+      .select("*")
+      .in("game_id", gameChunk)
+      .in("player_id", playerChunk);
+
+    if (error) {
+      console.error("❌ Error loading existing derived stats:", error.message);
+      continue;
+    }
+
+    for (const row of data || []) {
+      const key = `${row.player_id}_${row.game_id}`;
+      existingMap[key] = row;
+    }
+  }
+
+  return existingMap;
+}
+
+async function updateDerivedStats(rows, boxscoreCache, existingMap = {}) {
   let updated = 0;
   let skipped = 0;
 
@@ -116,6 +153,13 @@ async function updateDerivedStats(rows, boxscoreCache) {
         boxscoreCache
       );
 
+      if (!derivedStats || typeof derivedStats !== "object") {
+        console.error(
+          `❌ getDerivedStats() returned invalid result for ${player_id} on ${game_date}`
+        );
+        continue;
+      }
+
       const isEmpty =
         Object.keys(derivedStats).length === 0 ||
         Object.values(derivedStats).every((v) => v == null);
@@ -126,19 +170,19 @@ async function updateDerivedStats(rows, boxscoreCache) {
         continue;
       }
 
+      const key = `${player_id}_${game_id}`;
+      const existing = existingMap[key] || {};
+      const safeDerivedStats = setIfMissing(derivedStats, existing);
+
       const { error } = await supabase.from("player_derived_stats").upsert(
         {
           player_id,
           game_date,
           game_id,
-          ...derivedStats,
+          ...safeDerivedStats,
         },
         { onConflict: ["player_id", "game_date"] }
       );
-
-      if (error) {
-        throw new Error(`❌ Supabase error: ${error.message}`);
-      }
 
       updated++;
     } catch (err) {
@@ -148,7 +192,8 @@ async function updateDerivedStats(rows, boxscoreCache) {
     }
   }
 
-  log(`\n✅ Bucket complete: ${updated} updated, ${skipped} skipped`);
+  log(`\n✅ Bucket complete: ${updated} upserted, ${skipped} skipped`);
+  return { updated, skipped };
 }
 
 async function run() {
@@ -174,8 +219,15 @@ async function run() {
     log(
       `🔢 Running bucket ${currentBucket}/${totalBuckets} [${start} → ${end}]`
     );
-    await updateDerivedStats(bucketRows, boxscoreCache);
+    console.log(
+      `🚚 About to update ${bucketRows.length} rows in updateDerivedStats()`
+    );
+    const existingMap = await preloadExistingDerivedStats(bucketRows);
+    await updateDerivedStats(bucketRows, boxscoreCache, existingMap);
   } else {
+    let totalUpserted = 0;
+    let totalSkipped = 0;
+
     for (let i = 1; i <= TOTAL_BUCKETS; i++) {
       const bucketSize = Math.ceil(allRows.length / TOTAL_BUCKETS);
       const start = (i - 1) * bucketSize;
@@ -185,8 +237,25 @@ async function run() {
       log(
         `\n⏳ Starting bucket ${i}/${TOTAL_BUCKETS} [${start} → ${end}]...\n`
       );
-      await updateDerivedStats(bucketRows, boxscoreCache);
+      console.log(
+        `🚚 About to update ${bucketRows.length} rows in updateDerivedStats()`
+      );
+
+      const existingMap = await preloadExistingDerivedStats(bucketRows);
+      const { updated, skipped } = await updateDerivedStats(
+        bucketRows,
+        boxscoreCache,
+        existingMap
+      );
+      totalUpserted += updated;
+      totalSkipped += skipped;
     }
+
+    console.log(`\n🎯 All ${TOTAL_BUCKETS} buckets processed`);
+    console.log(`📈 Total rows upserted: ${totalUpserted}`);
+    console.log(
+      `🟡 Total rows skipped (empty or fully existing): ${totalSkipped}`
+    );
 
     log(`\n🎉 All ${TOTAL_BUCKETS} buckets processed.`);
   }
@@ -196,3 +265,9 @@ run().catch((err) => {
   console.error("❌ generateDerivedStats failed:", err);
   process.exit(1);
 });
+run().catch((err) => {
+  console.error("❌ generateDerivedStats failed:", err);
+  process.exit(1);
+});
+
+console.log("📍 Script started");

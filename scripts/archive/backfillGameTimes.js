@@ -3,8 +3,6 @@
 import fetch from "node-fetch";
 import { createClient } from "@supabase/supabase-js";
 import { DateTime } from "luxon";
-import dotenv from "dotenv";
-dotenv.config();
 
 const supabase = createClient(
   process.env.SUPABASE_URL,

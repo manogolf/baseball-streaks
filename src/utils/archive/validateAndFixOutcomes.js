@@ -1,6 +1,6 @@
 // src/utils/validateAndFixOutcomes.js
 
-import { supabase } from "../scripts/shared/supabaseUtils.js";
+import { supabase } from "../utils/supabaseFrontend.js";
 import { getPlayerStatsFromBoxscore } from "./shared/playerUtils.js";
 import { extractStatForPropType } from "../scripts/shared/propUtils.js";
 

@@ -1,11 +1,14 @@
 // backend/scripts/shared/mlbApiUtils.js
 import fetch from "node-fetch";
-import { getTeamInfoByAbbr, normalizeTeamAbbreviation } from "./teamNameMap.js";
+import {
+  getTeamInfoByAbbr,
+  normalizeTeamAbbreviation,
+} from "../../../src/shared/teamNameMap.js";
 import {
   getGameStartTimeET,
   getDayOfWeekET,
   getTimeOfDayBucketET,
-} from "./timeUtils.js";
+} from "../../../src/shared/timeUtils.js";
 
 /**
  * Returns full boxscore JSON for a given MLB game_id.

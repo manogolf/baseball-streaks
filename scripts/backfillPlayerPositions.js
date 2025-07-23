@@ -1,6 +1,6 @@
 // scripts/backfillPlayerPositions.js
 
-import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
+import { supabase } from "../backend/scripts/shared/supabaseBackend.js";
 
 const BATCH_SIZE = 2000;
 const TWO_DAYS_AGO = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)

@@ -1,9 +1,18 @@
-// src/utils/buildFeatureVector.js
-import { supabase } from "@shared/supabaseUtils.js";
-import { checkIfHome, getPlayerID } from "@shared/playerUtils.js";
-import { getGamePkForTeamOnDate } from "@shared/fetchGameID.js";
-import { todayET, toISODate } from "@shared/timeUtils.js";
-import { getOpponentAbbreviation } from "@shared/teamNameMap.js";
+// File: src/utils/buildFeatureVector.js
+
+import { supabase } from "./supabaseFrontend.js";
+import { checkIfHome, getPlayerID } from "../shared/playerUtils.js";
+import { getGamePkForTeamOnDate } from "../../backend/scripts/shared/fetchGameID.js";
+import { toISODate } from "../shared/timeUtils.js";
+import { getOpponentAbbreviation } from "../shared/teamNameMap.js";
+import yaml from "js-yaml";
+
+// Load YAML spec
+function loadFeatureSpec() {
+  const file = fs.readFileSync("model_features.yaml", "utf8");
+  const doc = yaml.load(file);
+  return doc.features || {};
+}
 
 export async function buildFeatureVector({
   player_name,
@@ -15,14 +24,59 @@ export async function buildFeatureVector({
 }) {
   const dateISO = toISODate(game_date);
   const player_id = await getPlayerID(player_name, team);
+  if (!player_id) return null;
 
-  if (!player_id) {
-    console.warn(`⚠️ Could not resolve player_id for ${player_name} (${team})`);
-    return null;
+  const spec = loadFeatureSpec();
+  const vector = {
+    prop_type,
+    prop_value,
+    over_under,
+    player_id,
+  };
+
+  // 1. Resolve game ID, home/away, opponent
+  let game_id = null;
+  try {
+    game_id = await getGamePkForTeamOnDate(team, game_date);
+    vector.is_home = (await checkIfHome(team, game_id)) ? 1 : 0;
+  } catch {
+    vector.is_home = null;
   }
 
-  // 1. Rolling avg + streaks
-  let recentProps = [];
+  const opponent = await getOpponentAbbreviation(team, game_id);
+  vector.opponent = opponent;
+
+  // 2. opponent_win_rate
+  try {
+    const { data = [] } = await supabase
+      .from("model_training_props")
+      .select("outcome")
+      .eq("player_id", player_id)
+      .eq("prop_type", prop_type)
+      .eq("opponent", opponent)
+      .lt("game_date", dateISO)
+      .limit(5);
+    const wins = data.filter((d) => d.outcome === "win").length;
+    vector.opponent_win_rate = data.length ? wins / data.length : 0.5;
+  } catch {
+    vector.opponent_win_rate = null;
+  }
+
+  // 3. opponent_avg_win_rate
+  try {
+    const { data = [] } = await supabase
+      .from("model_training_props")
+      .select("outcome")
+      .eq("prop_type", prop_type)
+      .eq("opponent", opponent)
+      .lt("game_date", dateISO);
+    const wins = data.filter((d) => d.outcome === "win").length;
+    vector.opponent_avg_win_rate = data.length ? wins / data.length : 0.5;
+  } catch {
+    vector.opponent_avg_win_rate = null;
+  }
+
+  // 4. rolling_result_avg_7 + streaks
   try {
     const { data = [] } = await supabase
       .from("model_training_props")
@@ -32,141 +86,62 @@ export async function buildFeatureVector({
       .lt("game_date", dateISO)
       .order("game_date", { ascending: false })
       .limit(7);
-    recentProps = data;
-  } catch (e) {
-    console.warn(`⚠️ Failed to fetch recent props: ${e.message}`);
-  }
-
-  const wins = recentProps.filter((p) => p.outcome === "win").length;
-  const avgWinRate = recentProps.length ? wins / recentProps.length : null;
-
-  let hitStreak = 0;
-  let winStreak = 0;
-  for (const prop of recentProps) {
-    if (prop.outcome === "win") {
-      hitStreak++;
-      winStreak++;
-    } else break;
-  }
-
-  // 2. Game ID + home/away
-  let game_id = null;
-  let isHome = false;
-  try {
-    game_id = await getGamePkForTeamOnDate(team, game_date);
-    isHome = await checkIfHome(team, game_id);
-  } catch (e) {
-    console.warn(`⚠️ Failed home/away check: ${e.message}`);
-  }
-
-  // 3. Opponent (now safe after game_id is resolved)
-  const opponent = await getOpponentAbbreviation(team, game_id);
-
-  // 4. opponent_win_rate
-  let opponent_win_rate = null;
-  try {
-    const { data: opponentGames = [] } = await supabase
-      .from("model_training_props")
-      .select("outcome")
-      .eq("player_id", player_id)
-      .eq("prop_type", prop_type)
-      .eq("opponent", opponent)
-      .lt("game_date", dateISO)
-      .order("game_date", { ascending: false })
-      .limit(5);
-
-    const oppWins = opponentGames.filter((p) => p.outcome === "win").length;
-    opponent_win_rate = opponentGames.length
-      ? oppWins / opponentGames.length
-      : 0.5;
-  } catch (e) {
-    console.warn(`⚠️ Failed opponent_win_rate calc: ${e.message}`);
-  }
-
-  // 5. opponent_avg_win_rate
-  let opponent_avg_win_rate = null;
-  try {
-    const { data: oppMatchups = [] } = await supabase
-      .from("model_training_props")
-      .select("outcome")
-      .eq("prop_type", prop_type)
-      .eq("opponent", opponent)
-      .lt("game_date", dateISO);
-
-    const oppWins = oppMatchups.filter((p) => p.outcome === "win").length;
-    opponent_avg_win_rate = oppMatchups.length
-      ? oppWins / oppMatchups.length
-      : null;
-  } catch (e) {
-    console.warn(`⚠️ Failed to calculate opponent_avg_win_rate: ${e.message}`);
-  }
-
-  // 6. BvP / PvB (MLB API–supported only)
-  const bvpPvB = {
-    bvp_avg: 0,
-    bvp_at_bats: 0,
-    bvp_hits: 0,
-    bvp_home_runs: 0,
-    bvp_rbi: 0,
-    bvp_strikeouts: 0,
-    bvp_walks: 0,
-    bvp_plate_appearances: 0,
-    pvb_avg: 0,
-    pvb_at_bats: 0,
-    pvb_hits: 0,
-    pvb_home_runs: 0,
-    pvb_strikeouts: 0,
-    pvb_walks: 0,
-    pvb_plate_appearances: 0,
-  };
-
-  console.log("📡 Fetching PvB/BvP stats for", player_id, prop_type);
-
-  try {
-    const { data: matchupStats } = await supabase
-      .from("model_training_props")
-      .select(
-        [
-          "bvp_plate_appearances",
-          "bvp_at_bats",
-          "bvp_hits",
-          "bvp_home_runs",
-          "bvp_strikeouts",
-          "bvp_walks",
-          "pvb_plate_appearances",
-          "pvb_at_bats",
-          "pvb_hits",
-          "pvb_home_runs",
-          "pvb_strikeouts",
-          "pvb_walks",
-        ].join(",")
-      )
-      .eq("player_id", player_id)
-      .eq("prop_type", prop_type)
-      .order("game_date", { ascending: false })
-      .limit(20); // buffer size
-    console.log("📦 Raw Supabase query complete", matchupStats?.length);
-
-    const validRow = (matchupStats || []).find((row) => row.bvp_pa !== null);
-
-    if (validRow) {
-      Object.assign(bvpPvB, validRow);
+    const wins = data.filter((p) => p.outcome === "win").length;
+    vector.rolling_result_avg_7 = data.length ? wins / data.length : 0.5;
+    vector.hit_streak = 0;
+    vector.win_streak = 0;
+    for (const prop of data) {
+      if (prop.outcome === "win") {
+        vector.hit_streak++;
+        vector.win_streak++;
+      } else break;
     }
-  } catch (e) {
-    console.warn(`⚠️ Failed to fetch BvP/PvB stats: ${e.message}`);
+  } catch {
+    vector.rolling_result_avg_7 = null;
+    vector.hit_streak = 0;
+    vector.win_streak = 0;
   }
 
-  return {
-    prop_type,
-    prop_value,
-    over_under,
-    player_id,
-    rolling_result_avg_7: avgWinRate ?? 0.5,
-    hit_streak: hitStreak,
-    win_streak: winStreak,
-    is_home: isHome ? 1 : 0,
-    opponent_win_rate,
-    opponent_avg_win_rate: opponent_avg_win_rate ?? 0.5,
-    ...bvpPvB,
-  };
+  // 5. BvP stats from bvp_stats
+  try {
+    const { data = [] } = await supabase
+      .from("bvp_stats")
+      .select("*")
+      .eq("batter_id", player_id)
+      .eq("game_id", game_id);
+    const bvp = data[0] || {};
+    for (const key of Object.keys(spec)) {
+      if (key.startsWith("bvp_")) {
+        vector[key] = bvp[key] ?? null;
+      }
+    }
+  } catch {}
+
+  // 6. Derived stats
+  try {
+    const { data = [] } = await supabase
+      .from("player_derived_stats")
+      .select("*")
+      .eq("player_id", player_id)
+      .eq("game_id", game_id);
+    const derived = data[0] || {};
+    for (const key of Object.keys(spec)) {
+      if (
+        key.startsWith("d7_") ||
+        key.startsWith("d15_") ||
+        key.startsWith("d30_")
+      ) {
+        vector[key] = derived[key] ?? null;
+      }
+    }
+  } catch {}
+
+  // 7. Ensure all spec fields are present
+  for (const field of Object.keys(spec)) {
+    if (!(field in vector)) {
+      vector[field] = null;
+    }
+  }
+
+  return vector;
 }

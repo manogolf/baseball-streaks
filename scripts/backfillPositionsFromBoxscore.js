@@ -1,6 +1,6 @@
 // scripts/backfillPositionsFromBoxscore.js
 
-import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
+import { supabase } from "../backend/scripts/shared/supabaseBackend.js";
 import { getPlayerStatsFromBoxscore } from "../backend/scripts/shared/playerUtils.js";
 
 const BATCH_SIZE = 500;

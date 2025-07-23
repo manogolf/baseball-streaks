@@ -1,6 +1,6 @@
 // scripts/backfillOpponentEncoded.js
 
-import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
+import { supabase } from "../backend/scripts/shared/supabaseBackend.js";
 import { getTeamIdFromAbbr } from "../backend/scripts/shared/teamNameMap.js";
 
 const BATCH_SIZE = 1000;

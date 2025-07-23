@@ -1,14 +1,14 @@
-// update-and _sync_props
+// scripts/updateAndSyncProps.js
 
 import cron from "node-cron";
-import { updatePropStatuses } from "./updatePropResults.js"; // or correct path
-import { syncTrainingData } from "./syncTrainingData.js"; // adjust to your path
+// import { updatePropStatuses } from "./updatePropResults.js"; // or correct path
+import { syncTrainingData } from "../backend/scripts/shared/supabaseBackend.js"; // adjust to your path
 
 export const updateAndSyncProps = async () => {
   console.log("🔄 Running update and sync logic...");
 
   try {
-    await updatePropStatuses();
+    // await updatePropStatuses();
     await syncTrainingData();
     console.log("✅ Update + Sync complete");
   } catch (err) {

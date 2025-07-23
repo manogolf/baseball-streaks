@@ -1,6 +1,6 @@
 //  scripts/backfillBvpPvbByGame.js
 
-import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
+import { supabase } from "../backend/scripts/shared/supabaseBackend.js";
 import {
   getBoxscoreFromGameID,
   getLiveFeedFromGameID,

@@ -1,8 +1,8 @@
-// backend/scripts/shared/propUtils.js
+// src/shared/propUtils.js
 
-import { supabase } from "./supabaseUtils.js";
+import { supabase } from "../utils/supabaseFrontend.js";
 import { toISODate, todayET } from "./timeUtils.js";
-import { derivePropValue } from "../resolution/derivePropValue.js";
+import { derivePropValue } from "../../backend/scripts/resolution/derivePropValue.js";
 
 // ✅ Canonical list of supported prop types
 export const VALID_PROP_TYPES = [
@@ -127,18 +127,65 @@ export async function getRollingAverage(
     .lt("game_date", gameDate)
     .order("game_date", { ascending: false });
 
-  if (error || !data || data.length === 0) return null;
+  if (error) {
+    console.warn(`❌ Supabase error in getRollingAverage: ${error.message}`);
+    return null;
+  }
 
-  const values = data
+  if (!data || data.length === 0) {
+    console.log(
+      `🟡 No prior games for ${playerId} | ${propType} before ${gameDate}`
+    );
+    return null;
+  }
+
+  const filtered = data
     .filter((row) => row.game_id !== gameId)
     .slice(0, days)
     .map((row) => parseFloat(row.result))
     .filter((v) => !isNaN(v));
 
-  if (values.length === 0) return null;
+  if (filtered.length === 0) {
+    console.log(`🟡 No valid numeric results for ${playerId} | ${propType}`);
+    return null;
+  }
 
-  const sum = values.reduce((acc, v) => acc + v, 0);
-  return parseFloat((sum / values.length).toFixed(2));
+  const sum = filtered.reduce((acc, v) => acc + v, 0);
+  const avg = parseFloat((sum / filtered.length).toFixed(2));
+
+  return avg;
+}
+
+export const BATTER_PROP_TYPES = [
+  "hits",
+  "doubles",
+  "triples",
+  "home_runs",
+  "rbis",
+  "runs_scored",
+  "strikeouts_batting",
+  "walks",
+  "stolen_bases",
+  "total_bases",
+  "hits_runs_rbis",
+  "runs_rbis",
+  "singles",
+];
+
+export const PITCHER_PROP_TYPES = [
+  "strikeouts_pitching",
+  "outs_recorded",
+  "walks_allowed",
+  "hits_allowed",
+  "earned_runs",
+];
+
+export function isBatterProp(propType) {
+  return BATTER_PROP_TYPES.includes(propType);
+}
+
+export function isPitcherProp(propType) {
+  return PITCHER_PROP_TYPES.includes(propType);
 }
 
 export function determineOutcome(propValue, line, overUnder) {
@@ -147,8 +194,8 @@ export function determineOutcome(propValue, line, overUnder) {
   if (overUnder === "under") return propValue < line ? "win" : "loss";
   return null;
 }
+export { derivePropValue } from "../../backend/scripts/resolution/derivePropValue.js";
 
 export function extractStatForPropType(propType, stats) {
   return derivePropValue(propType, stats);
 }
-export { derivePropValue };

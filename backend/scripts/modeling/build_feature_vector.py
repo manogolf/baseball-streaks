@@ -1,10 +1,9 @@
-#  backend/scripts/modeling/build_feature_vector.py
-
 import pandas as pd
 from supabase import create_client
 import os
 from dotenv import load_dotenv
 import yaml
+from pathlib import Path
 from transform_features import transform_features
 
 # Load environment variables
@@ -22,10 +21,12 @@ def build_feature_vector(row):
     player_id = row.get("player_id")
     game_id = row.get("game_id")
     team = row.get("team")
-    prop_type = row.get("prop_type")
 
     if not (player_id and game_id and team):
         raise ValueError("Missing required fields to build feature vector")
+
+    # Load YAML spec for strict feature auditing
+    feature_spec = load_feature_spec().get("features", {})
 
     # Start with the row itself
     feature_data = dict(row)
@@ -39,7 +40,10 @@ def build_feature_vector(row):
         .execute()
     )
     bvp = bvp_resp.data[0] if bvp_resp.data else {}
-    feature_data.update({f"bvp_{k}": v for k, v in bvp.items() if k not in ["id", "batter_id", "game_id"]})
+
+    for field in feature_spec:
+        if field.startswith("bvp_"):
+            feature_data[field] = bvp.get(field, None)
 
     # ───── Join Player Stats ─────
     stats_resp = (
@@ -51,32 +55,6 @@ def build_feature_vector(row):
     )
     stats = stats_resp.data[0] if stats_resp.data else {}
 
-    batter_fields = {
-        "hits": "player_hits",
-        "total_bases": "player_total_bases",
-        "rbis": "player_rbis",
-        "runs": "player_runs",
-        "home_runs": "player_home_runs",
-        "singles": "player_singles",
-        "doubles": "player_doubles",
-        "triples": "player_triples",
-        "strikeouts_batting": "player_strikeouts",
-        "walks": "player_walks",
-        "stolen_bases": "player_stolen_bases",
-    }
-
-    pitcher_fields = {
-        "strikeouts_pitching": "pitcher_strikeouts",
-        "walks_allowed": "pitcher_walks_allowed",
-        "hits_allowed": "pitcher_hits_allowed",
-        "outs_recorded": "pitcher_outs_recorded",
-        "earned_runs": "pitcher_earned_runs",
-    }
-
-    for old_key, new_key in {**batter_fields, **pitcher_fields}.items():
-        if old_key in stats:
-            feature_data[new_key] = stats[old_key]
-
     # ───── Join Player Derived Stats ─────
     derived_resp = (
         supabase.table("player_derived_stats")
@@ -86,8 +64,21 @@ def build_feature_vector(row):
         .execute()
     )
     derived = derived_resp.data[0] if derived_resp.data else {}
-    feature_data.update(derived)
 
-    # ───── Transform to model-ready features ─────
+    for field in feature_spec:
+        if field.startswith("d7_") or field.startswith("d15_") or field.startswith("d30_"):
+            feature_data[field] = derived.get(field, None)
+
+    # ───── One-hot encode streak_type ─────
+    streak_type = feature_data.pop("streak_type", None)
+    for val in ["hot", "cold", "neutral"]:
+        feature_data[f"streak_type_{val}"] = int(streak_type == val)
+
+    # ───── Fill in any remaining missing spec fields ─────
+    for field in feature_spec:
+        if field not in feature_data:
+            feature_data[field] = None
+
+    # ───── Final feature transformation and return ─────
     vector = transform_features(feature_data)
     return vector

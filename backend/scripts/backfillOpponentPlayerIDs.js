@@ -1,6 +1,6 @@
 // File: scripts/backfillOpponentPlayerIDs.js
 
-import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
+import { supabase } from "../backend/scripts/shared/supabaseBackend.js";
 import { getBoxscoreFromGameID } from "../backend/scripts/shared/getBoxscoreFromGameID.js";
 
 async function fetchRecentProps(days = 30) {

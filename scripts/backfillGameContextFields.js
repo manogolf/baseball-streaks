@@ -14,12 +14,12 @@
  * - Summarizes results at batch and job level
  */
 
-import { supabase } from "../backend/scripts/shared/supabaseUtils.js";
+import { supabase } from "../backend/scripts/shared/supabaseBackend.js";
 import { getGameContextFields } from "../backend/scripts/shared/mlbApiUtils.js";
 
-const LOOKBACK_DAYS = 7;
+const LOOKBACK_DAYS = 999;
 
-const BATCH_SIZE = 100;
+const BATCH_SIZE = 1000;
 const CONCURRENCY = 1;
 
 let totalUpdated = 0;
@@ -34,16 +34,23 @@ async function fetchNextBatch() {
   const { data, error } = await supabase
     .from("model_training_props")
     .select("id, game_id, game_date, team, is_home")
-    .gte("game_date", cutoffDate)
+    //.gte("game_date", cutoffDate)
     .or(
-      "game_time.is.null,time_of_day_bucket.is.null,game_day_of_week.is.null,is_home.is.null,home_away.is.null,opponent_encoded.is.null"
+      [
+        "game_time.is.null",
+        "time_of_day_bucket.is.null",
+        "game_day_of_week.is.null",
+        "is_home.is.null",
+        "home_away.is.null",
+        "opponent_encoded.is.null",
+      ].join(",")
     )
     .order("id", { ascending: true })
     .limit(BATCH_SIZE);
 
   if (error) {
     console.error("❌ Failed to fetch batch:", error.message);
-    return [];
+    return null; // distinguish error from empty result
   }
 
   return data;
@@ -117,12 +124,27 @@ async function processRow(row) {
 async function runConcurrent() {
   console.log("🚀 Starting game context backfill...");
 
+  let didWork = false; // track if *any* row was processed
+
   const workers = Array(CONCURRENCY)
     .fill(null)
     .map(async () => {
       while (true) {
         const batch = await fetchNextBatch();
-        if (!batch.length) break;
+        if (batch === null) {
+          totalErrors++;
+          break; // stop on fetch failure
+        }
+        if (!batch.length) {
+          if (!didWork) {
+            console.log(
+              "📭 No rows found matching criteria — nothing to backfill."
+            );
+          }
+          break;
+        }
+
+        didWork = true;
 
         let updated = 0;
         let skipped = 0;
@@ -160,3 +182,5 @@ async function runConcurrent() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   runConcurrent();
 }
+
+export { runConcurrent };

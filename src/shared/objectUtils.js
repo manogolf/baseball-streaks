@@ -1,4 +1,4 @@
-// backend/scripts/shared/objectUtils.js
+// src/shared/objectUtils.js
 export function setIfMissing(target, key, newValue, currentValue) {
   if (
     currentValue === null ||
