@@ -2,7 +2,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import preparePropSubmission from "./preparePropSubmission.js";
+import preparePropSubmission from "./services/preparePropSubmission.js";
 
 dotenv.config();
 
