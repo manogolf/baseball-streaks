@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { fetchGameStatusById } from "@shared/gameStatusUtils.js";
+import { fetchGameStatusById } from "../shared/gameStatusUtils.js";
 
 export default function useLivePropStatus(props, setProps) {
   const latestPropsRef = useRef(props);

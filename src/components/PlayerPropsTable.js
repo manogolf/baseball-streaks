@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../utils/supabaseFrontend.js";
 import { nowET, todayET, currentTimeET } from "../shared/timeUtils.js";
-import { getPropDisplayLabel } from "../shared/propUtils.js";
-import { isGameLive } from "../../backend/scripts/shared/gameStatusUtils.js";
+import { getPropDisplayLabel } from "../../shared/propUtils.js";
+import { isGameLive } from "../shared/gameUtils.js";
 import useLivePropStatus from "../hooks/useLivePropStatus.js";
 
 const statusColor = {

@@ -1,8 +1,6 @@
-// src/shared/propUtils.js
+// shared/propUtils.js
 
-import { supabase } from "../utils/supabaseFrontend.js";
 import { toISODate, todayET } from "./timeUtils.js";
-import { derivePropValue } from "../../backend/scripts/resolution/derivePropValue.js";
 
 // ✅ Canonical list of supported prop types
 export const VALID_PROP_TYPES = [
@@ -90,7 +88,7 @@ export function determineStatus(actual, line, overUnder) {
   return isWin ? "win" : "loss";
 }
 
-export async function determineHomeAway(team, gameId) {
+export async function determineHomeAway(supabase, team, gameId) {
   const { data, error } = await supabase
     .from("player_props")
     .select("team, is_home, game_id")
@@ -101,7 +99,7 @@ export async function determineHomeAway(team, gameId) {
   return error || !data ? null : data.is_home;
 }
 
-export async function determineOpponent(team, gameId) {
+export async function determineOpponent(supabase, team, gameId) {
   const { data, error } = await supabase
     .from("player_props")
     .select("team")
@@ -113,6 +111,7 @@ export async function determineOpponent(team, gameId) {
 }
 
 export async function getRollingAverage(
+  supabase,
   playerId,
   propType,
   gameDate,
@@ -194,8 +193,16 @@ export function determineOutcome(propValue, line, overUnder) {
   if (overUnder === "under") return propValue < line ? "win" : "loss";
   return null;
 }
-export { derivePropValue } from "../../backend/scripts/resolution/derivePropValue.js";
 
-export function extractStatForPropType(propType, stats) {
-  return derivePropValue(propType, stats);
+// Add to the bottom of shared/propUtils.js (backend-safe)
+export function extractStatForPropType(playerStats, propType) {
+  console.log(`🧪 [extractStat] propType=${propType}`);
+  console.log(
+    "🧪 [extractStat] batting keys:",
+    Object.keys(playerStats?.batting || {})
+  );
+  console.log(
+    "🧪 [extractStat] pitching keys:",
+    Object.keys(playerStats?.pitching || {})
+  );
 }

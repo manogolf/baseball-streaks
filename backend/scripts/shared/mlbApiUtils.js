@@ -3,7 +3,7 @@ import fetch from "node-fetch";
 import {
   getTeamInfoByAbbr,
   normalizeTeamAbbreviation,
-} from "../../../src/shared/teamNameMap.js";
+} from "../../../shared/teamNameMap.js";
 import {
   getGameStartTimeET,
   getDayOfWeekET,

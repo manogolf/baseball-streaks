@@ -5,7 +5,7 @@ import {
   VALID_PROP_TYPES,
   extractStatForPropType,
   getRollingAverage,
-} from "../../../src/shared/propUtils.js";
+} from "../../shared/propUtils.js";
 
 /**
  * Computes rolling stats (d7/d15/d30) per prop type for a player
@@ -43,6 +43,7 @@ export async function getDerivedStats(
 
       try {
         const avg = await getRollingAverage(
+          supabase,
           playerId,
           propType,
           gameDate,

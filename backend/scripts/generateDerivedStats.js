@@ -22,7 +22,7 @@
 import { supabase } from "./shared/supabaseBackend.js";
 import { getDerivedStats } from "./shared/getDerivedStats.js";
 import { toISODate } from "../../src/shared/timeUtils.js";
-import { setIfMissing } from "../../src/shared/objectUtils.js"; // or wherever you defined it
+import { setIfMissing } from "../../src/shared/archive/objectUtils.js"; // or wherever you defined it
 import fetch from "node-fetch";
 
 const LOOKBACK_DAYS = 2;

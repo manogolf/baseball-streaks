@@ -1,5 +1,5 @@
 // scripts/syncStreakProfiles.js
-import { supabase } from "@shared/supabaseFrontend.js";
+import { supabase } from "../backend/scripts/shared/supabaseBackend.js";
 
 export async function syncStreakProfiles() {
   console.log("🔄 Starting sync to player_streak_profiles...");

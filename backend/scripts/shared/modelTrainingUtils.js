@@ -5,9 +5,9 @@ import {
   normalizePropType,
   getRollingAverage,
   determineOpponent,
-} from "../../../src/shared/propUtils.js";
-import { getStreaksForPlayer } from "../../../src/shared/playerUtils.js";
-import { getTeamIdFromAbbr } from "../../../src/shared/teamNameMap.js";
+} from "../../../shared/propUtils.js";
+import { getStreaksForPlayer } from "./playerUtilsBackend.js";
+import { getTeamIdFromAbbr } from "../../../shared/teamNameMap.js";
 
 /**
  * Up-sert all user-added props from `player_props` into `model_training_props`.
@@ -86,6 +86,7 @@ export async function upsertUserPropsToTraining(opts = {}) {
 
       // Recent 7-game rolling average
       const rollingAvg = await getRollingAverage(
+        supabase,
         p.player_id,
         propTypeNorm,
         p.game_date,
@@ -100,8 +101,16 @@ export async function upsertUserPropsToTraining(opts = {}) {
           : null;
 
       // Current streak (may return undefined / null)
-      const streaks = await getStreaksForPlayer(p.player_id, propTypeNorm);
-      const opponent = await determineOpponent(p.player_id, p.game_id);
+      const streaks = await getStreaksForPlayer(
+        supabase,
+        p.player_id,
+        propTypeNorm
+      );
+      const opponent = await determineOpponent(
+        supabase,
+        p.player_id,
+        p.game_id
+      );
       const opponent_encoded = opponent ? getTeamIdFromAbbr(opponent) : null;
 
       rowsToUpsert.push({

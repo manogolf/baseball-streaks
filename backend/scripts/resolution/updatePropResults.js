@@ -46,11 +46,14 @@ import { supabase } from "../shared/index.js";
 import {
   expireOldPendingProps,
   determineStatus,
-} from "../../../src/shared/propUtils.js";
-import { didPlayerParticipate } from "../../../src/shared/playerUtils.js";
+} from "../../../src/shared/archive/propUtils.js";
+import { didPlayerParticipate } from "../../../src/shared/archive/playerUtils.js";
 import { getPendingProps } from "../shared/supabaseBackend.js";
 import { resolveStatForPlayer, hasMeaningfulStats } from "./statResolvers.js";
-import { isGameFinal, fetchGameStatusById } from "../shared/gameStatusUtils.js";
+import {
+  isGameFinal,
+  fetchGameStatusById,
+} from "../../../src/shared/gameStatusUtils.js";
 
 // ───── Enhanced Logging ─────
 const originalConsole = {

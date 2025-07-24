@@ -1,7 +1,7 @@
 // src/components/TodayGames.js
 import React, { useState, useEffect } from "react";
 import { todayET, toISODate } from "../shared/timeUtils.js";
-import { getStatusDisplay, getStatusColor } from "@shared/gameStatusUtils.js";
+import { getStatusDisplay, getStatusColor } from "../shared/gameStatusUtils.js";
 
 const TodayGames = ({ games }) => {
   const [standings, setStandings] = useState([]);

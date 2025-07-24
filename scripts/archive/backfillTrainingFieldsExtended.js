@@ -61,8 +61,8 @@ import {
   getRollingAverage,
   determineHomeAway,
   determineOpponent,
-} from "../backend/scripts/shared/propUtils.js";
-import { getStreaksForPlayer } from "../backend/scripts/shared/playerUtils.js";
+} from "../../../shared/propUtils.js";
+import { getStreaksForPlayer } from "../../shared/playerUtilsFrontend.js";
 import { getGameTimeFromID } from "../backend/scripts/shared/fetchSchedule.js";
 
 console.log("🚀 Starting extended backfill for training fields...");
@@ -197,6 +197,7 @@ export async function runExtendedBackfill() {
       try {
         if (row.rolling_result_avg_7 == null) {
           const avg = await getRollingAverage(
+            supabase,
             row.player_id,
             row.prop_type,
             row.game_date,
@@ -231,12 +232,20 @@ export async function runExtendedBackfill() {
         }
 
         if (row.is_home == null && row.team && row.game_id) {
-          const isHome = await determineHomeAway(row.team, row.game_id);
+          const isHome = await determineHomeAway(
+            supabase,
+            row.team,
+            row.game_id
+          );
           if (typeof isHome === "boolean") updates.is_home = isHome;
         }
 
         if (row.opponent == null && row.team && row.game_id) {
-          const opponent = await determineOpponent(row.team, row.game_id);
+          const opponent = await determineOpponent(
+            supabase,
+            row.team,
+            row.game_id
+          );
           if (opponent != null) updates.opponent = opponent;
         }
 

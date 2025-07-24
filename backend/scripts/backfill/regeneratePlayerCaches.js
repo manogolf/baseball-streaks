@@ -2,7 +2,7 @@
 import { supabase } from "../shared/supabaseBackend.js";
 import fetch from "node-fetch";
 import "dotenv/config";
-import { getBaseURL } from "../../../src/shared/getBaseURL.js";
+import { getBaseURL } from "../../../src/shared/archive/getBaseURL.js";
 
 async function getAllPlayerIDs() {
   const { data, error } = await supabase

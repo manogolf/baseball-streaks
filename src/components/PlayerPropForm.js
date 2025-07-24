@@ -5,11 +5,7 @@ import { useAuth } from "../context/AuthContext.js";
 import { buildFeatureVector } from "../utils/buildFeatureVector.js";
 import { requiredFeatures } from "../config/predictionSchema.js";
 import { normalizeFeatureKeys } from "../utils/normalizeFeatureKeys.js";
-import { preparePropSubmission } from "../shared/playerUtils.js";
-import { getPropTypeOptions } from "../shared/propUtils.js";
-import { getGamePkForTeamOnDate } from "../../backend/scripts/shared/fetchGameID.js";
-import { getTeamInfoByAbbr } from "../shared/teamNameMap.js"; // adjust path if needed
-import { getGameContextFields } from "../../backend/scripts/shared/mlbApiUtils.js";
+import { getPropTypeOptions } from "../../shared/propUtils.js";
 
 const apiUrl = `${
   process.env.REACT_APP_API_URL || "http://localhost:8000"
@@ -86,82 +82,49 @@ const PlayerPropForm = ({ onPropAdded }) => {
    * 🧠 Predict outcome (unchanged logic)
    */
   const handlePredict = async () => {
-    setError("");
-    setPrediction(null);
     setSubmitting(true);
-
-    const { player_name, team, prop_type, prop_value, game_date, over_under } =
-      formData;
-
-    if (
-      !player_name ||
-      !team ||
-      !prop_type ||
-      !prop_value ||
-      !game_date ||
-      !over_under
-    ) {
-      setError("All fields are required for prediction.");
-      setSubmitting(false);
-      return;
-    }
+    setError(null);
 
     try {
-      const preparedData = await preparePropSubmission({
-        player_name,
-        team,
-        prop_type,
-        prop_value,
-        over_under,
-        game_date,
+      const res = await fetch("/api/prepareProp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          player_name,
+          team,
+          prop_type,
+          prop_value,
+          over_under,
+          game_date,
+        }),
       });
 
-      const features = await buildFeatureVector({
-        player_name,
-        team,
-        prop_type,
-        game_date,
-      });
+      const preparedData = await res.json();
 
-      console.log("📊 Feature Vector Result:", features);
-
-      if (!features || !features.player_id) {
-        setError("Could not resolve player ID or generate features.");
+      if (!res.ok || !preparedData?.player_id) {
+        setError("Failed to prepare prop for prediction.");
         setSubmitting(false);
         return;
       }
 
-      const normalized = normalizeFeatureKeys(features);
-      const fullFeatures = { ...requiredFeatures, ...normalized };
-
-      const predictionPayload = {
-        player_id: String(preparedData.player_id),
-        prop_type: preparedData.prop_type,
-        prop_value: parseFloat(preparedData.prop_value),
-        over_under: preparedData.over_under.toLowerCase(),
-        ...fullFeatures,
-      };
-
-      const response = await fetch(apiUrl, {
+      const predictRes = await fetch("/api/predict", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(predictionPayload),
+        body: JSON.stringify(preparedData),
       });
 
-      if (!response.ok) throw new Error("Prediction API returned error");
+      const predictJson = await predictRes.json();
 
-      const result = await response.json();
-      console.log("📬 Received prediction:", result);
+      if (!predictRes.ok || !predictJson || predictJson.error) {
+        throw new Error(
+          predictJson?.error || "Prediction request failed. Try again."
+        );
+      }
 
-      setPrediction(result);
-      const randomIndex = Math.floor(Math.random() * successMessages.length);
-      setSuccessMessage(successMessages[randomIndex]);
-      setSuccessToast(true);
-      setTimeout(() => setSuccessToast(false), 4000);
+      setPredictionResult(predictJson);
     } catch (err) {
       console.error("❌ Prediction Error:", err);
-      setError("Prediction failed or timed out.");
-      setTimeout(() => setError(""), 4000);
+      setError("Prediction failed: " + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -190,11 +153,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
 
     try {
       // ✅ Use existing prediction from handlePredict
-      if (
-        !prediction ||
-        prediction.predicted_outcome == null ||
-        prediction.confidence_score == null
-      ) {
+      {
         setError("You must make a prediction before adding a prop.");
         setSubmitting(false);
         return;
@@ -203,16 +162,21 @@ const PlayerPropForm = ({ onPropAdded }) => {
       const result = prediction;
 
       // 👉 Step 3: Resolve MLB game ID
-      const resolvedGameId = await getGamePkForTeamOnDate(
-        formData.team,
-        formData.game_date
-      );
+      const gamePkRes = await fetch("/api/getGamePk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          team: formData.team,
+          game_date: formData.game_date,
+        }),
+      });
+      const { gamePk: resolvedGameId } = await gamePkRes.json();
+
       if (!resolvedGameId) {
         setError("Could not find a game for this team on the selected date.");
         setSubmitting(false);
         return;
       }
-
       // 🛑 Prevent saving if no prediction was made
       if (
         !result ||
@@ -225,18 +189,37 @@ const PlayerPropForm = ({ onPropAdded }) => {
       }
 
       // 👉 Step 4: Prepare final payload for DB insert
-      const preparedData = await preparePropSubmission({
-        ...formData,
-        game_id: resolvedGameId,
+      const res = await fetch("/api/prepareProp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...formData,
+          game_id: resolvedGameId,
+        }),
       });
+
+      const preparedData = await res.json();
+
+      if (!res.ok || !preparedData?.player_id) {
+        console.error("❌ Failed to prepare prop:", preparedData);
+        setError("Failed to prepare prop.");
+        setSubmitting(false);
+        return;
+      }
 
       console.log("🧪 Prepared Data:", preparedData);
 
-      const contextFields = await getGameContextFields(
-        resolvedGameId,
-        preparedData.team
-      );
-
+      const contextRes = await fetch("/api/getGameContext", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          game_id: resolvedGameId,
+          team: preparedData.team,
+        }),
+      });
+      const { context: contextFields } = await contextRes.json();
       console.log("🎯 Context Fields:", contextFields);
 
       const now = nowET().toISO();

@@ -32,7 +32,7 @@
 
 import { supabase } from "./shared/supabaseBackend.js";
 import { toISODate } from "../../src/shared/timeUtils.js";
-import { normalizePropType } from "../../src/shared/propUtils.js";
+import { normalizePropType } from "../../src/shared/archive/propUtils.js";
 
 const BATCH_SIZE = 1000;
 const MAX_DAYS_BACK = 1000;

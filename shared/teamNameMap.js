@@ -1,4 +1,4 @@
-//  src/shared/teamNameMap.js
+//  /shared/teamNameMap.js
 
 // Map of team abbreviations to full names
 export const teamNameMap = {

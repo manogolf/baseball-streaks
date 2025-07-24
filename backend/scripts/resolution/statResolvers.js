@@ -4,7 +4,7 @@ import { getStatFromLiveFeed } from "./getStatFromLiveFeed.js";
 import {
   flattenPlayerBoxscore,
   getPlayerStatsFromBoxscore,
-} from "../../../src/shared/playerUtils.js";
+} from "../../../src/shared/archive/playerUtils.js";
 import { derivePropValue } from "./derivePropValue.js";
 
 /**

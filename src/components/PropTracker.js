@@ -4,7 +4,7 @@ import { todayET, currentTimeET, toISODate } from "../shared/timeUtils.js";
 import { supabase } from "../utils/supabaseFrontend.js";
 import Calendar from "./ui/calendar.js";
 import AccuracyByPropType from "./AccuracyByPropType.js"; // Adjust the path if necessary
-import { getPropDisplayLabel } from "../shared/propUtils.js";
+import { getPropDisplayLabel } from "../../shared/propUtils.js";
 
 export default function PropTracker() {
   const [selectedDate, setSelectedDate] = useState(new Date());

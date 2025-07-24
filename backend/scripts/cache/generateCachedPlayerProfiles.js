@@ -2,7 +2,7 @@
 
 import fetch from "node-fetch";
 import { supabase } from "../shared/supabaseBackend.js";
-import { getBaseURL } from "../../../src/shared/getBaseURL.js";
+import { getBaseURL } from "../../../src/shared/archive/getBaseURL.js";
 import "dotenv/config";
 
 const BATCH_SIZE = 10;

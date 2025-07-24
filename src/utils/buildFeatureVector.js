@@ -1,10 +1,9 @@
 // File: src/utils/buildFeatureVector.js
 
 import { supabase } from "./supabaseFrontend.js";
-import { checkIfHome, getPlayerID } from "../shared/playerUtils.js";
-import { getGamePkForTeamOnDate } from "../../backend/scripts/shared/fetchGameID.js";
+//import { checkIfHome, getPlayerID } from "../../shared/playerUtilsFrontend.js";
 import { toISODate } from "../shared/timeUtils.js";
-import { getOpponentAbbreviation } from "../shared/teamNameMap.js";
+import { getOpponentAbbreviation } from "../../shared/teamNameMap.js";
 import yaml from "js-yaml";
 
 // Load YAML spec
@@ -37,7 +36,13 @@ export async function buildFeatureVector({
   // 1. Resolve game ID, home/away, opponent
   let game_id = null;
   try {
-    game_id = await getGamePkForTeamOnDate(team, game_date);
+    const res = await fetch("/api/getGamePk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ team, game_date }),
+    });
+    const { gamePk } = await res.json();
+    game_id = gamePk;
     vector.is_home = (await checkIfHome(team, game_id)) ? 1 : 0;
   } catch {
     vector.is_home = null;

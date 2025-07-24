@@ -1,7 +1,7 @@
 // scripts/fetchGameID.js
 
 import { DateTime } from "luxon";
-import { teamNameMap as TEAM_NAME_MAP } from "../../../src/shared/teamNameMap.js";
+import { teamNameMap as TEAM_NAME_MAP } from "../../../shared/teamNameMap.js";
 
 export async function getGamePkForTeamOnDate(teamAbbr, dateISO) {
   const fullTeamName = TEAM_NAME_MAP[teamAbbr];
