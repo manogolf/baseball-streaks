@@ -2,7 +2,7 @@
 
 import fetch from "node-fetch";
 import { getGamePkForTeamOnDate } from "./fetchGameID.js";
-import { getBoxscoreFromGameID, getLiveFeedFromGameID } from "./mlbApiUtils.js";
+import { getLiveFeedFromGameID } from "./mlbApiUtils.js";
 import { getFullTeamAbbreviationFromID } from "../../../shared/teamNameMap.js";
 import { normalizePropType } from "./propUtilsBackend.js";
 import { toISODate } from "./timeUtilsBackend.js";
@@ -57,6 +57,7 @@ export async function getPlayerStatsFromBoxscore({ game_id, player_id }) {
     return null;
   }
 }
+
 export async function getPlayerID(supabase, playerName, teamAbbr) {
   console.log("🔁 getPlayerID restoring original logic:", {
     playerName,
@@ -130,20 +131,18 @@ export async function getStreaksForPlayer(
     return null;
   }
 }
-export function flattenPlayerBoxscore(player) {
-  if (!player || typeof player !== "object") return {};
+export function flattenPlayerBoxscore(boxscore, gameData) {
+  const stats = boxscore?.stats || {};
+  const flattened = { ...stats };
 
-  const stats = {};
+  if (stats.pitching) Object.assign(flattened, stats.pitching);
+  if (stats.batting) Object.assign(flattened, stats.batting);
+  if (stats.fielding) Object.assign(flattened, stats.fielding);
+  if (stats.running) Object.assign(flattened, stats.running);
 
-  if (player.stats?.batting) {
-    stats.batting = { ...player.stats.batting };
-  }
-
-  if (player.stats?.pitching) {
-    stats.pitching = { ...player.stats.pitching };
-  }
-
-  return stats;
+  flattened.player_id = boxscore?.person?.id;
+  flattened.team_abbr = getTeamAbbreviationFromBoxscore(boxscore, gameData);
+  return flattened;
 }
 
 // 🔁 Utility: Get position map from recent player_stats
@@ -173,4 +172,28 @@ export function isPitcher(position) {
   if (!position) return false;
   const pos = position.toUpperCase();
   return pos === "P" || pos === "SP" || pos === "RP";
+}
+
+export function getPlayerTeamFromBoxscoreData(player, gameData) {
+  const homePlayers = gameData?.teams?.home?.players || {};
+  const awayPlayers = gameData?.teams?.away?.players || {};
+  const pid = player?.person?.id;
+
+  for (const [_, p] of Object.entries(homePlayers)) {
+    if (p?.person?.id === pid) return "home";
+  }
+  for (const [_, p] of Object.entries(awayPlayers)) {
+    if (p?.person?.id === pid) return "away";
+  }
+  return null;
+}
+
+export function getTeamAbbreviationFromBoxscore(player, gameData) {
+  const side = getPlayerTeamFromBoxscoreData(player, gameData);
+  if (!side) return null;
+  return (
+    gameData?.teams?.[side]?.team?.abbreviation ||
+    gameData?.teams?.[side]?.team?.triCode ||
+    null
+  );
 }
