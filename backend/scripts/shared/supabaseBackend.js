@@ -2,11 +2,7 @@
 
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
-import {
-  nowET,
-  todayET,
-  currentTimeET,
-} from "../../../src/shared/timeUtils.js";
+import { nowET, todayET } from "./timeUtilsBackend.js";
 
 dotenv.config();
 

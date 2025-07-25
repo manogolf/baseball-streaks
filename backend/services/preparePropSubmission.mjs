@@ -1,4 +1,7 @@
+// File: backend/api/preparePropSubmission.js
+
 import { supabase } from "../scripts/shared/supabaseBackend.js";
+import { getPlayerID } from "../scripts/shared/playerUtilsBackend.js"; // <- this must be the backend-safe version
 
 export default async function preparePropSubmission({
   playerName,
@@ -7,6 +10,7 @@ export default async function preparePropSubmission({
   line,
   overUnder,
   gameDate,
+  game_id,
 }) {
   console.log("🛠️ preparePropSubmission called with:", {
     playerName,
@@ -15,6 +19,7 @@ export default async function preparePropSubmission({
     line,
     overUnder,
     gameDate,
+    game_id,
   });
 
   if (
@@ -25,20 +30,18 @@ export default async function preparePropSubmission({
     !overUnder ||
     !gameDate
   ) {
-    return {
-      error: "Missing one or more required fields.",
-    };
+    return { error: "Missing one or more required fields." };
   }
 
-  // ✅ Resolve player_id from existing data
-  const { data: playerMatch, error } = await supabase
-    .from("model_training_props")
-    .select("player_id")
-    .eq("player_name", playerName)
-    .eq("team", teamAbbr)
-    .maybeSingle();
+  // ✅ Resolve player_id using clean util
+  const player_id = await getPlayerID(
+    supabase,
+    playerName,
+    teamAbbr,
+    game_id // optional in your current getPlayerID but passed just in case
+  );
 
-  if (error || !playerMatch) {
+  if (!player_id) {
     console.warn("⚠️ Failed to resolve player_id for:", playerName, teamAbbr);
     return {
       error: "Could not resolve player ID. Please check player name and team.",
@@ -52,8 +55,10 @@ export default async function preparePropSubmission({
     prop_value: parseFloat(line),
     over_under: overUnder.toLowerCase(),
     game_date: gameDate,
-    player_id: playerMatch.player_id,
+    game_id,
+    player_id,
   };
 
+  console.log("📦 Prepared prop submission:", prepared);
   return prepared;
 }

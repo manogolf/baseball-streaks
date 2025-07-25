@@ -57,53 +57,25 @@ export async function getPlayerStatsFromBoxscore({ game_id, player_id }) {
     return null;
   }
 }
+export async function getPlayerID(supabase, playerName, teamAbbr) {
+  console.log("🔁 getPlayerID restoring original logic:", {
+    playerName,
+    teamAbbr,
+  });
 
-export async function getPlayerID(supabase, player_name, team_abbr, game_id) {
-  const normalize = (name) =>
-    name
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")
-      .replace(/[.,]/g, "")
-      .toLowerCase()
-      .trim();
+  const { data, error } = await supabase
+    .from("model_training_props")
+    .select("player_id")
+    .eq("player_name", playerName)
+    .eq("team", teamAbbr)
+    .limit(1);
 
-  const normalizedTarget = normalize(player_name);
-  const { data: dbResults } = await supabase
-    .from("player_ids")
-    .select("player_id, player_name")
-    .eq("team", team_abbr);
-
-  const match = dbResults?.find(
-    (row) => normalize(row.player_name) === normalizedTarget
-  );
-  if (match) return match.player_id;
-
-  if (game_id) {
-    try {
-      const res = await fetch(
-        `https://statsapi.mlb.com/api/v1/game/${game_id}/boxscore`
-      );
-      const data = await res.json();
-      const allPlayers = {
-        ...data.teams?.home?.players,
-        ...data.teams?.away?.players,
-      };
-      for (const p of Object.values(allPlayers)) {
-        if (normalize(p.person?.fullName) === normalizedTarget) {
-          const resolvedId = p.person.id;
-          await supabase.from("player_ids").upsert({
-            player_name: p.person.fullName,
-            team: team_abbr,
-            player_id: resolvedId,
-          });
-          return resolvedId;
-        }
-      }
-    } catch (err) {
-      console.error("Error from boxscore fallback:", err.message);
-    }
+  if (error || !data || data.length === 0) {
+    console.warn("❌ getPlayerID failed for:", playerName, teamAbbr, error);
+    return null;
   }
-  return null;
+
+  return data[0].player_id;
 }
 
 export async function getOpponentAbbreviation(teamAbbr, gameId) {
