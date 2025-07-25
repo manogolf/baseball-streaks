@@ -6,7 +6,7 @@ import {
   nowET,
   todayET,
   currentTimeET,
-} from "../../../../src/shared/timeUtils.js";
+} from "../../../shared/timeUtilsBackend.js";
 
 let supabaseUrl, supabaseKey;
 

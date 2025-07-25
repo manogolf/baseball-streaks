@@ -5,7 +5,7 @@ import {
   getTimeOfDayBucketET,
   toISODate,
   toEasternDateTime,
-} from "../../shared/timeUtils.js";
+} from "../shared/timeUtilsBackend.js";
 import { supabase } from "./shared/supabaseBackend.js";
 import {
   BATTER_PROP_TYPES,

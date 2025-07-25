@@ -1,11 +1,10 @@
 // 📄 File: backend/scripts/shared/getDerivedStats.js
 
-import { toISODate } from "../../../src/shared/timeUtils.js";
 import {
   VALID_PROP_TYPES,
   extractStatForPropType,
   getRollingAverage,
-} from "../../shared/propUtils.js";
+} from "./propUtilsBackend.js";
 
 /**
  * Computes rolling stats (d7/d15/d30) per prop type for a player

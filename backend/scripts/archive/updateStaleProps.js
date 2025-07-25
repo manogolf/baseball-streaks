@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { supabase } from "../utils/supabaseBackend.js";
 import { updatePropStatus } from "../../scripts/updatePropResults.js";
-import { nowET } from "../utils/timeUtils.js";
+import { nowET } from "../utils/timeUtilsBackend";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

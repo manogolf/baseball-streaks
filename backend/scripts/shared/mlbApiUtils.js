@@ -8,7 +8,7 @@ import {
   getGameStartTimeET,
   getDayOfWeekET,
   getTimeOfDayBucketET,
-} from "../../../src/shared/timeUtils.js";
+} from "./timeUtilsBackend.js";
 
 /**
  * Returns full boxscore JSON for a given MLB game_id.

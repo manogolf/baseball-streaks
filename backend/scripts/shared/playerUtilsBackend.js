@@ -4,8 +4,8 @@ import fetch from "node-fetch";
 import { getGamePkForTeamOnDate } from "./fetchGameID.js";
 import { getBoxscoreFromGameID, getLiveFeedFromGameID } from "./mlbApiUtils.js";
 import { getFullTeamAbbreviationFromID } from "../../../shared/teamNameMap.js";
-import { normalizePropType } from "../../../shared/propUtils.js";
-import { toISODate } from "../../../shared/timeUtils.js";
+import { normalizePropType } from "./propUtilsBackend.js";
+import { toISODate } from "./shared/timeUtilsBackend.js";
 import { supabase } from "./supabaseBackend.js";
 
 const missingStreakCache = new Set();

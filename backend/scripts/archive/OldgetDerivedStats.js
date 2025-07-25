@@ -1,7 +1,7 @@
 // 📄 File: backend/scripts/shared/getDerivedStats.js
 
 import fetch from "node-fetch";
-import { toISODate } from "./timeUtils.js";
+import { toISODate } from "./timeUtilsBackend";
 import { extractStatForPropType } from "./propUtils.js"; // Assumes this exists for stat resolution
 
 /**

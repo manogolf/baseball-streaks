@@ -2,7 +2,10 @@
 
 import "dotenv/config";
 import { supabase } from "../../shared/index.js";
-import { todayET, yesterdayET } from "../../../../src/shared/timeUtils.js";
+import {
+  todayET,
+  yesterdayET,
+} from "../../../../src/shared/timeUtilsBackend.js";
 import { expireOldPendingProps } from "../../../../src/shared/archive/propUtils.js";
 import { getPendingProps } from "../../shared/supabaseBackend.js";
 import { getStatFromLiveFeed } from "../getStatFromLiveFeed.js";

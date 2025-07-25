@@ -20,8 +20,8 @@
 // ==========================================
 
 import "dotenv/config";
-import { supabase } from "../shared/index.js";
-import { yesterdayET, toISODate } from "../../../src/shared/timeUtils.js";
+import { supabase } from "../shared/supabaseBackend.js";
+import { yesterdayET, toISODate } from "../shared/timeUtilsBackend.js";
 import fetch from "node-fetch";
 
 const BASE_URL = "https://statsapi.mlb.com/api/v1";

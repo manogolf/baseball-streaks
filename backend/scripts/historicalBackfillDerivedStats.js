@@ -2,7 +2,7 @@
 
 import { supabase } from "../scripts/shared/supabaseBackend.js";
 import { getDerivedStats } from "./shared/getDerivedStats.js";
-import { setIfMissing } from "../../src/shared/archive/objectUtils.js";
+import { setIfMissing } from "../../shared/objectUtils.js";
 import dayjs from "dayjs";
 
 const START_DATE = dayjs("2023-03-30");
