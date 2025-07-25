@@ -5,7 +5,7 @@ import { getGamePkForTeamOnDate } from "./fetchGameID.js";
 import { getBoxscoreFromGameID, getLiveFeedFromGameID } from "./mlbApiUtils.js";
 import { getFullTeamAbbreviationFromID } from "../../../shared/teamNameMap.js";
 import { normalizePropType } from "./propUtilsBackend.js";
-import { toISODate } from "./shared/timeUtilsBackend.js";
+import { toISODate } from "./timeUtilsBackend.js";
 import { supabase } from "./supabaseBackend.js";
 
 const missingStreakCache = new Set();
