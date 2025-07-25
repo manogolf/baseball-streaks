@@ -1,8 +1,8 @@
-// backend/server.js
+// backend/server.mjs
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import preparePropSubmission from "./services/preparePropSubmission.js";
+import preparePropSubmission from "./services/preparePropSubmission.mjs";
 
 dotenv.config();
 
