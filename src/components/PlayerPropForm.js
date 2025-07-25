@@ -7,9 +7,7 @@ import { requiredFeatures } from "../config/predictionSchema.js";
 import { normalizeFeatureKeys } from "../utils/normalizeFeatureKeys.js";
 import { getPropTypeOptions } from "../../shared/propUtils.js";
 
-const apiUrl = `${
-  process.env.REACT_APP_API_URL || "http://localhost:8000"
-}/predict`;
+const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:3001";
 
 const PlayerPropForm = ({ onPropAdded }) => {
   const today = todayET();
@@ -86,16 +84,26 @@ const PlayerPropForm = ({ onPropAdded }) => {
     setError(null);
 
     try {
-      const res = await fetch("/api/prepareProp", {
+      const apiUrl = process.env.REACT_APP_API_URL || "";
+      console.log("📤 Sending to /api/prepareProp:", {
+        playerName: formData.player_name,
+        teamAbbr: formData.team,
+        propType: formData.prop_type,
+        line: formData.prop_value,
+        overUnder: formData.over_under,
+        gameDate: formData.game_date,
+      });
+
+      const res = await fetch(`${apiUrl}/api/prepareProp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          player_name,
-          team,
-          prop_type,
-          prop_value,
-          over_under,
-          game_date,
+          playerName: formData.player_name,
+          teamAbbr: formData.team,
+          propType: formData.prop_type,
+          line: formData.prop_value,
+          overUnder: formData.over_under,
+          gameDate: formData.game_date,
         }),
       });
 
@@ -121,7 +129,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
         );
       }
 
-      setPredictionResult(predictJson);
+      setPrediction(predictJson);
     } catch (err) {
       console.error("❌ Prediction Error:", err);
       setError("Prediction failed: " + err.message);
@@ -138,30 +146,25 @@ const PlayerPropForm = ({ onPropAdded }) => {
     setSubmitting(true);
     setError("");
 
-    // 🛑 Ensure user is logged in & UUID loaded
+    // 🛑 Ensure user is logged in
     if (!userId) {
       setError("You must be logged in to submit a prop.");
       setSubmitting(false);
       return;
     }
 
-    if (!prediction) {
+    if (
+      !prediction ||
+      prediction.predicted_outcome == null ||
+      prediction.confidence_score == null
+    ) {
       setError("Please make a prediction before submitting.");
       setSubmitting(false);
       return;
     }
 
     try {
-      // ✅ Use existing prediction from handlePredict
-      {
-        setError("You must make a prediction before adding a prop.");
-        setSubmitting(false);
-        return;
-      }
-
-      const result = prediction;
-
-      // 👉 Step 3: Resolve MLB game ID
+      // 👉 Step 1: Resolve MLB game ID
       const gamePkRes = await fetch("/api/getGamePk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -170,6 +173,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
           game_date: formData.game_date,
         }),
       });
+
       const { gamePk: resolvedGameId } = await gamePkRes.json();
 
       if (!resolvedGameId) {
@@ -177,23 +181,11 @@ const PlayerPropForm = ({ onPropAdded }) => {
         setSubmitting(false);
         return;
       }
-      // 🛑 Prevent saving if no prediction was made
-      if (
-        !result ||
-        result.predicted_outcome == null ||
-        result.confidence_score == null
-      ) {
-        setError("You must make a prediction before adding a prop.");
-        setSubmitting(false);
-        return;
-      }
 
-      // 👉 Step 4: Prepare final payload for DB insert
+      // 👉 Step 2: Re-prepare prop
       const res = await fetch("/api/prepareProp", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
           game_id: resolvedGameId,
@@ -209,8 +201,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
         return;
       }
 
-      console.log("🧪 Prepared Data:", preparedData);
-
+      // 👉 Step 3: Get game context
       const contextRes = await fetch("/api/getGameContext", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -219,10 +210,12 @@ const PlayerPropForm = ({ onPropAdded }) => {
           team: preparedData.team,
         }),
       });
+
       const { context: contextFields } = await contextRes.json();
-      console.log("🎯 Context Fields:", contextFields);
 
       const now = nowET().toISO();
+
+      // 👉 Step 4: Build full payload
       const payload = {
         player_name: preparedData.player_name || formData.player_name,
         team: preparedData.team || formData.team,
@@ -233,23 +226,15 @@ const PlayerPropForm = ({ onPropAdded }) => {
         player_id: preparedData.player_id,
         status: "pending",
         created_at: now,
-        predicted_outcome: result?.predicted_outcome ?? null,
-        confidence_score: result?.confidence_score ?? null,
-        prediction_timestamp: result ? now : null,
+        predicted_outcome: prediction.predicted_outcome,
+        confidence_score: prediction.confidence_score,
+        prediction_timestamp: now,
         over_under: preparedData.over_under.toLowerCase(),
         user_id: userId,
         prop_source: "user_added",
-        ...contextFields, // ✅ merged
+        ...contextFields,
       };
 
-      for (const [key, value] of Object.entries(payload)) {
-        console.log(`📌 ${key}: ${value} (${typeof value})`);
-      }
-
-      console.log(
-        "📦 opponent_encoded type:",
-        typeof contextFields.opponent_encoded
-      );
       console.log("📦 Final payload:", payload);
 
       // 👉 Step 5: Insert into Supabase
@@ -265,14 +250,12 @@ const PlayerPropForm = ({ onPropAdded }) => {
         }
         console.error("❌ Supabase insert error:", insertError.message);
         setTimeout(() => setError(""), 4000);
-        return; // ✅ Only return on actual error
+        return;
       }
 
-      // ✅ If no error — proceed with success flow
+      // ✅ Success
       console.log("✅ Prop successfully added to Supabase.");
       onPropAdded?.();
-
-      // 🚀 Success toast & reset form
       setSuccessMessage("✅ Prop successfully added!");
       setSuccessToast(true);
       setFormData({
