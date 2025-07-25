@@ -6,7 +6,7 @@ import {
 } from "../../../shared/teamNameMap.js";
 import {
   getGameStartTimeET,
-  getDayOfWeekET,
+  todayET,
   getTimeOfDayBucketET,
 } from "./timeUtilsBackend.js";
 
@@ -62,7 +62,7 @@ export async function getGameContextFields(gameId, teamAbbr) {
   const opponent_encoded = teamInfo?.id != null ? String(teamInfo.id) : null;
 
   const game_time = await getGameStartTimeET(gameId);
-  const game_day_of_week = game_time ? getDayOfWeekET(game_time) : null;
+  const game_day_of_week = game_time ? todayET(game_time) : null;
   const time_of_day_bucket = game_time ? getTimeOfDayBucketET(game_time) : null;
 
   return {
