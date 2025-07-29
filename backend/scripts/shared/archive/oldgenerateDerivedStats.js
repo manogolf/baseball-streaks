@@ -1,4 +1,23 @@
-// ✅ Finalized historicalBackfillDerivedStats.js using sourceMode = "history" fallback
+/**
+ * 📄 File: backend/scripts/generateDerivedStats.js
+ *
+ * Populates the `player_derived_stats` table (d7d15d30) with derived stat features for recently played games.
+ *
+ * It works by:
+ * - Fetching unique (player_id, game_date, game_id) rows from `model_training_props`
+ * - Preloading 30 days of boxscores into a cache
+ * - Computing derived stats using `getDerivedStats(...)`
+ * - Writing/upserting derived features to Supabase, bucketed for parallelism
+ *
+ * Features:
+ * - Supports optional --bucket=1/8 arguments for distributed runs
+ * - Suppresses logs unless --verbose is passed
+ * - Includes fetch timeout protection and Supabase error escalation
+ *
+ * Intended to be run daily via cron to ensure fresh derived stats are available for modeling.
+ */
+
+//  backend/scripts/generateDerivedStats.js
 
 import { supabase } from "./shared/supabaseBackend.js";
 import { getDerivedStats } from "./shared/getDerivedStats.js";

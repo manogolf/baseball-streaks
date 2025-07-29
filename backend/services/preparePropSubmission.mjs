@@ -1,7 +1,5 @@
-// File: backend/api/preparePropSubmission.js
-
 import { supabase } from "../scripts/shared/supabaseBackend.js";
-import { getPlayerID } from "../scripts/shared/playerUtilsBackend.js"; // <- this must be the backend-safe version
+import { upsertPlayerID } from "../scripts/shared/upsertPlayerID.js";
 
 export default async function preparePropSubmission({
   playerName,
@@ -22,32 +20,31 @@ export default async function preparePropSubmission({
     game_id,
   });
 
-  if (
-    !playerName ||
-    !teamAbbr ||
-    !propType ||
-    line == null ||
-    !overUnder ||
-    !gameDate
-  ) {
-    return { error: "Missing one or more required fields." };
-  }
+  // ✅ 1. Try to fetch player_id from model_training_props
+  const { data, error } = await supabase
+    .from("model_training_props")
+    .select("player_id")
+    .eq("player_name", playerName)
+    .eq("team", teamAbbr)
+    .limit(1);
 
-  // ✅ Resolve player_id using clean util
-  const player_id = await getPlayerID(
-    supabase,
-    playerName,
-    teamAbbr,
-    game_id // optional in your current getPlayerID but passed just in case
-  );
-
-  if (!player_id) {
-    console.warn("⚠️ Failed to resolve player_id for:", playerName, teamAbbr);
+  if (!data?.length) {
+    console.warn(`❌ Could not find player_id for ${playerName} (${teamAbbr})`);
     return {
       error: "Could not resolve player ID. Please check player name and team.",
     };
   }
 
+  const player_id = data[0].player_id;
+
+  // ✅ 2. Upsert to player_ids for future lookups
+  await upsertPlayerID(supabase, {
+    player_name: playerName,
+    player_id,
+    team: teamAbbr,
+  });
+
+  // ✅ 3. Proceed with final prop payload
   const prepared = {
     player_name: playerName,
     team: teamAbbr,

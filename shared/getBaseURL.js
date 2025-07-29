@@ -1,4 +1,4 @@
-// src/shared/getBaseURL.js
+// /shared/getBaseURL.js
 
 export function getBaseURL() {
   const isLocal =

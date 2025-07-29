@@ -1,113 +1,91 @@
 // File: backend/scripts/shared/propUtilsBackend.js
 
-import { derivePropValue } from "../resolution/derivePropValue.js";
-import { isPitcher } from "./playerUtilsBackend.js";
-
-// Determine which prop types apply to which player roles
-export const pitcherPropTypes = [
+export const VALID_PROP_TYPES = [
+  "hits",
+  "strikeouts_batting",
+  "home_runs",
+  "rbis",
+  "runs",
+  "total_bases",
+  "walks",
+  "stolen_bases",
   "strikeouts_pitching",
+  "outs_recorded",
   "earned_runs",
   "hits_allowed",
   "walks_allowed",
-  "outs_recorded",
-];
-
-export const batterPropTypes = [
-  "hits",
-  "runs_scored",
-  "rbis",
-  "home_runs",
-  "total_bases",
-  "strikeouts_batting",
-  "walks",
+  "pitching_outs",
+  "pitch_count",
+  "runs_allowed",
   "singles",
   "doubles",
   "triples",
-  "hits_runs_rbis",
 ];
 
-// 🔎 Normalize prop type strings from various forms
-export function normalizePropType(rawPropType) {
-  if (!rawPropType) return null;
+// Maps propType to appropriate stat in the stats object
+export function extractStatForPropType(stats, propType) {
+  if (!stats || typeof stats !== "object") return null;
 
-  const lower = rawPropType.toLowerCase().replace(/[^a-z]/g, "");
-  const map = {
-    hits: "hits",
-    runsscored: "runs_scored",
-    rbis: "rbis",
-    homeruns: "home_runs",
-    totalbases: "total_bases",
-    strikeoutsbatting: "strikeouts_batting",
-    walks: "walks",
-    singles: "singles",
-    doubles: "doubles",
-    triples: "triples",
-    hitsrunsrbis: "hits_runs_rbis",
+  switch (propType) {
+    case "hits":
+      return stats.hits;
+    case "strikeouts_batting":
+      return stats.strikeOuts;
+    case "home_runs":
+      return stats.homeRuns;
+    case "rbis":
+      return stats.rbi;
+    case "runs":
+      return stats.runs;
+    case "total_bases":
+      return stats.totalBases;
+    case "walks":
+      return stats.baseOnBalls;
+    case "stolen_bases":
+      return stats.stolenBases;
+    case "singles":
+      return stats.singles;
+    case "doubles":
+      return stats.doubles;
+    case "triples":
+      return stats.triples;
 
-    strikeoutspitching: "strikeouts_pitching",
-    earnedruns: "earned_runs",
-    hitsallowed: "hits_allowed",
-    walksallowed: "walks_allowed",
-    outsrecorded: "outs_recorded",
-  };
+    case "strikeouts_pitching":
+      return stats.strikeOuts;
+    case "outs_recorded":
+    case "pitching_outs":
+      return stats.outs;
+    case "earned_runs":
+      return stats.earnedRuns;
+    case "hits_allowed":
+      return stats.hits;
+    case "walks_allowed":
+      return stats.baseOnBalls;
+    case "pitch_count":
+      return stats.pitches;
+    case "runs_allowed":
+      return stats.runs;
 
-  return map[lower] || rawPropType;
-}
-
-// 🧠 Return prop type options grouped by player role
-export function getPropTypeOptions(isPitcherFlag) {
-  if (isPitcherFlag) {
-    return pitcherPropTypes.map((p) => ({
-      value: p,
-      label: formatPropType(p),
-    }));
+    default:
+      return null;
   }
-
-  return batterPropTypes.map((p) => ({
-    value: p,
-    label: formatPropType(p),
-  }));
 }
 
-// 📐 Converts 'hits_runs_rbis' → 'Hits + Runs + RBIs'
-export function formatPropType(propType) {
-  const parts = propType.split("_");
-  return parts
-    .map((p) => {
-      if (p === "rbis") return "RBIs";
-      if (p === "runs") return "Runs";
-      if (p === "scored") return ""; // skip
-      return p.charAt(0).toUpperCase() + p.slice(1);
-    })
-    .filter(Boolean)
-    .join(" + ");
+// Compute rolling average over recent games
+export function getRollingAverage(history, propType, windowSize) {
+  if (!Array.isArray(history) || !propType) return null;
+
+  const recent = history.slice(0, windowSize);
+  const values = recent
+    .map((game) => extractStatForPropType(game?.stats, propType))
+    .filter((v) => typeof v === "number");
+
+  if (!values.length) return null;
+
+  const sum = values.reduce((a, b) => a + b, 0);
+  return sum / values.length;
 }
 
-// 🧪 Determine whether the prop is pitcher-related
-export function isPitcherProp(propType) {
-  return pitcherPropTypes.includes(normalizePropType(propType));
-}
-
-// 🧪 Determine whether the prop is batter-related
-export function isBatterProp(propType) {
-  return batterPropTypes.includes(normalizePropType(propType));
-}
-
-// 🪄 Determine whether a player should receive this prop type
-export function playerMatchesPropType(player, propType) {
-  if (!player || !propType) return false;
-
-  if (isPitcher(player)) {
-    return isPitcherProp(propType);
-  }
-
-  return isBatterProp(propType);
-}
-
-/**
- * Wrapper to extract a prop value from player stats.
- * Used only in backend.
- */
-export function extractStatForPropType(propType, stats) {
-  return derivePropValue(propType, stats);
+export function normalizePropType(label) {
+  return label.toLowerCase().replace(/[()]/g, "").replace(/\s+/g, "_");
 }

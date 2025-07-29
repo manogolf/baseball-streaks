@@ -21,253 +21,176 @@
 
 import { supabase } from "./shared/supabaseBackend.js";
 import { getDerivedStats } from "./shared/getDerivedStats.js";
-import { toISODate } from "../shared/timeUtilsBackend.js";
-import { setIfMissing } from "../../src/shared/archive/objectUtils.js"; // or wherever you defined it
-import fetch from "node-fetch";
+import { parseArgs } from "node:util";
 
-const LOOKBACK_DAYS = 2;
-const TOTAL_BUCKETS = 10;
+const DEFAULT_LOOKBACK_DAYS = 30; // ← Customize this if you want
 
-const existingMap = {}; // Prevent undefined error
+function getDateRangeFromLookback(days) {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - days);
+  return {
+    start: start.toISOString().slice(0, 10),
+    end: end.toISOString().slice(0, 10),
+  };
+}
+const BATCH_SIZE = 500;
 
-const verbose = process.argv.includes("--verbose");
-const log = (...args) => verbose && console.log(...args);
+let inserted = 0;
+let skipped = 0;
+let failed = 0;
 
-function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
-  return Promise.race([
-    fetch(url, options),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("⏱️ Fetch timed out")), timeoutMs)
-    ),
-  ]);
+const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+
+async function getPlayerGameHistoryByDate(gameDate) {
+  const { data, error } = await supabase
+    .from("model_training_props")
+    .select("player_id, game_id, game_date, prop_type, prop_value")
+    .lte("game_date", gameDate);
+
+  if (error) {
+    console.error("❌ Failed to load player history:", error);
+    return new Map();
+  }
+  console.log(`🧪 Querying MT history for game_date <= '${gameDate}'`);
+
+  console.log(
+    `🧪 Loaded ${data.length} history rows for gameDate <= ${gameDate}`
+  ); // ✅ ADD THIS
+
+  const historyMap = new Map();
+  for (const row of data) {
+    const pid = String(row.player_id);
+    if (!historyMap.has(pid)) historyMap.set(pid, []);
+    historyMap.get(pid).push(row);
+  }
+  return historyMap;
 }
 
-const bucketArg = process.argv.find((arg) => arg.startsWith("--bucket="));
-const [currentBucket, totalBuckets] = bucketArg
-  ? bucketArg.replace("--bucket=", "").split("/").map(Number)
-  : [null, null];
+async function setIfMissing(row, tableName) {
+  const { player_id, game_id } = row;
+  if (!player_id || !game_id) {
+    console.warn(`⚠️ Missing player_id or game_id for upsert`);
+    return "skipped";
+  }
 
-async function getRecentPlayerGames() {
-  const cutoffDate = toISODate(new Date(Date.now() - LOOKBACK_DAYS * 86400000));
-  console.log(`📆 Cutoff date: ${cutoffDate}`);
+  const { data, error } = await supabase
+    .from(tableName)
+    .select("id")
+    .eq("player_id", player_id)
+    .eq("game_id", game_id)
+    .maybeSingle();
+
+  if (error && error.code !== "PGRST116") {
+    console.error(`❌ Supabase error on check:`, error.message);
+    return "skipped";
+  }
+
+  if (data) {
+    return "skipped"; // row already exists
+  }
+
+  const { error: insertError } = await supabase.from(tableName).insert(row);
+
+  if (insertError) {
+    console.error(
+      `❌ Insert failed for ${player_id} on ${game_id}:`,
+      insertError.message
+    );
+    return "skipped";
+  }
+
+  return "inserted";
+}
+
+async function processDay(gameDate) {
+  console.log(`\n📅 Processing date: ${gameDate}`);
 
   const { data, error } = await supabase
     .from("model_training_props")
-    .select("player_id, game_date, game_id")
-    .gte("game_date", cutoffDate)
-    .not("player_id", "is", null)
-    .order("game_date", { ascending: true })
-    .limit(50000);
-  if (error)
-    throw new Error("❌ Failed to fetch recent games: " + error.message);
+    .select("player_id, game_id, game_date")
+    .eq("game_date", gameDate);
 
-  console.log("🔍 Supabase returned rows:", data?.length);
-
-  const seen = new Set();
-  return data.filter((row) => {
-    const key = `${row.player_id}_${row.game_date}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-async function preloadBoxscores() {
-  const boxscoreCache = new Map();
-  const today = new Date();
-  const from = new Date(today);
-  from.setDate(from.getDate() - 30);
-
-  for (let d = new Date(from); d <= today; d.setDate(d.getDate() + 1)) {
-    const iso = toISODate(d);
-    const schedUrl = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${iso}`;
-
-    try {
-      const schedRes = await fetchWithTimeout(schedUrl).then((r) => r.json());
-      const gameIds = (schedRes?.dates?.[0]?.games || []).map((g) => g.gamePk);
-      if (!Array.isArray(gameIds) || gameIds.length === 0) continue;
-
-      for (const gamePk of gameIds) {
-        if (!boxscoreCache.has(gamePk)) {
-          const boxUrl = `https://statsapi.mlb.com/api/v1/game/${gamePk}/boxscore`;
-          const boxRes = await fetch(boxUrl)
-            .then((r) => r.json())
-            .catch(() => null);
-          if (boxRes) boxscoreCache.set(gamePk, boxRes);
-        }
-      }
-
-      log(`📦 Cached boxscores for ${iso} (${gameIds.length} games)`);
-    } catch (err) {
-      console.warn(`⚠️ Failed to preload schedule for ${iso}: ${err.message}`);
-    }
+  if (error) {
+    console.error(`❌ Supabase error on ${gameDate}:`, error);
+    failed++;
+    return;
   }
 
-  return boxscoreCache instanceof Map ? boxscoreCache : new Map();
-}
-async function preloadExistingDerivedStats(rows) {
-  const playerIds = [...new Set(rows.map((r) => r.player_id))];
-  const gameIds = [...new Set(rows.map((r) => r.game_id))];
+  const uniquePairs = Array.from(
+    new Map(
+      data.map((row) => [`${row.player_id}_${row.game_id}`, row])
+    ).values()
+  );
 
-  const existingMap = {};
+  const playerGameHistory = await getPlayerGameHistoryByDate(gameDate);
+  console.log(
+    `🧪 Loaded history map for ${gameDate} → players:`,
+    playerGameHistory.size
+  );
 
-  // Break into chunks to avoid Supabase IN clause limits
-  const CHUNK_SIZE = 500;
-  for (let i = 0; i < gameIds.length; i += CHUNK_SIZE) {
-    const gameChunk = gameIds.slice(i, i + CHUNK_SIZE);
-    const playerChunk = playerIds.slice(i, i + CHUNK_SIZE); // Optional, could mismatch lengths but generally works well
-
-    const { data, error } = await supabase
-      .from("player_derived_stats")
-      .select("*")
-      .in("game_id", gameChunk)
-      .in("player_id", playerChunk);
-
-    if (error) {
-      console.error("❌ Error loading existing derived stats:", error.message);
-      continue;
-    }
-
-    for (const row of data || []) {
-      const key = `${row.player_id}_${row.game_id}`;
-      existingMap[key] = row;
-    }
-  }
-
-  return existingMap;
-}
-
-async function updateDerivedStats(rows, boxscoreCache, existingMap = {}) {
-  let updated = 0;
-  let skipped = 0;
-
-  for (let i = 0; i < rows.length; i++) {
-    const { player_id, game_date, game_id } = rows[i];
-    log(`⏳ (${i + 1}/${rows.length}) Player ${player_id} on ${game_date}`);
-
+  for (const { player_id, game_id, game_date } of uniquePairs) {
     try {
-      const derivedStats = await getDerivedStats(
+      const stats = await getDerivedStats(
         player_id,
         game_date,
         game_id,
-        boxscoreCache
+        playerGameHistory,
+        supabase,
+        "history"
       );
 
-      if (!derivedStats || typeof derivedStats !== "object") {
-        console.error(
-          `❌ getDerivedStats() returned invalid result for ${player_id} on ${game_date}`
-        );
-        continue;
-      }
-
-      const isEmpty =
-        Object.keys(derivedStats).length === 0 ||
-        Object.values(derivedStats).every((v) => v == null);
-
-      if (isEmpty) {
-        log(`🟡 Skipped: No usable stats`);
+      if (!stats || Object.keys(stats).length === 0) {
         skipped++;
         continue;
       }
 
-      const key = `${player_id}_${game_id}`;
-      const existing = existingMap[key] || {};
-      const safeDerivedStats = setIfMissing(derivedStats, existing);
-
-      const { error } = await supabase.from("player_derived_stats").upsert(
+      const status = await setIfMissing(
         {
           player_id,
-          game_date,
           game_id,
-          ...safeDerivedStats,
+          game_date,
+          ...stats,
         },
-        { onConflict: ["player_id", "game_date"] }
+        "player_derived_stats"
       );
 
-      updated++;
+      if (status === "inserted") {
+        inserted++;
+      } else {
+        skipped++;
+      }
     } catch (err) {
-      console.warn(
-        `⚠️ Failed for player ${player_id} on ${game_date}: ${err.message}`
-      );
-    }
-  }
-
-  log(`\n✅ Bucket complete: ${updated} upserted, ${skipped} skipped`);
-  return { updated, skipped };
-}
-
-async function run() {
-  log("📥 Fetching recent player-game combinations...");
-  const allRows = await getRecentPlayerGames();
-  log(`📦 Total unique (player_id, game_date): ${allRows.length}`);
-
-  log("🚀 Preloading boxscores into cache...");
-  const boxscoreCache = await preloadBoxscores();
-
-  if (!boxscoreCache || typeof boxscoreCache.entries !== "function") {
-    throw new Error("❌ preloadBoxscores() failed or returned invalid cache");
-  }
-
-  log(`📊 Boxscore cache size: ${boxscoreCache.size}`);
-
-  if (currentBucket && totalBuckets) {
-    const bucketSize = Math.ceil(allRows.length / totalBuckets);
-    const start = (currentBucket - 1) * bucketSize;
-    const end = currentBucket * bucketSize;
-    const bucketRows = allRows.slice(start, end);
-
-    log(
-      `🔢 Running bucket ${currentBucket}/${totalBuckets} [${start} → ${end}]`
-    );
-    console.log(
-      `🚚 About to update ${bucketRows.length} rows in updateDerivedStats()`
-    );
-    const existingMap = await preloadExistingDerivedStats(bucketRows);
-    await updateDerivedStats(bucketRows, boxscoreCache, existingMap);
-  } else {
-    let totalUpserted = 0;
-    let totalSkipped = 0;
-
-    for (let i = 1; i <= TOTAL_BUCKETS; i++) {
-      const bucketSize = Math.ceil(allRows.length / TOTAL_BUCKETS);
-      const start = (i - 1) * bucketSize;
-      const end = i * bucketSize;
-      const bucketRows = allRows.slice(start, end);
-
-      log(
-        `\n⏳ Starting bucket ${i}/${TOTAL_BUCKETS} [${start} → ${end}]...\n`
-      );
-      console.log(
-        `🚚 About to update ${bucketRows.length} rows in updateDerivedStats()`
-      );
-
-      const existingMap = await preloadExistingDerivedStats(bucketRows);
-      const { updated, skipped } = await updateDerivedStats(
-        bucketRows,
-        boxscoreCache,
-        existingMap
-      );
-      totalUpserted += updated;
-      totalSkipped += skipped;
+      console.error(`❌ Error for ${player_id} on ${game_id}:`, err.message);
+      failed++;
     }
 
-    console.log(`\n🎯 All ${TOTAL_BUCKETS} buckets processed`);
-    console.log(`📈 Total rows upserted: ${totalUpserted}`);
-    console.log(
-      `🟡 Total rows skipped (empty or fully existing): ${totalSkipped}`
-    );
-
-    log(`\n🎉 All ${TOTAL_BUCKETS} buckets processed.`);
+    await delay(50); // ✅ ← Add delay after each player-game pair
   }
+
+  console.log(
+    `✅ ${gameDate} complete: Inserted=${inserted}, Skipped=${skipped}, Failed=${failed}`
+  );
 }
 
-run().catch((err) => {
-  console.error("❌ generateDerivedStats failed:", err);
-  process.exit(1);
-});
-run().catch((err) => {
-  console.error("❌ generateDerivedStats failed:", err);
-  process.exit(1);
-});
+async function runBackfill(startDate, endDate) {
+  let current = new Date(startDate);
+  const end = new Date(endDate);
 
-console.log("📍 Script started");
+  while (current <= end) {
+    const iso = current.toISOString().slice(0, 10);
+    await processDay(iso);
+    current.setDate(current.getDate() + 1);
+    await delay(1000);
+  }
+
+  console.log("\n🏁 Derived stats backfill complete.");
+  console.log("📈 Total inserted:", inserted);
+  console.log("🟡 Total skipped:", skipped);
+  console.log("❌ Total errors:", failed);
+}
+// 🎬 Kick it off (no CLI args, fixed lookback)
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const { start, end } = getDateRangeFromLookback(DEFAULT_LOOKBACK_DAYS);
+  runBackfill(start, end);
+}

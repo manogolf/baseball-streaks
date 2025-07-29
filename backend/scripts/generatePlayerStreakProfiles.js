@@ -31,8 +31,8 @@
 // ==========================================
 
 import { supabase } from "./shared/supabaseBackend.js";
-import { toISODate } from "../shared/timeUtilsBackend.js";
-import { normalizePropType } from "../shared/propUtilsBackend.js";
+import { toISODate } from "./shared/timeUtilsBackend.js";
+import { normalizePropType } from "./shared/propUtilsBackend.js";
 
 const BATCH_SIZE = 1000;
 const MAX_DAYS_BACK = 1000;

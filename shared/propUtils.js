@@ -193,16 +193,3 @@ export function determineOutcome(propValue, line, overUnder) {
   if (overUnder === "under") return propValue < line ? "win" : "loss";
   return null;
 }
-
-// Add to the bottom of shared/propUtils.js (backend-safe)
-export function extractStatForPropType(playerStats, propType) {
-  console.log(`🧪 [extractStat] propType=${propType}`);
-  console.log(
-    "🧪 [extractStat] batting keys:",
-    Object.keys(playerStats?.batting || {})
-  );
-  console.log(
-    "🧪 [extractStat] pitching keys:",
-    Object.keys(playerStats?.pitching || {})
-  );
-}

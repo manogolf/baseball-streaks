@@ -91,3 +91,8 @@ export async function getLiveFeedFromGameID(gameId) {
     return null;
   }
 }
+
+export async function preloadBoxscoresForGame(gameId) {
+  const box = await getBoxscoreFromGameID(gameId);
+  return new Map([[gameId, box]]);
+}

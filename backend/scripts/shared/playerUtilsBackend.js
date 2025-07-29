@@ -3,10 +3,14 @@
 import fetch from "node-fetch";
 import { getGamePkForTeamOnDate } from "./fetchGameID.js";
 import { getLiveFeedFromGameID } from "./mlbApiUtils.js";
-import { getFullTeamAbbreviationFromID } from "../../../shared/teamNameMap.js";
+import {
+  getFullTeamAbbreviationFromID,
+  getTeamInfoByAbbr,
+} from "../../../shared/teamNameMap.js";
 import { normalizePropType } from "./propUtilsBackend.js";
 import { toISODate } from "./timeUtilsBackend.js";
 import { supabase } from "./supabaseBackend.js";
+import { upsertPlayerID } from "./upsertPlayerID.js";
 
 const missingStreakCache = new Set();
 
@@ -59,24 +63,74 @@ export async function getPlayerStatsFromBoxscore({ game_id, player_id }) {
 }
 
 export async function getPlayerID(supabase, playerName, teamAbbr) {
-  console.log("🔁 getPlayerID restoring original logic:", {
-    playerName,
-    teamAbbr,
-  });
+  console.log("🔁 getPlayerID full logic:", { playerName, teamAbbr });
 
-  const { data, error } = await supabase
+  // 1. Try `player_ids`
+  const { data: direct, error: directErr } = await supabase
+    .from("player_ids")
+    .select("player_id")
+    .eq("player_name", playerName)
+    .eq("team_abbr", teamAbbr)
+    .limit(1);
+
+  if (directErr) {
+    console.error("❌ Error querying player_ids:", directErr);
+  } else if (direct?.length) {
+    console.log("✅ Found in player_ids:", direct[0].player_id);
+    return direct[0].player_id;
+  } else {
+    console.warn("⚠️ Not found in player_ids");
+  }
+
+  // 2. Fallback: `model_training_props`
+  const { data: fromProps, error: propsErr } = await supabase
     .from("model_training_props")
     .select("player_id")
     .eq("player_name", playerName)
     .eq("team", teamAbbr)
     .limit(1);
 
-  if (error || !data || data.length === 0) {
-    console.warn("❌ getPlayerID failed for:", playerName, teamAbbr, error);
-    return null;
+  if (propsErr) {
+    console.error("❌ Error querying model_training_props:", propsErr);
+  } else if (fromProps?.length) {
+    console.log("✅ Found in model_training_props:", fromProps[0].player_id);
+    return fromProps[0].player_id;
+  } else {
+    console.warn("⚠️ Not found in model_training_props either.");
   }
 
-  return data[0].player_id;
+  // 3. Final fallback: Query MLB API team roster
+  try {
+    const teamInfo = getTeamInfoByAbbr(teamAbbr);
+    if (!teamInfo?.id) {
+      console.warn(`⚠️ No team ID found for abbreviation ${teamAbbr}`);
+      return null;
+    }
+
+    const url = `https://statsapi.mlb.com/api/v1/teams/${teamInfo.id}/roster`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const json = await res.json();
+    const match = json.roster?.find((p) => p.person?.fullName === playerName);
+    if (match) {
+      const player_id = match.person.id;
+      await upsertPlayerID(supabase, {
+        player_name: playerName,
+        player_id,
+        team_abbr: teamAbbr,
+      });
+      console.log(`🆕 Inserted player ID from MLB API for ${playerName}`);
+      return player_id;
+    }
+  } catch (err) {
+    console.error("❌ MLB API fallback failed:", err.message);
+  }
+
+  console.warn(
+    `❌ getPlayerID: No match found for ${playerName} (${teamAbbr})`
+  );
+  return null;
 }
 
 export async function getOpponentAbbreviation(teamAbbr, gameId) {
@@ -88,25 +142,6 @@ export async function getOpponentAbbreviation(teamAbbr, gameId) {
   if (homeAbbr === teamAbbr) return awayAbbr;
   if (awayAbbr === teamAbbr) return homeAbbr;
   return null;
-}
-
-export async function upsertPlayerID({
-  supabase,
-  player_id,
-  player_name,
-  team,
-}) {
-  if (!player_id || !player_name) return null;
-  const { data, error } = await supabase
-    .from("player_ids")
-    .upsert([{ player_id, player_name, team }], {
-      onConflict: ["player_id"],
-    });
-  if (error) {
-    console.error("Supabase upsert error:", error.message);
-    return null;
-  }
-  return data;
 }
 
 export async function getStreaksForPlayer(

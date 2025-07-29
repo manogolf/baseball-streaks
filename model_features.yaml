@@ -98,7 +98,7 @@ features:
     type: numeric
     required: false
 
-  d30_hits:
+  d30_hits: 
     type: numeric
     required: false
   d30_home_runs:
@@ -149,15 +149,15 @@ features:
     required: false
 
   # ────────── Walks (Batting) ──────────
-  #d7_walks:
-  #  type: numeric
-  #  required: false
-  #d15_walks:
-  #  type: numeric
-  #  required: false
-  #d30_walks:
-  #  type: numeric
-  #  required: false
+  d7_walks:
+    type: numeric
+    required: false
+  d15_walks:
+    type: numeric
+    required: false
+  d30_walks:
+    type: numeric
+    required: false
 
   # ────────── Strikeouts (Batting) ──────────
   d7_strikeouts_batting:
@@ -233,9 +233,9 @@ features:
   bvp_walks:
     type: numeric
     required: false
-  bvp_avg:
-    type: numeric
-    required: false
+  #bvp_avg:
+  #  type: numeric
+  #  required: false
   bvp_plate_appearances:
     type: numeric
     required: false

@@ -17,7 +17,7 @@
 import { supabase } from "../backend/scripts/shared/supabaseBackend.js";
 import { getGameContextFields } from "../backend/scripts/shared/mlbApiUtils.js";
 
-const LOOKBACK_DAYS = 999;
+const LOOKBACK_DAYS = 2;
 
 const BATCH_SIZE = 1000;
 const CONCURRENCY = 1;
@@ -34,7 +34,7 @@ async function fetchNextBatch() {
   const { data, error } = await supabase
     .from("model_training_props")
     .select("id, game_id, game_date, team, is_home")
-    //.gte("game_date", cutoffDate)
+    .gte("game_date", cutoffDate)
     .or(
       [
         "game_time.is.null",

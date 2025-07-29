@@ -24,6 +24,7 @@
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
     "fs": "^0.0.1-security",
+    "lodash": "^4.17.21",
     "luxon": "^3.6.1",
     "node-cron": "^3.0.3",
     "node-fetch": "^2.7.0",

@@ -1,12 +1,7 @@
 // backend/scripts/runStreakBackfillFromTraining.js
-import { supabase } from "../scripts/shared/supabaseBackend.js";
-import { normalizePropType } from "../shared/propUtilsBackend.js";
-import { toISODate } from "../shared/timeUtilsBackend.js";
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { supabase } from "./shared/supabaseBackend.js";
+import { normalizePropType } from "./shared/propUtilsBackend.js";
+import { toISODate } from "./shared/timeUtilsBackend.js";
 
 // 🔁 Recompute streaks from existing resolved training data (no need for raw MLB stats)
 

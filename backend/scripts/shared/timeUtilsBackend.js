@@ -73,3 +73,16 @@ export function getTimeOfDayBucketET(isoDateTime) {
   if (hour < 21) return "evening";
   return "night";
 }
+
+export function getDayOfWeekET(isoDate) {
+  return DateTime.fromISO(isoDate, { zone: "America/New_York" }).toFormat(
+    "cccc"
+  );
+}
+
+// ✅ Combine gameDate and gameTime into an Eastern-zone DateTime object
+export function toEasternDateTime(gameDate, gameTime) {
+  if (!gameDate || !gameTime) return null; // guard clause
+  const iso = `${gameDate}T${gameTime}`; // e.g. 2023-04-30T19:05:00
+  return DateTime.fromISO(iso, { zone: "America/New_York" });
+}

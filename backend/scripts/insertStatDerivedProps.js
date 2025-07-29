@@ -5,7 +5,7 @@ import {
   getTimeOfDayBucketET,
   toISODate,
   toEasternDateTime,
-} from "../shared/timeUtilsBackend.js";
+} from "./shared/timeUtilsBackend.js";
 import { supabase } from "./shared/supabaseBackend.js";
 import {
   BATTER_PROP_TYPES,
@@ -104,6 +104,7 @@ async function processDate(gameDate) {
       const liveData = await getLiveFeedFromGameID(gameId);
       const allPlays = liveData?.liveData?.plays?.allPlays || [];
       const allPlayers = await fetchBoxscoreStatsForGame(gameId);
+
       if (!Array.isArray(allPlayers)) {
         console.error(
           `❌ allPlayers for game ${gameId} is not an array:`,
@@ -111,6 +112,10 @@ async function processDate(gameDate) {
         );
         continue;
       }
+
+      console.log(
+        `🧾 Boxscore fetch: ${gameId} → ${allPlayers.length} players`
+      );
 
       if (allPlayers.some((p) => !p || typeof p !== "object" || !("id" in p))) {
         console.error(
@@ -128,6 +133,7 @@ async function processDate(gameDate) {
 
       // 🔍 Diagnostic print of all players' stat keys
       // Log a summary of player stat availability before filtering
+      console.log(`📦 Fetched ${allPlayers.length} players for game ${gameId}`);
       for (const p of allPlayers) {
         const batKeys = Object.keys(p.stats?.batting || []).join(", ");
         const pitchKeys = Object.keys(p.stats?.pitching || []).join(", ");
@@ -197,6 +203,12 @@ async function processDate(gameDate) {
 
         const now = new Date().toISOString();
 
+        console.log(
+          "📦 Full stats object for",
+          fullName,
+          JSON.stringify(stats, null, 2)
+        );
+
         let eligiblePropTypes = [];
         if (isBatterOnly || isTwoWayPlayer)
           eligiblePropTypes.push(...BATTER_PROP_TYPES);
@@ -224,7 +236,7 @@ async function processDate(gameDate) {
             )} (${typeof propType})`
           );
 
-          const result = extractStatForPropType(propType, stats); // ✅ correct
+          const result = extractStatForPropType(stats, propType);
           console.log(
             "🧪 [extractStat] raw propType:",
             propType,
@@ -245,7 +257,13 @@ async function processDate(gameDate) {
             `🧪 Testing insert for ${fullName} | ${propType} | result=${result}`
           );
 
-          const line = Math.random() < 0.5 ? result + 0.5 : result - 0.5;
+          let line;
+          if (result === 0) {
+            line = 0.5;
+          } else {
+            line = Math.random() < 0.5 ? result + 0.5 : result - 0.5;
+          }
+          line = Math.round(line * 2) / 2;
           const over_under = Math.random() < 0.5 ? "over" : "under";
           const outcome = determineOutcome(result, line, over_under);
           if (!["win", "loss"].includes(outcome)) continue;
@@ -344,11 +362,11 @@ async function processDate(gameDate) {
             opponent,
             opponent_encoded,
             game_date: gameDate,
+            ...contextFields,
             game_day_of_week: getDayOfWeekET(gameDateTimeET),
             time_of_day_bucket: getTimeOfDayBucketET(gameDateTimeET),
             streak_type: streak?.streak_type ?? null,
             streak_count: streak?.streak_count ?? null,
-            ...contextFields,
           };
 
           forceLog(`📥 Attempting insert: ${JSON.stringify(row, null, 2)}`);

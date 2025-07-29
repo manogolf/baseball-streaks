@@ -2,7 +2,7 @@
 
 import { supabase } from "./shared/supabaseBackend.js";
 import { getLiveFeedFromGameID } from "./shared/mlbApiUtils.js";
-import { setIfMissing } from "../../../shared/objectUtils.js";
+import { setIfMissing } from "../../shared/objectUtils.js";
 import dayjs from "dayjs";
 
 const BATCH_DELAY_MS = 500;
