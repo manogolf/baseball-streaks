@@ -1,5 +1,6 @@
 import { supabase } from "../scripts/shared/supabaseBackend.js";
 import { upsertPlayerID } from "../scripts/shared/upsertPlayerID.js";
+import { enrichGameContext } from "../../shared/enrichGameContext.js";
 
 export default async function preparePropSubmission({
   playerName,
