@@ -104,26 +104,38 @@ const PlayerPropForm = ({ onPropAdded }) => {
 
     try {
       const apiUrl = process.env.REACT_APP_API_URL || "";
-      console.log("📤 Sending to /api/prepareProp:", {
+
+      // 🧩 Validate input
+      if (!formData.player_name || !formData.team || !formData.prop_type) {
+        setError("Missing required form fields.");
+        setSubmitting(false);
+        return;
+      }
+
+      if (!context) {
+        setError("Game context not ready yet.");
+        setSubmitting(false);
+        return;
+      }
+
+      // 🧠 Merge form + context
+      const enrichedProp = {
         playerName: formData.player_name,
         teamAbbr: formData.team,
         propType: formData.prop_type,
         line: formData.prop_value,
         overUnder: formData.over_under,
         gameDate: formData.game_date,
-      });
+        ...context,
+        user_id: userId, // ✅ attach userId here
+      };
+
+      console.log("📤 Sending to /api/prepareProp:", enrichedProp);
 
       const res = await fetch(`${apiUrl}/api/prepareProp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          playerName: formData.player_name,
-          teamAbbr: formData.team,
-          propType: formData.prop_type,
-          line: formData.prop_value,
-          overUnder: formData.over_under,
-          gameDate: formData.game_date,
-        }),
+        body: JSON.stringify(enrichedProp),
       });
 
       const preparedData = await res.json();
@@ -134,6 +146,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
         return;
       }
 
+      // 🎯 Make prediction
       const predictRes = await fetch("/api/predict", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
