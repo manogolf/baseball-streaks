@@ -1,11 +1,11 @@
+//  src/components/PlayerPropForm.js
+
 import { useEffect, useState } from "react";
 import { supabase } from "../utils/supabaseFrontend.js";
 import { nowET, todayET } from "../shared/timeUtils.js";
 import { useAuth } from "../context/AuthContext.js";
-import { buildFeatureVector } from "../utils/buildFeatureVector.js";
-import { requiredFeatures } from "../config/predictionSchema.js";
-import { normalizeFeatureKeys } from "../utils/normalizeFeatureKeys.js";
 import { getPropTypeOptions } from "../../shared/propUtils.js";
+import { enrichGameContext } from "../../shared/enrichGameContext.js";
 
 const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:3001";
 
@@ -25,6 +25,25 @@ const PlayerPropForm = ({ onPropAdded }) => {
     over_under: "under",
     game_date: todayET(),
   });
+
+  const [context, setContext] = useState(null);
+
+  useEffect(() => {
+    async function loadContext() {
+      if (!formData.team || !formData.game_date) return;
+      try {
+        const ctx = await enrichGameContext({
+          team: formData.team,
+          gameDate: formData.game_date,
+        });
+        setContext(ctx);
+      } catch (err) {
+        console.error("❌ Failed to enrich game context:", err);
+      }
+    }
+
+    loadContext();
+  }, [formData.team, formData.game_date]);
 
   const [propTypes, setPropTypes] = useState([]);
   const [submitting, setSubmitting] = useState(false);

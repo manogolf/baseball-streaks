@@ -1,4 +1,4 @@
-// scripts/fetchGameID.js
+// backend/scripts/shared/fetchGameID.js
 
 import { DateTime } from "luxon";
 import { teamNameMap as TEAM_NAME_MAP } from "../../../shared/teamNameMap.js";
