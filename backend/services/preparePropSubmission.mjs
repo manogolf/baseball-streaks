@@ -37,14 +37,17 @@ export default async function preparePropSubmission({
 
   const player_id = data[0].player_id;
 
-  // ✅ 2. Upsert to player_ids for future lookups
+  // ✅ Upsert to player_ids
   await upsertPlayerID(supabase, {
     player_name: playerName,
     player_id,
     team: teamAbbr,
   });
 
-  // ✅ 3. Proceed with final prop payload
+  // 🌐 Game context
+  const context = await enrichGameContext({ team: teamAbbr, gameDate });
+
+  // 📦 Final prepared object
   const prepared = {
     player_name: playerName,
     team: teamAbbr,
@@ -54,7 +57,11 @@ export default async function preparePropSubmission({
     game_date: gameDate,
     game_id,
     player_id,
+    ...context,
   };
+
+  console.log("📦 Prepared prop submission:", prepared);
+  return prepared;
 
   console.log("📦 Prepared prop submission:", prepared);
   return prepared;
