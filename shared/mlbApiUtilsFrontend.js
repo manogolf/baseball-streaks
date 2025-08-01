@@ -5,6 +5,7 @@
  */
 
 import { normalizeTeamAbbreviation } from "./teamNameMap.js";
+import { getTimeOfDayBucketET } from "./timeUtils.js";
 
 /**
  * Fetches the full schedule of MLB games for a given ISO date (YYYY-MM-DD).
@@ -56,8 +57,7 @@ export async function getGameContextForTeam(teamAbbr, dateISO) {
   const localTime = new Date(gameTime);
   const hour = localTime.getHours();
 
-  const time_of_day_bucket =
-    hour < 15 ? "day" : hour < 18 ? "late_day" : "night";
+  const time_of_day_bucket = getTimeOfDayBucketET(game_time);
 
   return {
     game_id: game.gamePk,

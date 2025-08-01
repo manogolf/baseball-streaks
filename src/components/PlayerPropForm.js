@@ -147,7 +147,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
       }
 
       // 🎯 Make prediction
-      const predictRes = await fetch("/api/predict", {
+      const predictRes = await fetch(`${apiUrl}/api/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(preparedData),
@@ -161,7 +161,11 @@ const PlayerPropForm = ({ onPropAdded }) => {
         );
       }
 
-      setPrediction(predictJson);
+      // 🔐 Preserve prepared prop for submission
+      setPrediction({
+        ...predictJson,
+        preparedProp: preparedData,
+      });
     } catch (err) {
       console.error("❌ Prediction Error:", err);
       setError("Prediction failed: " + err.message);
@@ -197,7 +201,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
 
     try {
       // 👉 Step 1: Resolve MLB game ID
-      const gamePkRes = await fetch("/api/getGamePk", {
+      const gamePkRes = await fetch(`${apiUrl}/api/getGamePk`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -214,62 +218,46 @@ const PlayerPropForm = ({ onPropAdded }) => {
         return;
       }
 
-      // 👉 Step 2: Re-prepare prop
-      const res = await fetch("/api/prepareProp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          game_id: resolvedGameId,
-        }),
-      });
-
-      const preparedData = await res.json();
-
-      if (!res.ok || !preparedData?.player_id) {
-        console.error("❌ Failed to prepare prop:", preparedData);
-        setError("Failed to prepare prop.");
+      // ✅ Reuse previous prepared data from prediction
+      if (!prediction.preparedProp?.player_id) {
+        setError("Missing prepared prop. Please re-run prediction.");
         setSubmitting(false);
         return;
       }
 
-      // 👉 Step 3: Get game context
-      const contextRes = await fetch("/api/getGameContext", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          game_id: resolvedGameId,
-          team: preparedData.team,
-        }),
-      });
-
-      const { context: contextFields } = await contextRes.json();
-
+      const prepared = prediction.preparedProp;
       const now = nowET().toISO();
 
-      // 👉 Step 4: Build full payload
+      // 👉 Step 3: Build full payload
       const payload = {
-        player_name: preparedData.player_name || formData.player_name,
-        team: preparedData.team || formData.team,
-        prop_type: preparedData.prop_type,
-        prop_value: parseFloat(preparedData.prop_value),
-        game_date: preparedData.game_date || formData.game_date,
+        player_name: prepared.player_name || formData.player_name,
+        team: prepared.team || formData.team,
+        prop_type: prepared.prop_type,
+        prop_value: parseFloat(prepared.prop_value),
+        game_date: prepared.game_date || formData.game_date,
         game_id: resolvedGameId,
-        player_id: preparedData.player_id,
+        player_id: prepared.player_id,
         status: "pending",
         created_at: now,
         predicted_outcome: prediction.predicted_outcome,
         confidence_score: prediction.confidence_score,
         prediction_timestamp: now,
-        over_under: preparedData.over_under.toLowerCase(),
+        over_under: prepared.over_under.toLowerCase(),
         user_id: userId,
         prop_source: "user_added",
-        ...contextFields,
+        // ✅ Game context fields already exist in `prepared`
+        is_home: prepared.is_home,
+        opponent: prepared.opponent,
+        opponent_encoded: prepared.opponent_encoded,
+        game_time: prepared.game_time,
+        game_day_of_week: prepared.game_day_of_week,
+        time_of_day_bucket: prepared.time_of_day_bucket,
+        starting_pitcher_id: prepared.starting_pitcher_id,
       };
 
       console.log("📦 Final payload:", payload);
 
-      // 👉 Step 5: Insert into Supabase
+      // 👉 Step 4: Insert into Supabase
       const { error: insertError } = await supabase
         .from("player_props")
         .insert([payload]);
@@ -444,7 +432,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
         <div className="mt-4 p-3 bg-green-100 text-green-800 rounded-md text-center">
           📈 Prediction: <strong>{prediction.predicted_outcome}</strong> <br />
           🎯 Confidence:{" "}
-          <strong>{(prediction.confidence_score * 100).toFixed(1)}%</strong>
+          <strong>{(prediction.confidence_score * 100).toFixed(2)}%</strong>
         </div>
       )}
 

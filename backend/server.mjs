@@ -3,6 +3,8 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import preparePropSubmission from "./services/preparePropSubmission.mjs";
+import makePrediction from "./scripts/prediction/makePrediction.mjs";
+import getGamePkRoute from "../backend/services/getGamePkRoute.mjs";
 
 dotenv.config();
 
@@ -11,6 +13,7 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+app.use("/api", getGamePkRoute);
 
 app.post("/api/prepareProp", async (req, res) => {
   try {
@@ -29,6 +32,16 @@ app.post("/api/prepareProp", async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error("❌ API Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/predict", async (req, res) => {
+  try {
+    const prediction = await makePrediction(req.body);
+    res.json(prediction);
+  } catch (err) {
+    console.error("❌ Prediction error:", err);
     res.status(500).json({ error: err.message });
   }
 });

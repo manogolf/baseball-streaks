@@ -54,74 +54,105 @@ PROP_TYPES = [
     "strikeouts_pitching", "earned_runs", "hits_allowed", "walks_allowed"
 ]
 
-def download_model_if_missing(model_name, max_retries=3):
-    local_path = os.path.join(MODEL_DIR, model_name)
-    if os.path.exists(local_path):
-        return local_path
+def download_model_if_missing(model_filename: str, prop_type: str) -> str:
+    """
+    Downloads a model file from Supabase storage if it doesn't exist locally.
+    Returns the local file path.
+    """
+    folder = f"models/{prop_type}"
+    local_path = os.path.join(folder, model_filename)
+    supabase_path = f"{prop_type}/{model_filename}"  # FIXED: include subfolder
 
-    print(f"⬇️ Downloading {model_name} from Supabase...")
+    if not os.path.exists(folder):
+        os.makedirs(folder)
 
-    for attempt in range(1, max_retries + 1):
-        response = supabase.storage.from_("models").create_signed_url(model_name, 60)
-        url = response.get("data", {}).get("signedUrl")
+    if not os.path.exists(local_path):
+        print(f"⬇️  Downloading {model_filename} from Supabase...")
+        response = supabase.storage.from_("models").create_signed_url(supabase_path, 60)
+        if "signedURL" not in response:
+            raise Exception(f"❌ Model file(s) missing for {prop_type}: {response}")
+        signed_url = response["signedURL"]
+        r = requests.get(signed_url)
+        with open(local_path, "wb") as f:
+            f.write(r.content)
 
-        if url:
-            try:
-                r = requests.get(url)
-                r.raise_for_status()
-                with open(local_path, "wb") as f:
-                    f.write(r.content)
-                print(f"✅ Downloaded {model_name}")
-                return local_path
-            except Exception as e:
-                print(f"❌ Download failed on attempt {attempt}: {e}")
-        else:
-            print(f"⚠️ Attempt {attempt} failed for {model_name}: No signed URL returned")
+    return local_path
 
-        time.sleep(2)
+def predict(prop_type: str, row: dict) -> tuple[str, float]:
+    lr_filename = f"{prop_type}_logistic_regression.pkl"
+    rf_filename = f"{prop_type}_random_forest.pkl"
 
-    print(f"❌ Error downloading {model_name} after {max_retries} attempts")
-    return None
+    rf_path = download_model_if_missing(rf_filename, prop_type)
+    lr_path = download_model_if_missing(lr_filename, prop_type)
 
-def predict(prop_type, row):
-    model_filename = f"{prop_type}_model.pkl"
-    model_path = download_model_if_missing(model_filename)
+    # ... your existing logic for loading models and generating predictions ...
 
-    if not model_path or not os.path.exists(model_path):
-        return None, None
+    rf_model = joblib.load(rf_path)
+    lr_model = joblib.load(lr_path)
 
-    model = joblib.load(model_path)
+    # Build feature vector
+    X, _ = build_feature_vector(pd.DataFrame([row]))  # _ is y_train but not needed
+    if X.empty:
+        raise ValueError(f"❌ No usable features for prediction: {row['player_name']}")
 
-    try:
-        features = build_feature_vector(row)
-        df = pd.DataFrame([features])
-    except Exception as e:
-        print(f"❌ Failed to build feature vector: {e}")
-        return None, None
+    rf_pred = rf_model.predict(X)[0]
+    rf_prob = rf_model.predict_proba(X)[0][1]
 
-    prob = model.predict_proba(df)[0][1]
-    prediction = "win" if prob >= 0.5 else "loss"
-    return prediction, round(float(prob), 4)
+    lr_pred = lr_model.predict(X)[0]
+    lr_prob = lr_model.predict_proba(X)[0][1]
+
+    # Simple average
+    avg_prob = (rf_prob + lr_prob) / 2
+    blended_pred = "over" if avg_prob >= 0.5 else "under"
+
+    return blended_pred, avg_prob
 
 def process_batch(prop_type, batch_size=500):
     response = supabase.table("model_training_props") \
         .select("*") \
         .eq("prop_type", prop_type) \
         .eq("prop_source", "mlb_api") \
-        .is_("predicted_outcome", "null") \
-        .eq("status", "final") \
+        .is_("predicted_outcome", None) \
+        .eq("status", "resolved") \
         .limit(batch_size) \
         .execute()
 
     rows = response.data or []
+    print(f"📊 {prop_type}: Fetched {len(rows)} pending rows")
+
     if not rows:
         return 0
 
     updates = 0
     for row in rows:
         try:
-            prediction, prob = predict(prop_type, row)
+            # Convert Supabase row to dict
+            row_dict = row.to_dict() if hasattr(row, "to_dict") else row
+
+            # 🛠️ Flatten known problematic fields
+            for key in ("player_id", "game_id", "team", "outcome"):
+                val = row_dict.get(key)
+                if isinstance(val, pd.Series):
+                    row_dict[key] = val.iloc[0]
+
+            # ✅ Sanitize all Series or DataFrames
+            for k, v in row_dict.items():
+                if isinstance(v, pd.Series):
+                    row_dict[k] = v.iloc[0]
+                elif isinstance(v, pd.DataFrame):
+                    row_dict[k] = v.iloc[0, 0]
+
+            # 🔍 Confirm clean values
+            print(
+                f"🔍 Fetching missing fields for "
+                f"player_id={row_dict.get('player_id')}, "
+                f"game_id={row_dict.get('game_id')}, "
+                f"team={row_dict.get('team')}"
+            )
+
+            prediction, prob = predict(prop_type, row_dict)
             if prediction is None:
+                print(f"⚠️ Skipped row ID {row.get('id')} — prediction failed")
                 continue
 
             was_correct = prediction == row.get("outcome")
@@ -134,8 +165,9 @@ def process_batch(prop_type, batch_size=500):
                 "prediction_timestamp": timestamp
             }).eq("id", row["id"]).execute()
 
-            print(f"✅ {row.get('player_name')} → {prediction} ({prob}) | Correct? {was_correct}")
+            print(f"✅ {row.get('player_name')} → {prediction} ({prob:.3f}) | Correct? {was_correct}")
             updates += 1
+
         except Exception as e:
             print(f"❌ Failed on row {row.get('id')}: {e}")
 

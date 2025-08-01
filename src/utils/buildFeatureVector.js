@@ -6,6 +6,8 @@ import { toISODate } from "../shared/timeUtils.js";
 import { getOpponentAbbreviation } from "../../shared/teamNameMap.js";
 import yaml from "js-yaml";
 
+const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:3001";
+
 // Load YAML spec
 function loadFeatureSpec() {
   const file = fs.readFileSync("model_features.yaml", "utf8");
@@ -36,7 +38,7 @@ export async function buildFeatureVector({
   // 1. Resolve game ID, home/away, opponent
   let game_id = null;
   try {
-    const res = await fetch("/api/getGamePk", {
+    const res = await fetch(`${apiUrl}/api/getGamePk`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ team, game_date }),
