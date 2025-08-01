@@ -63,7 +63,4 @@ export default async function preparePropSubmission({
 
   console.log("📦 Prepared prop submission:", prepared);
   return prepared;
-
-  console.log("📦 Prepared prop submission:", prepared);
-  return prepared;
 }

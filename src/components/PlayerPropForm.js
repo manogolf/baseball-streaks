@@ -7,7 +7,10 @@ import { useAuth } from "../context/AuthContext.js";
 import { getPropTypeOptions } from "../../shared/propUtils.js";
 import { enrichGameContext } from "../../shared/enrichGameContext.js";
 
-const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:3001";
+const isLocal = window.location.hostname === "localhost";
+const apiUrl = isLocal
+  ? "http://localhost:3001"
+  : "https://express-api-vm4c.onrender.com";
 
 const PlayerPropForm = ({ onPropAdded }) => {
   const today = todayET();
