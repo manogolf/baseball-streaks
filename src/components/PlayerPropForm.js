@@ -106,8 +106,6 @@ const PlayerPropForm = ({ onPropAdded }) => {
     setError(null);
 
     try {
-      const apiUrl = process.env.REACT_APP_API_URL || "";
-
       // 🧩 Validate input
       if (!formData.player_name || !formData.team || !formData.prop_type) {
         setError("Missing required form fields.");
