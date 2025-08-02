@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field
+from pydantic.config import ConfigDict  
 from backend.scripts.shared.supabase_utils import supabase
 from backend.scripts.shared.enrich_game_context import enrich_game_context
 from backend.scripts.shared.upsert_player_id import upsert_player_id
@@ -16,7 +17,7 @@ class PreparePropInput(BaseModel):
     game_id: int | None = None
 
     model_config = ConfigDict(validate_by_name=True)
-    
+
 @router.post("/prepareProp")
 async def prepare_prop(request: Request):
     try:
