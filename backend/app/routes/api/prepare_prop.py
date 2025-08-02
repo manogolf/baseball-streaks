@@ -42,8 +42,8 @@ async def prepare_prop(request: Request):
 
     # 🔄 Resolve player_id
     try:
-        print(f"🔍 Resolving player_id for: {input_data.player_name}, {input_data.team}")
-        player_id = await upsert_player_id(input_data.player_name, input_data.team)
+        print(f"🔍 Resolving player_id for: {input_data.player_name}, {input_data.team_abbr}")
+        player_id = await upsert_player_id(input_data.player_name, input_data.team_abbr)
         print(f"✅ Resolved player_id: {player_id}")
     except Exception as e:
         print("❌ Failed during upsert_player_id:", str(e))
