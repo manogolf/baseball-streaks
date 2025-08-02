@@ -24,6 +24,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
   // 🌱 Local form state
   const [formData, setFormData] = useState({
     player_name: "",
+    player_id: null,
     team: "",
     prop_type: "",
     prop_value: 0.5,
@@ -41,14 +42,20 @@ const PlayerPropForm = ({ onPropAdded }) => {
           team: formData.team,
           gameDate: formData.game_date,
         });
-        setContext(ctx);
+
+        const enrichedContext = {
+          ...ctx,
+          ...(formData.player_id && { player_id: formData.player_id }),
+        };
+
+        setContext(enrichedContext);
       } catch (err) {
         console.error("❌ Failed to enrich game context:", err);
       }
     }
 
     loadContext();
-  }, [formData.team, formData.game_date]);
+  }, [formData.team, formData.game_date, formData.player_id]);
 
   const [propTypes, setPropTypes] = useState([]);
   const [submitting, setSubmitting] = useState(false);
@@ -124,6 +131,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
       // 🧠 Merge form + context
       const enrichedProp = {
         playerName: formData.player_name,
+        player_id: context.player_id,
         teamAbbr: formData.team,
         propType: formData.prop_type,
         line: formData.prop_value,
