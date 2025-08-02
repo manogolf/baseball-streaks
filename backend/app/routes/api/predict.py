@@ -1,78 +1,54 @@
+# File: backend/app/routes/api/predict.py
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ValidationError
-from app.score_any_prop import predict_prop
+import subprocess
+import json
 import sys
 import os
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..")))
-
-from backend.scripts.shared.supabase_utils import supabase
-
 
 router = APIRouter()
 
-# ✅ Input Schema
-class PropInput(BaseModel):
+class FullPropFeatures(BaseModel):
     prop_type: str
-    prop_value: float
-    rolling_result_avg_7: float
-    hit_streak: int
-    win_streak: int
-    is_home: int
-    opponent_avg_win_rate: float | None = 0
-    over_under: str
-    player_id: str  # Confirmed as string type
+    features: dict  # expects enriched fields: is_home, opponent_encoded, etc.
 
 @router.post("/predict")
 async def predict(request: Request):
     body = await request.json()
-    print(f"📩 Raw Incoming Payload: {body}")
-    print(f"🔎 Raw player_id type: {type(body.get('player_id'))}")
+    print(f"📩 Incoming prediction request: {body}")
 
     try:
-        input_data = PropInput(**body)
-        print(f"📥 Normalized input after validation: {input_data.model_dump()}")
+        input_data = FullPropFeatures(**body)
+        print(f"📥 Parsed input: {input_data.model_dump()}")
     except ValidationError as e:
-        print(f"❌ Validation Error Details: {e.errors()}")
+        print(f"❌ Validation error: {e.errors()}")
         raise HTTPException(status_code=422, detail=e.errors())
 
-    print("✅ Validation passed, proceeding to Supabase call and prediction...")
-    print("📡 [Temporarily Disabled] Supabase streak profile fetch...")
+    prop_type = input_data.prop_type
+    features_json = json.dumps(input_data.features)
 
-    # === Original Supabase streak logic (commented for restoration) ===
-    # try:
-    #     response = (
-    #         supabase.table("player_streak_profiles")
-    #         .select("streak_count, streak_type")
-    #         .eq("player_id", input_data.player_id)
-    #         .eq("prop_type", input_data.prop_type)
-    #         .maybe_single()
-    #         .execute()
-    #     )
-    #     streak_data = response.data or {}
-    # except Exception as e:
-    #     raise HTTPException(status_code=500, detail=f"Supabase error: {e}")
-
-    # streak_count = streak_data.get("streak_count", 0)
-    # streak_type = streak_data.get("streak_type", "neutral")
-
-    # 🚫 Using Defaults Instead of Supabase
-    streak_count = 0
-    streak_type = "neutral"
-    print("📉 Bypassing streak profile. Defaults applied: streak_count=0, streak_type='neutral'")
-
-    enriched_input = input_data.model_dump()
-    enriched_input["streak_count"] = streak_count
-    enriched_input["streak_type"] = streak_type
-
-    print(f"📦 Enriched Input Before Prediction: {enriched_input}")
-    print(f"🔤 Final player_id type before prediction: {type(enriched_input.get('player_id'))}")
+    script_path = os.path.abspath("backend/scripts/prediction/makePrediction.mjs")
+    model_dir = f"backend/models/{prop_type}"
+    rf_path = os.path.join(model_dir, f"{prop_type}_random_forest.pkl")
+    lr_path = os.path.join(model_dir, f"{prop_type}_logistic_regression.pkl")
 
     try:
-        print(f"🔮 Calling predict_prop with prop_type={input_data.prop_type} and enriched_input={enriched_input}")
-        result = predict_prop(input_data.prop_type, enriched_input)
+        print(f"🚀 Calling makePrediction.mjs with {prop_type}")
+        result = subprocess.run(
+            ["node", script_path, features_json, rf_path, lr_path],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        prediction_output = json.loads(result.stdout)
+        print(f"🎯 Prediction result: {prediction_output}")
+        return prediction_output
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Subprocess error:\n{e.stderr}")
+        raise HTTPException(status_code=500, detail="Prediction script failed.")
     except Exception as e:
-        print(f"❌ Prediction function error: {e}")
-        raise HTTPException(status_code=500, detail=f"Prediction error: {e}")
-
-    print(f"🎯 Model Prediction Response: {result}")
-    return result
+        print(f"❌ Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

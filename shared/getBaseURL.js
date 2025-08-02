@@ -6,5 +6,5 @@ export function getBaseURL() {
 
   return isLocal
     ? "http://localhost:8001" // 🛠 Local FastAPI server
-    : "https://express-api-vm4c.onrender.com"; // ✅ Correct Express API
+    : "https://baseball-streaks-sq44.onrender.com"; // ✅ Correct Express API
 }
