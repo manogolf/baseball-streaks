@@ -19,6 +19,7 @@ class PreparePropInput(BaseModel):
 async def prepare_prop(request: Request):
     try:
         data = await request.json()
+        print(f"📨 Raw request body: {data}") 
         input_data = PreparePropInput(**data)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid request: {e}")
