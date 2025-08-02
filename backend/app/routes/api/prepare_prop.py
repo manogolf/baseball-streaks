@@ -32,27 +32,38 @@ class PreparePropInput(BaseModel):
 async def prepare_prop(request: Request):
     try:
         data = await request.json()
+        print("📨 Raw request body:", data)
         input_data = PreparePropInput(**data)
+        print("✅ Parsed PreparePropInput:", input_data)
     except Exception as e:
+        print("❌ Failed to parse input:", str(e))
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=f"Invalid request: {e}")
 
+    # 🔄 Resolve player_id
     try:
+        print(f"🔍 Resolving player_id for: {input_data.player_name}, {input_data.team}")
         player_id = await upsert_player_id(input_data.player_name, input_data.team)
+        print(f"✅ Resolved player_id: {player_id}")
     except Exception as e:
+        print("❌ Failed during upsert_player_id:", str(e))
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to resolve player_id: {e}")
 
+    # 🧠 Enrich game context
     try:
+        print("🧠 Enriching game context...")
         enriched = await enrich_game_context({
             "player_id": player_id,
             "team": input_data.team,
             "game_id": input_data.game_id,
         })
+        print("🎯 Enriched game context:", enriched)
     except Exception as e:
-        # 🔒 Continue with partial data if enrichment fails
-        enriched = {}
-        print(f"⚠️ Game context enrichment failed: {e}")
+        print("❌ Failed during enrich_game_context:", str(e))
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Game context enrichment failed: {e}")
 
-    # Merge final enriched object with required fields
     enriched.update({
         "player_id": player_id,
         "player_name": input_data.player_name,
