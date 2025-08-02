@@ -2,7 +2,8 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from backend.scripts.shared.supabase_utils import supabase
 from backend.scripts.shared.enrich_game_context import enrich_game_context
-from backend.scripts.shared.player_utils_backend import upsert_player_id
+from backend.scripts.shared.upsert_player_id import upsert_player_id
+
 
 router = APIRouter()
 
