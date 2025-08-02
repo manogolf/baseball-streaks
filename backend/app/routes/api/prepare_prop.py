@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from backend.scripts.shared.supabase_utils import supabase
 from backend.scripts.shared.enrich_game_context import enrich_game_context
 from backend.scripts.shared.upsert_player_id import upsert_player_id
@@ -8,13 +8,16 @@ from backend.scripts.shared.upsert_player_id import upsert_player_id
 router = APIRouter()
 
 class PreparePropInput(BaseModel):
-    player_name: str
-    team: str
-    prop_type: str
-    over_under: str
+    player_name: str = Field(alias="playerName")
+    team: str = Field(alias="teamAbbr")
+    prop_type: str = Field(alias="propType")
+    over_under: str = Field(alias="overUnder")
     line: float
     game_id: int | None = None
 
+    class Config:
+        allow_population_by_field_name = True
+        
 @router.post("/prepareProp")
 async def prepare_prop(request: Request):
     try:
