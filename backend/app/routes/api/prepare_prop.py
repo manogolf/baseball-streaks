@@ -11,6 +11,7 @@ router = APIRouter()
 
 class PreparePropInput(BaseModel):
     player_name: str = Field(alias="playerName")
+    player_id: int  # ⬅️ REQUIRED
     team_abbr: str = Field(alias="teamAbbr")
     prop_type: str = Field(alias="propType")
     over_under: str = Field(alias="overUnder")
@@ -42,8 +43,8 @@ async def prepare_prop(request: Request):
 
     # 🔄 Resolve player_id
     try:
-        print(f"🔍 Resolving player_id for: {input_data.player_name}, {input_data.team_abbr}")
-        player_id = await upsert_player_id(input_data.player_name, input_data.team_abbr)
+        player_id = input_data.player_id
+        print(f"✅ Using provided player_id: {player_id}")
         print(f"✅ Resolved player_id: {player_id}")
     except Exception as e:
         print("❌ Failed during upsert_player_id:", str(e))
