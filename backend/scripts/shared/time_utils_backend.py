@@ -2,11 +2,11 @@
 
 from datetime import datetime
 from typing import Optional
-import pytz
+from pytz import timezone
 import requests
 from dateutil import parser
 
-ET = pytz.timezone("America/New_York")
+ET = timezone("US/Eastern")
 
 def now_et() -> datetime:
     return datetime.now(ET)
@@ -33,16 +33,24 @@ def get_day_of_week_et(iso_date: str) -> str:
     dt = parser.isoparse(iso_date).astimezone(ET)
     return dt.strftime("%A")
 
-def get_time_of_day_bucket_et(iso_datetime: str) -> str:
-    hour = parser.isoparse(iso_datetime).astimezone(ET).hour
+def get_time_of_day_bucket_et(iso_datetime):
+    if isinstance(iso_datetime, str):
+        dt = parser.isoparse(iso_datetime)
+    elif isinstance(iso_datetime, datetime):
+        dt = iso_datetime
+    else:
+        raise ValueError(f"Unsupported datetime input: {iso_datetime}")
+
+    hour = dt.astimezone(ET).hour
+
     if hour < 12:
         return "morning"
     elif hour < 17:
         return "afternoon"
-    elif hour < 21:
+    elif hour < 20:
         return "evening"
-    return "night"
-
+    else:
+        return "night"
 def get_game_start_time_et(game_id: int) -> Optional[str]:
     try:
         sched_url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&gamePk={game_id}"
