@@ -134,6 +134,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
       };
 
       console.log("📤 Sending to /api/prepareProp:", enrichedProp);
+      console.log("🔗 Sending to API URL:", apiUrl);
 
       const res = await fetch(`${apiUrl}/api/prepareProp`, {
         method: "POST",
