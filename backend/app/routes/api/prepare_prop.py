@@ -55,7 +55,7 @@ async def prepare_prop(request: Request):
         print("🧠 Enriching game context...")
         enriched = await enrich_game_context({
             "player_id": player_id,
-            "team": input_data.team,
+            "team": input_data.team_abbr,
             "game_id": input_data.game_id,
         })
         print("🎯 Enriched game context:", enriched)
@@ -67,7 +67,7 @@ async def prepare_prop(request: Request):
     enriched.update({
         "player_id": player_id,
         "player_name": input_data.player_name,
-        "team": input_data.team,
+        "team": input_data.team_abbr,
         "prop_type": input_data.prop_type,
         "line": input_data.line,
         "over_under": input_data.over_under,
