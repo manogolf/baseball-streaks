@@ -36,23 +36,11 @@ const PlayerPropForm = ({ onPropAdded }) => {
 
   useEffect(() => {
     async function loadContext() {
-      if (!formData.team || !formData.game_date) return;
+      if (!formData.team || !formData.game_date || !formData.player_name)
+        return;
+
       try {
-        if (!playerIdData?.player_id) {
-          console.warn(
-            `⚠️ Could not resolve player_id for ${formData.player_name} (${formData.team})`
-          );
-          return;
-        }
-
-        const enrichedContext = {
-          ...ctx,
-          player_id: playerIdData.player_id,
-        };
-
-        setContext(enrichedContext);
-
-        // 🆔 Resolve player_id from Supabase
+        // 🆔 Resolve player_id from Supabase first
         const { data: playerIdData, error: playerIdError } = await supabase
           .from("player_ids")
           .select("player_id", { head: false })
@@ -64,12 +52,19 @@ const PlayerPropForm = ({ onPropAdded }) => {
           console.warn(
             `⚠️ Could not resolve player_id for ${formData.player_name} (${formData.team})`
           );
-        } else {
-          ctx.player_id = playerIdData.player_id;
+          return;
         }
 
-        // Now save context
-        setContext(ctx);
+        // 📦 Enrich game context
+        const ctx = await enrichGameContext({
+          team: formData.team,
+          gameDate: formData.game_date,
+        });
+
+        const enrichedContext = {
+          ...ctx,
+          player_id: playerIdData.player_id,
+        };
 
         setContext(enrichedContext);
       } catch (err) {
@@ -78,7 +73,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
     }
 
     loadContext();
-  }, [formData.team, formData.game_date, formData.player_id]);
+  }, [formData.team, formData.game_date, formData.player_name]);
 
   const [propTypes, setPropTypes] = useState([]);
   const [submitting, setSubmitting] = useState(false);
