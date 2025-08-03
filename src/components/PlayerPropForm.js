@@ -43,10 +43,24 @@ const PlayerPropForm = ({ onPropAdded }) => {
           gameDate: formData.game_date,
         });
 
-        const enrichedContext = {
-          ...ctx,
-          ...(formData.player_id && { player_id: formData.player_id }),
-        };
+        // 🆔 Resolve player_id from Supabase
+        const { data: playerIdData, error: playerIdError } = await supabase
+          .from("player_ids")
+          .select("player_id")
+          .eq("player_name", formData.player_name)
+          .eq("team", formData.team)
+          .maybeSingle();
+
+        if (playerIdError || !playerIdData?.player_id) {
+          console.warn(
+            `⚠️ Could not resolve player_id for ${formData.player_name} (${formData.team})`
+          );
+        } else {
+          ctx.player_id = playerIdData.player_id;
+        }
+
+        // Now save context
+        setContext(ctx);
 
         setContext(enrichedContext);
       } catch (err) {
