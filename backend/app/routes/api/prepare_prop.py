@@ -54,7 +54,7 @@ async def prepare_prop(request: Request):
     # 🧠 Enrich game context
     try:
         print("🧠 Enriching game context...")
-        enriched = await enrich_game_context({
+        enriched = enrich_game_context({
             "player_id": player_id,
             "team": input_data.team_abbr,
             "game_id": input_data.game_id,
