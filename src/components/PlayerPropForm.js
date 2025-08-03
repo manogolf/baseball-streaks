@@ -6,6 +6,7 @@ import { nowET, todayET } from "../shared/timeUtils.js";
 import { useAuth } from "../context/AuthContext.js";
 import { getPropTypeOptions } from "../../shared/propUtils.js";
 import { enrichGameContext } from "../../shared/enrichGameContext.js";
+import { getTeamIdFromAbbr } from "../shared/teamNameMap";
 
 // const isLocal = window.location.hostname === "localhost";
 // const apiUrl = isLocal
@@ -13,6 +14,39 @@ import { enrichGameContext } from "../../shared/enrichGameContext.js";
 //  : "https://baseball-streaks-sq44.onrender.com";
 
 const apiUrl = "https://baseball-streaks-sq44.onrender.com";
+
+function normalizeName(name) {
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // remove accents
+}
+
+async function resolvePlayerId(playerName, teamAbbr) {
+  const normalizedName = normalizeName(playerName);
+
+  // 1. Try player_ids
+  let { data, error } = await supabase
+    .from("player_ids")
+    .select("player_id, player_name")
+    .eq("team", teamAbbr)
+    .maybeSingle();
+
+  if (data?.player_id && normalizeName(data.player_name) === normalizedName) {
+    return data.player_id;
+  }
+
+  // 2. Fallback: model_training_props
+  ({ data, error } = await supabase
+    .from("model_training_props")
+    .select("player_id, player_name")
+    .eq("team", teamAbbr)
+    .order("game_date", { ascending: false })
+    .limit(10));
+
+  const match = data?.find(
+    (row) => normalizeName(row.player_name) === normalizedName
+  );
+
+  return match?.player_id || null;
+}
 
 const PlayerPropForm = ({ onPropAdded }) => {
   const today = todayET();
@@ -33,29 +67,26 @@ const PlayerPropForm = ({ onPropAdded }) => {
   });
 
   const [context, setContext] = useState(null);
+  const team_id = getTeamIdFromAbbr(formData.team);
 
   useEffect(() => {
     async function loadContext() {
       if (!formData.team || !formData.game_date || !formData.player_name)
         return;
 
+      const playerId = await resolvePlayerId(
+        formData.player_name,
+        formData.team
+      );
+
+      if (!playerId) {
+        console.warn(
+          `⚠️ Could not resolve player_id for ${formData.player_name} (${formData.team})`
+        );
+        return;
+      }
+
       try {
-        // 🆔 Resolve player_id from Supabase first
-        const { data: playerIdData, error: playerIdError } = await supabase
-          .from("player_ids")
-          .select("player_id", { head: false })
-          .eq("player_name", formData.player_name)
-          .eq("team", formData.team)
-          .maybeSingle();
-
-        if (playerIdError || !playerIdData?.player_id) {
-          console.warn(
-            `⚠️ Could not resolve player_id for ${formData.player_name} (${formData.team})`
-          );
-          return;
-        }
-
-        // 📦 Enrich game context
         const ctx = await enrichGameContext({
           team: formData.team,
           gameDate: formData.game_date,
@@ -63,9 +94,8 @@ const PlayerPropForm = ({ onPropAdded }) => {
 
         const enrichedContext = {
           ...ctx,
-          player_id: playerIdData.player_id,
+          player_id: playerId,
         };
-
         setContext(enrichedContext);
       } catch (err) {
         console.error("❌ Failed to enrich game context:", err);
