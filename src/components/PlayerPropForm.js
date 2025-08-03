@@ -118,6 +118,8 @@ const PlayerPropForm = ({ onPropAdded }) => {
   });
 
   const [context, setContext] = useState(null);
+  const [players, setPlayers] = useState([]);
+  const [filteredPlayers, setFilteredPlayers] = useState([]);
 
   useEffect(() => {
     const name = formData.player_name;
@@ -195,8 +197,6 @@ const PlayerPropForm = ({ onPropAdded }) => {
   const [prediction, setPrediction] = useState(null);
   const [successToast, setSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
-  const [players, setPlayers] = useState([]);
-  const [filteredPlayers, setFilteredPlayers] = useState([]);
   const propTypeOptions = getPropTypeOptions();
   const successMessages = [
     "🎯 Prediction ready — make your move!",
