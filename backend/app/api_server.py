@@ -34,7 +34,7 @@ app.add_middleware(
 )
 
 # ✅ Register routes
-app.include_router(predict_router)
+app.include_router(predict_router, prefix="/api")
 app.include_router(prepare_prop_router, prefix="/api")
 app.include_router(player_profile_router)
 app.include_router(model_metrics_router)

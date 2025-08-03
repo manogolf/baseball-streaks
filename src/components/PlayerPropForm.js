@@ -86,6 +86,33 @@ const PlayerPropForm = ({ onPropAdded }) => {
         return;
       }
 
+      // 🧩 Optional: insert into player_ids if missing
+      const teamId = getTeamIdFromAbbr(formData.team);
+      if (teamId) {
+        const { data: existing, error: fetchErr } = await supabase
+          .from("player_ids")
+          .select("player_id")
+          .eq("player_id", playerId)
+          .eq("team", formData.team)
+          .maybeSingle();
+
+        if (!existing && !fetchErr) {
+          const { error: insertErr } = await supabase
+            .from("player_ids")
+            .insert({
+              player_id: playerId,
+              player_name: formData.player_name,
+              team: formData.team,
+              team_id: teamId,
+            });
+          if (insertErr) {
+            console.warn("⚠️ Failed to insert into player_ids:", insertErr);
+          } else {
+            console.log("✅ Upserted player_id to player_ids table.");
+          }
+        }
+      }
+
       try {
         const ctx = await enrichGameContext({
           team: formData.team,

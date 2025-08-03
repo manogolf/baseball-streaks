@@ -155,3 +155,7 @@ const abbrToIdMap = Object.entries(teamIdMap).reduce((acc, [id, { abbr }]) => {
   acc[abbr] = parseInt(id);
   return acc;
 }, {});
+
+export function getTeamIdFromAbbr(abbr) {
+  return abbrToIdMap[abbr] || null;
+}
