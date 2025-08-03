@@ -6,7 +6,7 @@ import { nowET, todayET } from "../shared/timeUtils.js";
 import { useAuth } from "../context/AuthContext.js";
 import { getPropTypeOptions } from "../../shared/propUtils.js";
 import { enrichGameContext } from "../../shared/enrichGameContext.js";
-import { getTeamIdFromAbbr } from "../../shared/teamNameMap.js";
+import { getTeamInfoById } from "../../shared/teamNameMap.js";
 
 // const isLocal = window.location.hostname === "localhost";
 // const apiUrl = isLocal
@@ -67,7 +67,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
   });
 
   const [context, setContext] = useState(null);
-  const team_id = getTeamIdFromAbbr(formData.team);
+  const team_id = getTeamInfoById(formData.team);
 
   useEffect(() => {
     async function loadContext() {
@@ -87,7 +87,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
       }
 
       // 🧩 Optional: insert into player_ids if missing
-      const teamId = getTeamIdFromAbbr(formData.team);
+      const teamId = getTeamInfoById(formData.team);
       if (teamId) {
         const { data: existing, error: fetchErr } = await supabase
           .from("player_ids")

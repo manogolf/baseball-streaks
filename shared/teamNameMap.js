@@ -156,6 +156,13 @@ const abbrToIdMap = Object.entries(teamIdMap).reduce((acc, [id, { abbr }]) => {
   return acc;
 }, {});
 
-export function getTeamIdFromAbbr(abbr) {
-  return abbrToIdMap[abbr] || null;
+export function getTeamInfoById(teamId) {
+  const idStr = String(teamId);
+  const info = teamIdMap[idStr];
+  if (!info) return null;
+  return {
+    id: parseInt(idStr),
+    abbr: info.abbr,
+    fullName: info.fullName,
+  };
 }
