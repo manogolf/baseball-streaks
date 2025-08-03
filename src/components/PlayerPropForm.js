@@ -120,7 +120,13 @@ const PlayerPropForm = ({ onPropAdded }) => {
   const [context, setContext] = useState(null);
 
   useEffect(() => {
-    const search = formData.player_name.trim().toLowerCase();
+    const name = formData.player_name;
+    if (!name || typeof name !== "string") {
+      setFilteredPlayers([]);
+      return;
+    }
+
+    const search = name.trim().toLowerCase();
 
     if (!search) {
       setFilteredPlayers([]);
