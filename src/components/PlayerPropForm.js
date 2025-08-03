@@ -38,15 +38,24 @@ const PlayerPropForm = ({ onPropAdded }) => {
     async function loadContext() {
       if (!formData.team || !formData.game_date) return;
       try {
-        const ctx = await enrichGameContext({
-          team: formData.team,
-          gameDate: formData.game_date,
-        });
+        if (!playerIdData?.player_id) {
+          console.warn(
+            `⚠️ Could not resolve player_id for ${formData.player_name} (${formData.team})`
+          );
+          return;
+        }
+
+        const enrichedContext = {
+          ...ctx,
+          player_id: playerIdData.player_id,
+        };
+
+        setContext(enrichedContext);
 
         // 🆔 Resolve player_id from Supabase
         const { data: playerIdData, error: playerIdError } = await supabase
           .from("player_ids")
-          .select("player_id")
+          .select("player_id", { head: false })
           .eq("player_name", formData.player_name)
           .eq("team", formData.team)
           .maybeSingle();
