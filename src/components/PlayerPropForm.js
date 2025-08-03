@@ -19,33 +19,84 @@ function normalizeName(name) {
   return name.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // remove accents
 }
 
-async function resolvePlayerId(playerName, teamAbbr) {
-  const normalizedName = normalizeName(playerName);
-
-  // 1. Try player_ids
-  let { data, error } = await supabase
-    .from("player_ids")
-    .select("player_id, player_name")
-    .eq("team", teamAbbr)
-    .maybeSingle();
-
-  if (data?.player_id && normalizeName(data.player_name) === normalizedName) {
-    return data.player_id;
+/**
+ * Resolve and validate player_id.
+ * Optionally fetch matching team_id from MT.
+ */
+export async function resolvePlayerId({ player_id, player_name }) {
+  if (!player_id) {
+    console.warn("❌ Missing player_id.");
+    return null;
   }
 
-  // 2. Fallback: model_training_props
-  ({ data, error } = await supabase
+  // ✅ Primary: check that player_id exists in player_ids
+  const { data: idData, error: idErr } = await supabase
+    .from("player_ids")
+    .select("player_id")
+    .eq("player_id", player_id)
+    .maybeSingle();
+
+  if (idData?.player_id) {
+    return idData.player_id;
+  }
+
+  // 🟡 Fallback: try MT by player_name
+  if (player_name) {
+    const { data: mtData, error: mtErr } = await supabase
+      .from("model_training_props")
+      .select("player_id, player_name")
+      .order("game_date", { ascending: false })
+      .limit(50);
+
+    const normalized = (s) =>
+      s
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+
+    const match = mtData?.find(
+      (row) => normalized(row.player_name) === normalized(player_name)
+    );
+
+    if (match?.player_id) {
+      console.warn("⚠️ Resolved player_id via MT fallback");
+      return match.player_id;
+    }
+  }
+
+  console.warn(`❌ Could not resolve player_id`);
+  return null;
+}
+
+async function resolveTeamId(player_id) {
+  if (!player_id) {
+    console.warn("❌ Missing player_id when resolving team_id.");
+    return null;
+  }
+
+  const { data, error } = await supabase
     .from("model_training_props")
-    .select("player_id, player_name")
-    .eq("team", teamAbbr)
+    .select("team_id")
+    .eq("player_id", player_id)
     .order("game_date", { ascending: false })
-    .limit(10));
+    .limit(1);
 
-  const match = data?.find(
-    (row) => normalizeName(row.player_name) === normalizedName
-  );
+  if (error) {
+    console.error(
+      "❌ Failed to fetch team_id from model_training_props:",
+      error.message
+    );
+    return null;
+  }
 
-  return match?.player_id || null;
+  const teamId = data?.[0]?.team_id ?? null;
+
+  if (!teamId) {
+    console.warn(`⚠️ No team_id found for player_id ${player_id}`);
+    return null;
+  }
+
+  return teamId;
 }
 
 const PlayerPropForm = ({ onPropAdded }) => {
@@ -67,62 +118,62 @@ const PlayerPropForm = ({ onPropAdded }) => {
   });
 
   const [context, setContext] = useState(null);
-  const team_id = getTeamInfoById(formData.team);
+
+  useEffect(() => {
+    const search = formData.player_name.trim().toLowerCase();
+
+    if (!search) {
+      setFilteredPlayers([]);
+      return;
+    }
+
+    const matches = players.filter((p) =>
+      p.player_name.toLowerCase().includes(search)
+    );
+
+    setFilteredPlayers(matches.slice(0, 8)); // limit to 8 suggestions
+  }, [formData.player_name, players]);
 
   useEffect(() => {
     async function loadContext() {
-      if (!formData.team || !formData.game_date || !formData.player_name)
+      const { player_id, player_name, game_date } = formData;
+
+      if (!player_id || !game_date) return;
+
+      // ✅ Step 1: Confirm player_id is valid
+      const resolvedPlayerId = await resolvePlayerId({
+        player_id,
+        player_name, // optional fallback
+      });
+
+      if (!resolvedPlayerId) {
+        console.warn(`⚠️ Could not resolve player_id`);
         return;
+      }
 
-      const playerId = await resolvePlayerId(
-        formData.player_name,
-        formData.team
-      );
+      // ✅ Step 2: Get team_id from MT
+      const teamId = await resolveTeamId(resolvedPlayerId);
 
-      if (!playerId) {
+      if (!teamId) {
         console.warn(
-          `⚠️ Could not resolve player_id for ${formData.player_name} (${formData.team})`
+          `⚠️ Could not resolve team_id for player ${resolvedPlayerId}`
         );
         return;
       }
 
-      // 🧩 Optional: insert into player_ids if missing
-      const teamId = getTeamInfoById(formData.team);
-      if (teamId) {
-        const { data: existing, error: fetchErr } = await supabase
-          .from("player_ids")
-          .select("player_id")
-          .eq("player_id", playerId)
-          .eq("team", formData.team)
-          .maybeSingle();
-
-        if (!existing && !fetchErr) {
-          const { error: insertErr } = await supabase
-            .from("player_ids")
-            .insert({
-              player_id: playerId,
-              player_name: formData.player_name,
-              team: formData.team,
-              team_id: teamId,
-            });
-          if (insertErr) {
-            console.warn("⚠️ Failed to insert into player_ids:", insertErr);
-          } else {
-            console.log("✅ Upserted player_id to player_ids table.");
-          }
-        }
-      }
-
+      // ✅ Step 3: Enrich context using team_id + game_date
       try {
         const ctx = await enrichGameContext({
-          team: formData.team,
-          gameDate: formData.game_date,
+          team_id: teamId,
+          gameDate: game_date,
         });
 
         const enrichedContext = {
           ...ctx,
-          player_id: playerId,
+          player_id: resolvedPlayerId,
+          team_id: teamId,
         };
+
         setContext(enrichedContext);
       } catch (err) {
         console.error("❌ Failed to enrich game context:", err);
@@ -130,7 +181,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
     }
 
     loadContext();
-  }, [formData.team, formData.game_date, formData.player_name]);
+  }, [formData.player_id, formData.player_name, formData.game_date]);
 
   const [propTypes, setPropTypes] = useState([]);
   const [submitting, setSubmitting] = useState(false);
@@ -138,7 +189,8 @@ const PlayerPropForm = ({ onPropAdded }) => {
   const [prediction, setPrediction] = useState(null);
   const [successToast, setSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
-
+  const [players, setPlayers] = useState([]);
+  const [filteredPlayers, setFilteredPlayers] = useState([]);
   const propTypeOptions = getPropTypeOptions();
   const successMessages = [
     "🎯 Prediction ready — make your move!",
@@ -175,6 +227,21 @@ const PlayerPropForm = ({ onPropAdded }) => {
       if (!error && data) setPropTypes(data.map((item) => item.name));
     };
     fetchPropTypes();
+  }, []);
+
+  useEffect(() => {
+    const fetchPlayers = async () => {
+      const { data, error } = await supabase
+        .from("player_ids")
+        .select("player_id, player_name")
+        .order("player_name", { ascending: true });
+
+      if (!error && data) {
+        setPlayers(data);
+      }
+    };
+
+    fetchPlayers();
   }, []);
 
   const handleChange = (e) => {
@@ -395,14 +462,37 @@ const PlayerPropForm = ({ onPropAdded }) => {
         </div>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <input
-          type="text"
-          name="player_name"
-          value={formData.player_name}
-          onChange={handleChange}
-          placeholder="Player Name"
-          className="w-full p-2 bg-gray-50 border border-gray-300 rounded-md"
-        />
+        <div className="relative">
+          <input
+            type="text"
+            name="player_name"
+            value={formData.player_name}
+            onChange={handleChange}
+            placeholder="Player Name"
+            className="w-full p-2 bg-gray-50 border border-gray-300 rounded-md"
+            autoComplete="off"
+          />
+
+          {filteredPlayers.length > 0 && (
+            <ul className="absolute z-10 w-full bg-white border border-gray-300 mt-1 max-h-48 overflow-y-auto rounded shadow">
+              {filteredPlayers.map((p) => (
+                <li
+                  key={p.player_id}
+                  className="px-3 py-2 hover:bg-blue-100 cursor-pointer"
+                  onClick={() =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      player_name: p.player_name,
+                      player_id: p.player_id,
+                    }))
+                  }
+                >
+                  {p.player_name}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <select
           name="team"
