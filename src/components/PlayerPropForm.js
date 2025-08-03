@@ -6,7 +6,7 @@ import { nowET, todayET } from "../shared/timeUtils.js";
 import { useAuth } from "../context/AuthContext.js";
 import { getPropTypeOptions } from "../../shared/propUtils.js";
 import { enrichGameContext } from "../../shared/enrichGameContext.js";
-import { getTeamIdFromAbbr } from "../shared/teamNameMap";
+import { getTeamIdFromAbbr } from "../shared/teamNameMap.js";
 
 // const isLocal = window.location.hostname === "localhost";
 // const apiUrl = isLocal
