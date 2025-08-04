@@ -179,8 +179,12 @@ const PlayerPropForm = ({ onPropAdded }) => {
 
       // 🧠 Merge form + context
       const payload = {
-        ...formData,
-        ...context,
+        prop_type: formData.prop_type,
+        features: {
+          ...formData,
+          ...context,
+          prop_value: parseFloat(formData.prop_value), // ensure numeric
+        },
       };
 
       console.log("📤 Submitting prediction payload:", payload);
