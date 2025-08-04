@@ -178,6 +178,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
       }
 
       // 🧠 Merge form + context
+      // 🧠 Merge form + context
       const payload = {
         prop_type: formData.prop_type,
         features: {
@@ -194,7 +195,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ features: payload }), // ← ✅ wrap in { features: ... }
+        body: JSON.stringify(payload), // ✅ Correct: no extra wrapper
       });
 
       const json = await res.json();
