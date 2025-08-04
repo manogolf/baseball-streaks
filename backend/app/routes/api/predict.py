@@ -30,7 +30,7 @@ async def predict(request: Request):
     prop_type = input_data.prop_type
     features_json = json.dumps(input_data.features)
 
-    script_path = os.path.abspath("backend/scripts/prediction/makePrediction.mjs")
+    script_path = os.path.abspath("/scripts/prediction/makePrediction.mjs")
     model_dir = f"backend/models/{prop_type}"
     rf_path = os.path.join(model_dir, f"{prop_type}_random_forest.pkl")
     lr_path = os.path.join(model_dir, f"{prop_type}_logistic_regression.pkl")
