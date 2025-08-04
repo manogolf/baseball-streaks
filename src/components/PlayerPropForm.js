@@ -185,13 +185,16 @@ const PlayerPropForm = ({ onPropAdded }) => {
 
       console.log("📤 Submitting prediction payload:", payload);
 
-      const res = await fetch("/api/predict", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch(
+        "https://baseball-streaks-sq44.onrender.com/api/predict",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
       const json = await res.json();
       console.log("📊 Prediction result:", json);
