@@ -11,6 +11,11 @@ node_modules
 dist
 dist-ssr
 *.local
+dist/
+build/
+.next/
+out/
+
 
 # Editor directories and files
 .vscode/*
@@ -51,3 +56,4 @@ models/*.pkl
 # Model artifacts
 models/
 *.pkl
+build/
