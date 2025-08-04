@@ -1,15 +1,10 @@
 //  shared/enrichGameContext.js
 
-import {
-  normalizeTeamAbbreviation,
-  getTeamInfoByAbbr,
-  teamIdMap,
-} from "./teamNameMap.js";
+import { teamIdMap } from "./teamNameMap.js";
 import { getGamePkForTeamOnDate } from "../backend/scripts/shared/fetchGameID.js";
 import { getGameSchedule } from "./mlbApiUtilsFrontend.js";
 import { getTimeOfDayBucketET } from "./timeUtils.js"; // shared-safe
 
-// 🔍 Helper to fetch live feed for pitcher info
 async function getFeedLive(gameId) {
   const url = `https://statsapi.mlb.com/api/v1.1/game/${gameId}/feed/live`;
   const res = await fetch(url);
@@ -19,24 +14,19 @@ async function getFeedLive(gameId) {
   return await res.json();
 }
 
-/**
- * Enriches a user-added prop with game context fields:
- * - game_id
- * - is_home
- * - opponent
- * - opponent_encoded
- * - game_time
- * - game_day_of_week
- * - time_of_day_bucket
- * - starting_pitcher_id
- */
-export async function enrichGameContext({ team, gameDate }) {
-  const normalizedTeam = normalizeTeamAbbreviation(team);
+export async function enrichGameContext({ team_id, gameDate }) {
+  const teamInfo = teamIdMap[team_id];
+  if (!teamInfo) {
+    console.warn(`❌ Could not resolve team info for team_id ${team_id}`);
+    return null;
+  }
+
+  const normalizedTeam = teamInfo.abbr;
 
   // 🎮 Resolve game ID
   const gameId = await getGamePkForTeamOnDate(team_id, gameDate);
   if (!gameId) {
-    console.warn(`❌ No game ID found for ${team} on ${gameDate}`);
+    console.warn(`❌ No game ID found for team_id ${team_id} on ${gameDate}`);
     return null;
   }
 
@@ -52,39 +42,26 @@ export async function enrichGameContext({ team, gameDate }) {
   const homeId = game.teams.home.team.id;
   const awayId = game.teams.away.team.id;
 
-  const teamInfo = getTeamInfoByAbbr(normalizedTeam);
-  if (!teamInfo) {
-    console.warn(`❌ Could not resolve team info for ${normalizedTeam}`);
-    return null;
-  }
-
-  const isHome = teamInfo.id === homeId;
+  const isHome = team_id === homeId;
   const opponentId = isHome ? awayId : homeId;
 
-  // 🧪 Debug logs to trace opponent resolution
   console.log(`🧪 Resolved opponentId: ${opponentId}`);
   console.log(`🧪 teamIdMap[${opponentId}]:`, teamIdMap[opponentId]);
 
   const opponentInfo = teamIdMap[opponentId];
-
-  console.log(`🧪 Resolved opponentId: ${opponentId}`);
-  console.log(`🧪 teamIdMap[${opponentId}]:`, teamIdMap[opponentId]);
-
   const opponent = opponentInfo?.abbr ?? null;
   const opponent_encoded = opponentId ?? null;
 
   if (!opponent) {
     console.warn(
-      `❌ Could not resolve opponent for ${normalizedTeam} on ${gameDate}`
+      `❌ Could not resolve opponent for team_id ${team_id} on ${gameDate}`
     );
   }
 
-  // 🕒 Game time context
   const gameTime = game.gameDate;
   const time_of_day_bucket = getTimeOfDayBucketET(gameTime);
   const game_day_of_week = new Date(gameTime).getDay(); // 0 = Sunday
 
-  // 👤 Fetch probable pitcher from live feed
   let starting_pitcher_id = null;
   try {
     const liveFeed = await getFeedLive(gameId);
@@ -112,6 +89,9 @@ export async function enrichGameContext({ team, gameDate }) {
     starting_pitcher_id,
   };
 
-  console.log(`🎯 Enriched game context for ${team} on ${gameDate}:`, enriched);
+  console.log(
+    `🎯 Enriched game context for team_id ${team_id} on ${gameDate}:`,
+    enriched
+  );
   return enriched;
 }

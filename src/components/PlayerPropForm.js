@@ -1,115 +1,28 @@
 //  src/components/PlayerPropForm.js
 
 import { useEffect, useState } from "react";
-import Select from "react-select"; // or similar
+import Select from "react-select";
 import { resolvePlayerAndTeam } from "../shared/resolvePlayerAndTeam.js";
 import { supabase } from "../utils/supabaseFrontend.js";
 import { nowET, todayET } from "../shared/timeUtils.js";
 import { useAuth } from "../context/AuthContext.js";
 import { getPropTypeOptions } from "../../shared/propUtils.js";
 import { enrichGameContext } from "../../shared/enrichGameContext.js";
-import { resolveTeamId as resolveTeamIdFallback } from "../../shared/resolveTeamIdFallback.js";
-import { getTeamInfoById } from "../../shared/teamNameMap.js";
 
-// const isLocal = window.location.hostname === "localhost";
-// const apiUrl = isLocal
-//  ? "http://localhost:3001"
-//  : "https://baseball-streaks-sq44.onrender.com";
+//const isLocal = window.location.hostname === "localhost";
+//const apiUrl = isLocal
+//? "http://localhost:3001"
+//: "https://baseball-streaks-sq44.onrender.com";
 
 const apiUrl = "https://baseball-streaks-sq44.onrender.com";
 
-function normalizeName(name) {
-  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // remove accents
-}
-
-/**
- * Resolve and validate player_id.
- * Optionally fetch matching team_id from MT.
- */
-export async function resolvePlayerId({ player_id, player_name }) {
-  if (!player_id) {
-    console.warn("❌ Missing player_id.");
-    return null;
-  }
-
-  // ✅ Primary: check that player_id exists in player_ids
-  const { data: idData, error: idErr } = await supabase
-    .from("player_ids")
-    .select("player_id")
-    .eq("player_id", player_id)
-    .maybeSingle();
-
-  if (idData?.player_id) {
-    return idData.player_id;
-  }
-
-  // 🟡 Fallback: try MT by player_name
-  if (player_name) {
-    const { data: mtData, error: mtErr } = await supabase
-      .from("model_training_props")
-      .select("player_id, player_name")
-      .order("game_date", { ascending: false })
-      .limit(50);
-
-    const normalized = (s) =>
-      s
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase();
-
-    const match = mtData?.find(
-      (row) => normalized(row.player_name) === normalized(player_name)
-    );
-
-    if (match?.player_id) {
-      console.warn("⚠️ Resolved player_id via MT fallback");
-      return match.player_id;
-    }
-  }
-
-  console.warn(`❌ Could not resolve player_id`);
-  return null;
-}
-
-async function resolveTeamId(player_id) {
-  if (!player_id) {
-    console.warn("❌ Missing player_id when resolving team_id.");
-    return null;
-  }
-
-  const { data, error } = await supabase
-    .from("model_training_props")
-    .select("team_id")
-    .eq("player_id", player_id)
-    .order("game_date", { ascending: false })
-    .limit(1);
-
-  if (error) {
-    console.error(
-      "❌ Failed to fetch team_id from model_training_props:",
-      error.message
-    );
-    return null;
-  }
-
-  const teamId = data?.[0]?.team_id ?? null;
-
-  if (!teamId) {
-    console.warn(`⚠️ No team_id found for player_id ${player_id}`);
-    return null;
-  }
-
-  return teamId;
-}
-
+// ✅ Unified resolution of player and team ID
 const PlayerPropForm = ({ onPropAdded }) => {
   const today = todayET();
   const auth = useAuth();
 
-  // 🆔 Logged‑in Supabase user UUID
   const [userId, setUserId] = useState(null);
 
-  // 🌱 Local form state
   const [formData, setFormData] = useState({
     player_name: "",
     player_id: null,
@@ -117,7 +30,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
     prop_type: "",
     prop_value: 0.5,
     over_under: "under",
-    game_date: todayET(),
+    game_date: today,
   });
 
   const [context, setContext] = useState(null);
@@ -125,14 +38,20 @@ const PlayerPropForm = ({ onPropAdded }) => {
 
   useEffect(() => {
     async function loadContext() {
-      const { player_id, player_name, game_date } = formData;
+      const { player_id, player_name, team, game_date } = formData;
 
       if (!player_id || !game_date) return;
 
-      // ✅ Step 1: Confirm player_id is valid
-      const resolvedPlayerId = await resolvePlayerId({
-        player_id,
-        player_name, // optional fallback
+      const { player_id: resolvedPlayerId, team_id: teamId } =
+        await resolvePlayerAndTeam({
+          player_id,
+          player_name,
+          team_abbr: team,
+        });
+
+      console.log("🔍 resolvePlayerAndTeam result:", {
+        resolvedPlayerId,
+        teamId,
       });
 
       if (!resolvedPlayerId) {
@@ -140,41 +59,13 @@ const PlayerPropForm = ({ onPropAdded }) => {
         return;
       }
 
-      // ✅ Step 2: Get team_id from MT
-      const teamId = await resolveTeamId(resolvedPlayerId);
-      console.log("🔍 Attempting to resolve team_id for", resolvedPlayerId);
-      const directCheck = await supabase
-        .from("player_ids")
-        .select("team_id")
-        .eq("player_id", resolvedPlayerId)
-        .maybeSingle();
-
-      const fallbackCheck = await supabase
-        .from("model_training_props")
-        .select("team_id")
-        .eq("player_id", resolvedPlayerId)
-        .order("game_date", { ascending: false })
-        .limit(1);
-
-      console.log("🧱 player_ids returned:", directCheck.data);
-      console.log("🧱 model_training_props returned:", fallbackCheck.data);
-      console.log("🧪 teamId resolved:", teamId);
-
-      if (teamId == null) {
+      if (!teamId) {
         console.warn(
           `⚠️ Could not resolve team_id for player ${resolvedPlayerId}`
         );
         return;
       }
 
-      if (teamId == null) {
-        console.warn(
-          `⚠️ Could not resolve team_id for player ${resolvedPlayerId}`
-        );
-        return;
-      }
-
-      // ✅ Step 3: Enrich context using team_id + game_date
       try {
         const ctx = await enrichGameContext({
           team_id: teamId,
@@ -194,7 +85,12 @@ const PlayerPropForm = ({ onPropAdded }) => {
     }
 
     loadContext();
-  }, [formData.player_id, formData.player_name, formData.game_date]);
+  }, [
+    formData.player_id,
+    formData.player_name,
+    formData.team,
+    formData.game_date,
+  ]);
 
   const [propTypes, setPropTypes] = useState([]);
   const [submitting, setSubmitting] = useState(false);
@@ -282,6 +178,32 @@ const PlayerPropForm = ({ onPropAdded }) => {
       }
 
       // 🧠 Merge form + context
+      const payload = {
+        ...formData,
+        ...context,
+      };
+
+      console.log("📤 Submitting prediction payload:", payload);
+
+      const res = await fetch("/api/predict", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+      console.log("📊 Prediction result:", json);
+
+      if (json?.probability != null) {
+        setPrediction({
+          probability: json.probability,
+          preparedProp: payload,
+        });
+      } else {
+        setError("Prediction failed: No probability returned.");
+      }
     } catch (err) {
       console.error("❌ Prediction Error:", err);
       setError("Prediction failed: " + err.message);
@@ -307,16 +229,12 @@ const PlayerPropForm = ({ onPropAdded }) => {
 
     try {
       // 👉 Step 1: Resolve MLB game ID
-      const gamePkRes = await fetch(`${apiUrl}/api/getGamePk`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          team: formData.team,
-          game_date: formData.game_date,
-        }),
-      });
-
-      const { gamePk: resolvedGameId } = await gamePkRes.json();
+      const resolvedGameId = context?.game_id;
+      if (!resolvedGameId) {
+        setError("Game context missing game_id.");
+        setSubmitting(false);
+        return;
+      }
 
       if (!resolvedGameId) {
         setError("Could not find a game for this team on the selected date.");
@@ -356,13 +274,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
         console.warn("⚠️ Could not resolve team_id for player", player_id);
       }
 
-      if (!resolvedGameId) {
-        setError("Could not find a game for this team on the selected date.");
-        setSubmitting(false);
-        return;
-      }
-
-      // 🧠 Step 4: Predict
+      // 🧠 Step 3: Predict
       const predictRes = await fetch(`${apiUrl}/api/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -383,7 +295,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
         return;
       }
 
-      // 🧠 Step 5: Build final submission
+      // 🧠 Step 4: Build final submission
       const now = nowET().toISO();
 
       const finalSubmission = {
@@ -397,13 +309,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
         prop_source: "user_added",
         predicted_outcome: predictJson.predicted_outcome ?? null,
         confidence_score: predictJson.confidence_score ?? null,
-        is_home: predictJson?.is_home ?? null,
-        opponent: predictJson?.opponent ?? null,
-        opponent_encoded: predictJson?.opponent_encoded ?? null,
-        game_time: predictJson?.game_time ?? null,
-        game_day_of_week: predictJson?.game_day_of_week ?? null,
-        time_of_day_bucket: predictJson?.time_of_day_bucket ?? null,
-        starting_pitcher_id: predictJson?.starting_pitcher_id ?? null,
+        ...context,
       };
 
       // ✅ Final insert
