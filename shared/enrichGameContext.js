@@ -34,7 +34,7 @@ export async function enrichGameContext({ team, gameDate }) {
   const normalizedTeam = normalizeTeamAbbreviation(team);
 
   // 🎮 Resolve game ID
-  const gameId = await getGamePkForTeamOnDate(normalizedTeam, gameDate);
+  const gameId = await getGamePkForTeamOnDate(team_id, gameDate);
   if (!gameId) {
     console.warn(`❌ No game ID found for ${team} on ${gameDate}`);
     return null;

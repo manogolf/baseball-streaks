@@ -1,38 +1,26 @@
 // backend/scripts/shared/fetchGameID.js
 
-import { DateTime } from "luxon";
-import { teamNameMap as TEAM_NAME_MAP } from "../../../shared/teamNameMap.js";
+import { getGameSchedule } from "../../../shared/mlbApiUtilsFrontend.js";
 
-export async function getGamePkForTeamOnDate(teamAbbr, dateISO) {
-  const fullTeamName = TEAM_NAME_MAP[teamAbbr];
-  if (!fullTeamName) {
-    console.warn(`⚠️ Unknown team abbreviation: ${teamAbbr}`);
-    return null;
-  }
+/**
+ * Finds the gamePk for the given team_id on the given date.
+ * @param {number} teamId - The MLB team ID (e.g. 144 for ATL)
+ * @param {string} dateISO - The date string (e.g. '2025-08-01')
+ * @returns {Promise<number|null>}
+ */
 
-  const apiDate = DateTime.fromISO(dateISO).toFormat("yyyy-MM-dd");
-  const url = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${apiDate}`;
-
-  console.log("📡 Fetching schedule from:", url);
-  const res = await fetch(url);
-  const json = await res.json();
-
-  const games = json.dates?.[0]?.games || [];
-  console.log("📦 Games on date:", games);
+export async function getGamePkForTeamOnDate(teamId, dateISO) {
+  const games = await getGameSchedule(dateISO);
 
   for (const game of games) {
-    const { gamePk, teams } = game;
-    const homeTeam = teams.home.team.name;
-    const awayTeam = teams.away.team.name;
-
-    if (homeTeam === fullTeamName || awayTeam === fullTeamName) {
-      console.log(
-        `🎮 Found game ID for ${fullTeamName} on ${apiDate}: ${gamePk}`
-      );
-      return gamePk;
+    if (
+      game.teams?.home?.team?.id === teamId ||
+      game.teams?.away?.team?.id === teamId
+    ) {
+      return game.gamePk;
     }
   }
 
-  console.warn(`❌ No game found for team: ${fullTeamName} on ${apiDate}`);
+  console.warn(`⚠️ No game found for team ID ${teamId} on ${dateISO}`);
   return null;
 }
