@@ -1,6 +1,8 @@
 //  src/components/PlayerPropForm.js
 
 import { useEffect, useState } from "react";
+import Select from "react-select"; // or similar
+import { resolvePlayerAndTeam } from "../shared/resolvePlayerAndTeam.js";
 import { supabase } from "../utils/supabaseFrontend.js";
 import { nowET, todayET } from "../shared/timeUtils.js";
 import { useAuth } from "../context/AuthContext.js";
@@ -120,28 +122,6 @@ const PlayerPropForm = ({ onPropAdded }) => {
 
   const [context, setContext] = useState(null);
   const [players, setPlayers] = useState([]);
-  const [filteredPlayers, setFilteredPlayers] = useState([]);
-
-  useEffect(() => {
-    const name = formData.player_name;
-    if (!name || typeof name !== "string") {
-      setFilteredPlayers([]);
-      return;
-    }
-
-    const search = name.trim().toLowerCase();
-
-    if (!search) {
-      setFilteredPlayers([]);
-      return;
-    }
-
-    const matches = players.filter((p) =>
-      p.player_name.toLowerCase().includes(search)
-    );
-
-    setFilteredPlayers(matches.slice(0, 8)); // limit to 8 suggestions
-  }, [formData.player_name, players]);
 
   useEffect(() => {
     async function loadContext() {
@@ -162,6 +142,22 @@ const PlayerPropForm = ({ onPropAdded }) => {
 
       // ✅ Step 2: Get team_id from MT
       const teamId = await resolveTeamId(resolvedPlayerId);
+      console.log("🔍 Attempting to resolve team_id for", resolvedPlayerId);
+      const directCheck = await supabase
+        .from("player_ids")
+        .select("team_id")
+        .eq("player_id", resolvedPlayerId)
+        .maybeSingle();
+
+      const fallbackCheck = await supabase
+        .from("model_training_props")
+        .select("team_id")
+        .eq("player_id", resolvedPlayerId)
+        .order("game_date", { ascending: false })
+        .limit(1);
+
+      console.log("🧱 player_ids returned:", directCheck.data);
+      console.log("🧱 model_training_props returned:", fallbackCheck.data);
 
       if (!teamId) {
         console.warn(
@@ -278,55 +274,6 @@ const PlayerPropForm = ({ onPropAdded }) => {
       }
 
       // 🧠 Merge form + context
-      const enrichedProp = {
-        playerName: formData.player_name,
-        player_id: context.player_id,
-        teamAbbr: formData.team,
-        propType: formData.prop_type,
-        line: formData.prop_value,
-        overUnder: formData.over_under,
-        gameDate: formData.game_date,
-        ...context,
-        user_id: userId, // ✅ attach userId here
-      };
-
-      console.log("📤 Sending to /api/prepareProp:", enrichedProp);
-      console.log("🔗 Sending to API URL:", apiUrl);
-
-      const res = await fetch(`${apiUrl}/api/prepareProp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(enrichedProp),
-      });
-
-      const preparedData = await res.json();
-
-      if (!res.ok || !preparedData?.player_id) {
-        setError("Failed to prepare prop for prediction.");
-        setSubmitting(false);
-        return;
-      }
-
-      // 🎯 Make prediction
-      const predictRes = await fetch(`${apiUrl}/api/predict`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(preparedData),
-      });
-
-      const predictJson = await predictRes.json();
-
-      if (!predictRes.ok || !predictJson || predictJson.error) {
-        throw new Error(
-          predictJson?.error || "Prediction request failed. Try again."
-        );
-      }
-
-      // 🔐 Preserve prepared prop for submission
-      setPrediction({
-        ...predictJson,
-        preparedProp: preparedData,
-      });
     } catch (err) {
       console.error("❌ Prediction Error:", err);
       setError("Prediction failed: " + err.message);
@@ -346,16 +293,6 @@ const PlayerPropForm = ({ onPropAdded }) => {
     // 🛑 Ensure user is logged in
     if (!userId) {
       setError("You must be logged in to submit a prop.");
-      setSubmitting(false);
-      return;
-    }
-
-    if (
-      !prediction ||
-      prediction.predicted_outcome == null ||
-      prediction.confidence_score == null
-    ) {
-      setError("Please make a prediction before submitting.");
       setSubmitting(false);
       return;
     }
@@ -385,61 +322,91 @@ const PlayerPropForm = ({ onPropAdded }) => {
         setSubmitting(false);
         return;
       }
-
-      const prepared = prediction.preparedProp;
-      const now = nowET().toISO();
-
-      const team_id = await resolveTeamIdFallback({
-        context,
-        formData,
-        prepared,
-      });
-
-      // 👉 Step 3: Build full payload
-      const payload = {
-        player_name: prepared.player_name || formData.player_name,
-        team: prepared.team || formData.team,
-        team_id: prepared.team_id || context.team_id,
-        prop_type: prepared.prop_type,
-        prop_value: parseFloat(prepared.prop_value),
-        game_date: prepared.game_date || formData.game_date,
-        game_id: resolvedGameId,
-        player_id: prepared.player_id,
-        status: "pending",
-        created_at: now,
-        predicted_outcome: prediction.predicted_outcome,
-        confidence_score: prediction.confidence_score,
-        prediction_timestamp: now,
-        over_under: prepared.over_under.toLowerCase(),
+      // 🧠 Step 1: Merge all available data into one clean object
+      const base = {
+        player_name: formData.player_name,
+        team_abbr: formData.team,
+        prop_type: formData.prop_type,
+        prop_value: parseFloat(formData.prop_value),
+        over_under: formData.over_under?.toLowerCase(),
+        game_date: formData.game_date,
         user_id: userId,
-        prop_source: "user_added",
-        // ✅ Game context fields already exist in `prepared`
-        is_home: prepared.is_home,
-        opponent: prepared.opponent,
-        opponent_encoded: prepared.opponent_encoded,
-        game_time: prepared.game_time,
-        game_day_of_week: prepared.game_day_of_week,
-        time_of_day_bucket: prepared.time_of_day_bucket,
-        starting_pitcher_id: prepared.starting_pitcher_id,
-        team_id,
       };
 
-      console.log("📦 Final payload:", payload);
+      // 🧠 Step 2: Resolve player_id and team_id centrally
+      const { player_id, team_id } = await resolvePlayerAndTeam({
+        player_name: base.player_name,
+        team_abbr: base.team_abbr,
+      });
 
-      // 👉 Step 4: Insert into Supabase
+      if (!player_id) {
+        setError("❌ Missing player_id — cannot submit prop.");
+        setSubmitting(false);
+        return;
+      }
+      if (!team_id) {
+        console.warn("⚠️ Could not resolve team_id for player", player_id);
+      }
+
+      if (!resolvedGameId) {
+        setError("Could not find a game for this team on the selected date.");
+        setSubmitting(false);
+        return;
+      }
+
+      // 🧠 Step 4: Predict
+      const predictRes = await fetch(`${apiUrl}/api/predict`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...base,
+          player_id,
+          team_id,
+          game_id: resolvedGameId,
+        }),
+      });
+      const predictJson = await predictRes.json();
+
+      if (!predictRes.ok || !predictJson || predictJson.error) {
+        setError(
+          "Prediction failed: " + (predictJson?.error ?? "unknown error")
+        );
+        setSubmitting(false);
+        return;
+      }
+
+      // 🧠 Step 5: Build final submission
+      const now = nowET().toISO();
+
+      const finalSubmission = {
+        ...base,
+        player_id,
+        team_id,
+        game_id: resolvedGameId,
+        status: "pending",
+        created_at: now,
+        prediction_timestamp: now,
+        prop_source: "user_added",
+        predicted_outcome: predictJson.predicted_outcome ?? null,
+        confidence_score: predictJson.confidence_score ?? null,
+        is_home: predictJson?.is_home ?? null,
+        opponent: predictJson?.opponent ?? null,
+        opponent_encoded: predictJson?.opponent_encoded ?? null,
+        game_time: predictJson?.game_time ?? null,
+        game_day_of_week: predictJson?.game_day_of_week ?? null,
+        time_of_day_bucket: predictJson?.time_of_day_bucket ?? null,
+        starting_pitcher_id: predictJson?.starting_pitcher_id ?? null,
+      };
+
+      // ✅ Final insert
       const { error: insertError } = await supabase
         .from("player_props")
-        .insert([payload]);
+        .insert([finalSubmission]);
 
       if (insertError) {
-        if (insertError.code === "23505") {
-          setError("You've already submitted this prop.");
-        } else {
-          setError("Failed to save prop.");
-        }
-        console.error("❌ Supabase insert error:", insertError.message);
-        setTimeout(() => setError(""), 4000);
-        return;
+        console.error("❌ Failed to insert prop:", insertError.message);
+      } else {
+        console.log("✅ Prop successfully submitted:", finalSubmission);
       }
 
       // ✅ Success
@@ -477,37 +444,29 @@ const PlayerPropForm = ({ onPropAdded }) => {
         </div>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="relative">
-          <input
-            type="text"
-            name="player_name"
-            value={formData.player_name}
-            onChange={handleChange}
-            placeholder="Player Name"
-            className="w-full p-2 bg-gray-50 border border-gray-300 rounded-md"
-            autoComplete="off"
-          />
-
-          {filteredPlayers.length > 0 && (
-            <ul className="absolute z-10 w-full bg-white border border-gray-300 mt-1 max-h-48 overflow-y-auto rounded shadow">
-              {filteredPlayers.map((p) => (
-                <li
-                  key={p.player_id}
-                  className="px-3 py-2 hover:bg-blue-100 cursor-pointer"
-                  onClick={() =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      player_name: p.player_name,
-                      player_id: p.player_id,
-                    }))
-                  }
-                >
-                  {p.player_name}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <Select
+          options={players.map((p) => ({
+            label: p.player_name,
+            value: p.player_id,
+          }))}
+          value={
+            formData.player_id
+              ? {
+                  label: formData.player_name,
+                  value: formData.player_id,
+                }
+              : null
+          }
+          onChange={(selected) => {
+            setFormData((prev) => ({
+              ...prev,
+              player_name: selected.label,
+              player_id: selected.value,
+            }));
+          }}
+          placeholder="Select Player"
+          className="mb-4"
+        />
 
         <select
           name="team"
