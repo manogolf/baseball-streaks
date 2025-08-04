@@ -6,6 +6,7 @@ import { nowET, todayET } from "../shared/timeUtils.js";
 import { useAuth } from "../context/AuthContext.js";
 import { getPropTypeOptions } from "../../shared/propUtils.js";
 import { enrichGameContext } from "../../shared/enrichGameContext.js";
+import { resolveTeamId } from "../../shared/resolveTeamIdFallback.js";
 import { getTeamInfoById } from "../../shared/teamNameMap.js";
 
 // const isLocal = window.location.hostname === "localhost";
@@ -388,6 +389,8 @@ const PlayerPropForm = ({ onPropAdded }) => {
       const prepared = prediction.preparedProp;
       const now = nowET().toISO();
 
+      const team_id = resolveTeamId({ context, formData, prepared });
+
       // 👉 Step 3: Build full payload
       const payload = {
         player_name: prepared.player_name || formData.player_name,
@@ -414,6 +417,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
         game_day_of_week: prepared.game_day_of_week,
         time_of_day_bucket: prepared.time_of_day_bucket,
         starting_pitcher_id: prepared.starting_pitcher_id,
+        team_id,
       };
 
       console.log("📦 Final payload:", payload);
