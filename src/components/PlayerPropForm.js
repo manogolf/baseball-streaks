@@ -6,7 +6,7 @@ import { nowET, todayET } from "../shared/timeUtils.js";
 import { useAuth } from "../context/AuthContext.js";
 import { getPropTypeOptions } from "../../shared/propUtils.js";
 import { enrichGameContext } from "../../shared/enrichGameContext.js";
-import { resolveTeamId } from "../../shared/resolveTeamIdFallback.js";
+import { resolveTeamId as resolveTeamIdFallback } from "../../shared/resolveTeamIdFallback.js";
 import { getTeamInfoById } from "../../shared/teamNameMap.js";
 
 // const isLocal = window.location.hostname === "localhost";
@@ -389,7 +389,11 @@ const PlayerPropForm = ({ onPropAdded }) => {
       const prepared = prediction.preparedProp;
       const now = nowET().toISO();
 
-      const team_id = resolveTeamId({ context, formData, prepared });
+      const team_id = await resolveTeamIdFallback({
+        context,
+        formData,
+        prepared,
+      });
 
       // 👉 Step 3: Build full payload
       const payload = {
