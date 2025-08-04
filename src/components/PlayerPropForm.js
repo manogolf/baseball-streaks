@@ -158,8 +158,16 @@ const PlayerPropForm = ({ onPropAdded }) => {
 
       console.log("🧱 player_ids returned:", directCheck.data);
       console.log("🧱 model_training_props returned:", fallbackCheck.data);
+      console.log("🧪 teamId resolved:", teamId);
 
-      if (!teamId) {
+      if (teamId == null) {
+        console.warn(
+          `⚠️ Could not resolve team_id for player ${resolvedPlayerId}`
+        );
+        return;
+      }
+
+      if (teamId == null) {
         console.warn(
           `⚠️ Could not resolve team_id for player ${resolvedPlayerId}`
         );
