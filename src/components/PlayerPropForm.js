@@ -392,6 +392,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
       const payload = {
         player_name: prepared.player_name || formData.player_name,
         team: prepared.team || formData.team,
+        team_id: prepared.team_id || context.team_id,
         prop_type: prepared.prop_type,
         prop_value: parseFloat(prepared.prop_value),
         game_date: prepared.game_date || formData.game_date,
