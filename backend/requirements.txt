@@ -26,5 +26,6 @@ python-dotenv
 supabase
 
 python-dotenv==1.1.0
-PyYAML
+PyYAML==6.0.2
+
 
