@@ -25,7 +25,7 @@ def make_prediction(prepared_data):
 # This will resolve to /opt/render/project/
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 
-    model_dir = os.path.join(project_root, "models", prop_type)
+    model_dir = os.path.join(backend_root, "backend", "models", prop_type)
     rf_model_path = os.path.join(model_dir, f"{prop_type}_random_forest.pkl")
     lr_model_path = os.path.join(model_dir, f"{prop_type}_logistic_regression.pkl")
 
