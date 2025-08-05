@@ -22,8 +22,8 @@ def make_prediction(prepared_data):
     prop_type = prepared_data["prop_type"]
     features = prepared_data["features"]
 
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
-    model_dir = os.path.join(project_root, f"models/{prop_type}")
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    model_dir = os.path.abspath(os.path.join(script_dir, "../../../models", prop_type))
     rf_model_path = os.path.join(model_dir, f"{prop_type}_random_forest.pkl")
     lr_model_path = os.path.join(model_dir, f"{prop_type}_logistic_regression.pkl")
 
