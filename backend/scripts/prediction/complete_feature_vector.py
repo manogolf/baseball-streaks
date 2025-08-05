@@ -4,7 +4,7 @@ import yaml
 import os
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
-FEATURE_SPEC_PATH = os.path.join(PROJECT_ROOT, "backend/model_features.yaml")
+FEATURE_SPEC_PATH = os.path.join(PROJECT_ROOT, "model_features.yaml")
 
 def load_feature_spec():
     with open(FEATURE_SPEC_PATH, "r") as f:
