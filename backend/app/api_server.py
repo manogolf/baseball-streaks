@@ -16,7 +16,6 @@ from app.routes.api.user_vs_model_accuracy import router as user_vs_model_accura
 from app.routes.api.user_vs_model_accuracy_weekly import router as user_vs_model_weekly_router
 from app.routes.api.model_accuracy_weekly import router as model_accuracy_weekly_router
 from backend.app.routes.api import player_list
-from app.routes.api.prepare_prop import router as prepare_prop_router
 
 app = FastAPI()
 
@@ -32,6 +31,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+print("✅ Registering /api/predict route")
 
 # ✅ Register routes
 app.include_router(predict_router, prefix="/api")

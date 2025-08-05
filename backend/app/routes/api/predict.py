@@ -1,11 +1,14 @@
 # File: backend/app/routes/api/predict.py
 
 from backend.scripts.prediction.make_prediction import make_prediction
+from backend.scripts.prediction.complete_feature_vector import complete_feature_vector
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ValidationError
 import json
 import sys
 import os
+
+print("✅ predict.py is being imported")
 
 router = APIRouter()
 
@@ -26,17 +29,15 @@ async def predict(request: Request) -> dict:
         raise HTTPException(status_code=422, detail=e.errors())
 
     prop_type = input_data.prop_type
-    features_json = json.dumps(input_data.features)
 
-    model_dir = f"backend/models/{prop_type}"
-    rf_path = os.path.join(model_dir, f"{prop_type}_random_forest.pkl")
-    lr_path = os.path.join(model_dir, f"{prop_type}_logistic_regression.pkl")
+    # ✅ Fill missing fields with default values
+    completed_features = complete_feature_vector(input_data.features, prop_type)
 
     try:
         print(f"🚀 Calling make_prediction() with {prop_type}")
         prediction_output = make_prediction({
            "prop_type": prop_type,
-           "features": input_data.features
+           "features": completed_features
         })
         print(f"🎯 Prediction result: {prediction_output}")
         return prediction_output
