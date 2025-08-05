@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ValidationError
 from backend.scripts.prediction.complete_feature_vector import complete_feature_vector
 from backend.scripts.prediction.make_prediction import make_prediction
+from backend.scripts.prediction.make_prediction import load_model_from_supabase
 
 router = APIRouter()
 print("✅ predict.py is being imported")
@@ -19,17 +20,11 @@ def load_model_cached(prop_type: str, model_kind: str):
     if key in model_cache:
         return model_cache[key]
 
-    model_dir = f"backend/models/{prop_type}"
-    model_path = os.path.join(model_dir, f"{prop_type}_{model_kind}.pkl")
-
-    try:
-        model = joblib.load(model_path)
-        model_cache[key] = model
-        print(f"📦 Loaded and cached model: {model_path}")
-        return model
-    except Exception as e:
-        raise RuntimeError(f"Failed to load model from {model_path}: {e}")
-
+    model_path = f"{prop_type}/{prop_type}_{model_kind}_compressed.pkl"
+    model = load_model_from_supabase("models", model_path)
+    model_cache[key] = model
+    print(f"📦 Loaded and cached model from Supabase: {model_path}")
+    return model
 
 class FullPropFeatures(BaseModel):
     prop_type: str
