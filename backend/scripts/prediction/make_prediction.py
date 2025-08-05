@@ -3,6 +3,28 @@
 import os
 import joblib
 import numpy as np
+import tempfile
+import requests
+from supabase import create_client
+import os
+
+# 🔐 Setup Supabase client
+SUPABASE_URL = os.environ["SUPABASE_URL"]
+SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# 📦 Reusable loader
+def load_model_from_supabase(bucket: str, path: str):
+    res = supabase.storage.from_(bucket).create_signed_url(path, 3600)
+    signed_url = res['signedURL']
+
+    with tempfile.NamedTemporaryFile(delete=True) as tmp:
+        response = requests.get(signed_url)
+        response.raise_for_status()
+        tmp.write(response.content)
+        tmp.flush()
+        return joblib.load(tmp.name)
+
 
 backend_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 
@@ -23,23 +45,18 @@ def make_prediction(prepared_data):
     prop_type = prepared_data["prop_type"]
     features = prepared_data["features"]
 
-# This will resolve to /opt/render/project/
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
+    # 🔁 Load compressed models from Supabase
+    rf_model = load_model_from_supabase(
+        "models", f"{prop_type}/{prop_type}_random_forest_compressed.pkl"
+    )
+    lr_model = load_model_from_supabase(
+        "models", f"{prop_type}/{prop_type}_logistic_regression_compressed.pkl"
+    )
 
-    model_dir = os.path.join(backend_root, "models", prop_type)
-    rf_model_path = os.path.join(model_dir, f"{prop_type}_random_forest.pkl")
-    lr_model_path = os.path.join(model_dir, f"{prop_type}_logistic_regression.pkl")
+    print(f"📦 Loaded models for: {prop_type}")
 
-    print("📂 Model directory resolved to:", model_dir)
-   
-    # Convert features to the input format expected by model
+    # 🧮 Run prediction
     X = np.array([list(features.values())])
-
-    # Load models
-    rf_model = joblib.load(rf_model_path)
-    lr_model = joblib.load(lr_model_path)
-
-    # Predict probabilities
     rf_prob = rf_model.predict_proba(X)[0][1]
     lr_prob = lr_model.predict_proba(X)[0][1]
     final_prob = (rf_prob + lr_prob) / 2
@@ -49,5 +66,5 @@ def make_prediction(prepared_data):
     return {
         "probability": final_prob,
         "rf_probability": rf_prob,
-        "lr_probability": lr_prob
+        "lr_probability": lr_prob,
     }
