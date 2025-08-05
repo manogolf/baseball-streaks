@@ -36,11 +36,10 @@ async def predict(request: Request) -> dict:
 
     try:
         print(f"🚀 Calling make_prediction() with {prop_type}")
-        prediction_output = make_prediction(
-            input_data.features,  # ✅ positional args
-            rf_path,
-            lr_path,
-        )
+        prediction_output = make_prediction({
+           "prop_type": prop_type,
+           "features": input_data.features
+        })
         print(f"🎯 Prediction result: {prediction_output}")
         return prediction_output
 
