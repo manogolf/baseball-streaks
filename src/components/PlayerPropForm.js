@@ -201,13 +201,19 @@ const PlayerPropForm = ({ onPropAdded }) => {
       const json = await res.json();
       console.log("📊 Prediction result:", json);
 
-      if (json?.probability != null) {
+      if (typeof json.probability === "number" && !isNaN(json.probability)) {
+        const confidence = (json.probability * 100).toFixed(2); // 📈 confidence
+        const recommendation =
+          json.recommendation || (json.probability >= 0.5 ? "over" : "under"); // 🎯 fallback logic
+
         setPrediction({
-          probability: json.probability,
+          probability: json.probability.toFixed(4), // 🔢 raw
+          recommendation, // 🎯
+          confidence, // 📈
           preparedProp: payload,
         });
       } else {
-        setError("Prediction failed: No probability returned.");
+        setError("Prediction failed: Invalid probability returned.");
       }
     } catch (err) {
       console.error("❌ Prediction Error:", err);
@@ -500,9 +506,9 @@ const PlayerPropForm = ({ onPropAdded }) => {
       </div>
       {prediction && (
         <div className="mt-4 p-3 bg-green-100 text-green-800 rounded-md text-center">
-          📈 Prediction: <strong>{prediction.predicted_outcome}</strong> <br />
-          🎯 Confidence:{" "}
-          <strong>{(prediction.confidence_score * 100).toFixed(2)}%</strong>
+          🎯 Prediction: <strong>{prediction.recommendation}</strong> <br />
+          📈 Confidence: <strong>{prediction.confidence}%</strong> <br />
+          🔢 Raw Probability: <code>{prediction.probability}</code>
         </div>
       )}
 
