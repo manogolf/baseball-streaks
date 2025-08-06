@@ -251,12 +251,6 @@ const PlayerPropForm = ({ onPropAdded }) => {
         return;
       }
 
-      // ✅ Reuse previous prepared data from prediction
-      if (!prediction.preparedProp?.player_id) {
-        setError("Missing prepared prop. Please re-run prediction.");
-        setSubmitting(false);
-        return;
-      }
       // 🧠 Step 1: Merge all available data into one clean object
       const base = {
         player_name: formData.player_name,
@@ -306,6 +300,8 @@ const PlayerPropForm = ({ onPropAdded }) => {
 
       // 🧠 Step 4: Build final submission
       const now = nowET().toISO();
+
+      console.log("🔍 prediction before submission:", prediction);
 
       const finalSubmission = {
         ...base,
