@@ -6,6 +6,12 @@ import numpy as np
 import tempfile
 import requests
 from supabase import create_client
+import json
+
+# 📥 Load feature metadata (only once)
+FEATURE_METADATA_PATH = "backend/scripts/modeling/feature_metadata.json"
+with open(FEATURE_METADATA_PATH, "r") as f:
+    FEATURE_METADATA = json.load(f)
 
 # 🔐 Supabase setup
 SUPABASE_URL = os.environ["SUPABASE_URL"]
@@ -28,6 +34,21 @@ def load_model_from_supabase(bucket: str, path: str):
 def make_prediction(payload: dict, rf_model=None, lr_model=None) -> dict:
     prop_type = payload["prop_type"]
     features = payload["features"]
+
+    # Get expected features for this prop_type
+    expected_rf_features = FEATURE_METADATA[prop_type]["random_forest"]
+    expected_lr_features = FEATURE_METADATA[prop_type]["logistic_regression"]
+
+    # Sanitize and align feature vectors
+    def sanitize_features(input_features, expected):
+        return [
+            float(input_features.get(f, 0.0))  # Default missing to 0.0
+            for f in expected
+        ]
+
+    X_rf = np.array([sanitize_features(features, expected_rf_features)])
+    X_lr = np.array([sanitize_features(features, expected_lr_features)])
+
     print(f"📊 Running prediction for {prop_type} with features: {features}")
 
     # Fallback: load models if not provided
@@ -40,13 +61,8 @@ def make_prediction(payload: dict, rf_model=None, lr_model=None) -> dict:
         lr_model = load_model_from_supabase("models", path)
 
     # 🚀 Predict
-    numeric_features = {
-        k: float(v) if isinstance(v, (int, float, bool)) else 0.0
-        for k, v in features.items()
-    }
-    X = np.array([list(numeric_features.values())])
-    rf_proba = rf_model.predict_proba(X)[0][1]
-    lr_proba = lr_model.predict_proba(X)[0][1]
+    rf_proba = rf_model.predict_proba(X_rf)[0][1]
+    lr_proba = lr_model.predict_proba(X_lr)[0][1]
     hybrid = round((rf_proba + lr_proba) / 2, 4)
 
     print(f"🔢 RF: {rf_proba:.4f}, LR: {lr_proba:.4f}, Hybrid: {hybrid:.4f}")
