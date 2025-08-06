@@ -293,10 +293,13 @@ const PlayerPropForm = ({ onPropAdded }) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...base,
-          player_id,
-          team_id,
-          game_id: resolvedGameId,
+          prop_type: formData.prop_type,
+          features: {
+            ...base,
+            player_id,
+            team_id,
+            game_id: resolvedGameId,
+          },
         }),
       });
       const predictJson = await predictRes.json();
