@@ -259,12 +259,13 @@ const PlayerPropForm = ({ onPropAdded }) => {
       // 🧠 Step 1: Merge all available data into one clean object
       const base = {
         player_name: formData.player_name,
-        team_abbr: formData.team,
+        team: formData.team, // ✅ Use this for 'team' column in DB
         prop_type: formData.prop_type,
         prop_value: parseFloat(formData.prop_value),
         over_under: formData.over_under?.toLowerCase(),
         game_date: formData.game_date,
         user_id: userId,
+        team_id: prediction.preparedProp?.team_id, // ✅ include team_id here
       };
 
       // 🧠 Step 2: Resolve player_id and team_id centrally
@@ -316,6 +317,8 @@ const PlayerPropForm = ({ onPropAdded }) => {
       const now = nowET().toISO();
 
       console.log("🔍 prediction before submission:", prediction);
+      // Strip unsupported keys from context
+      const { team_abbr, ...cleanContext } = context;
 
       const finalSubmission = {
         ...base,
@@ -328,7 +331,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
         prop_source: "user_added",
         predicted_outcome: predictJson.recommendation ?? null,
         confidence_score: predictJson.probability ?? null,
-        ...context,
+        ...cleanContext,
       };
 
       // ✅ Final insert
