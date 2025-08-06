@@ -9,7 +9,11 @@ from supabase import create_client
 import json
 
 # 📥 Load feature metadata (only once)
-FEATURE_METADATA_PATH = "backend/scripts/modeling/feature_metadata.json"
+FEATURE_METADATA_PATH = os.path.join(
+    os.path.dirname(__file__), "../modeling/feature_metadata.json"
+)
+FEATURE_METADATA_PATH = os.path.abspath(FEATURE_METADATA_PATH)
+
 with open(FEATURE_METADATA_PATH, "r") as f:
     FEATURE_METADATA = json.load(f)
 
