@@ -46,18 +46,11 @@ async def predict(request: Request) -> dict:
     completed_features = complete_feature_vector(input_data.features, prop_type)
 
     try:
-        rf_model = load_model_cached(prop_type, "random_forest")
-        lr_model = load_model_cached(prop_type, "logistic_regression")
-
         print(f"🚀 Calling make_prediction() for {prop_type}")
-        prediction_output = make_prediction(
-            {
-                "prop_type": prop_type,
-                "features": completed_features,
-            },
-            rf_model=rf_model,
-            lr_model=lr_model,
-        )
+        prediction_output = make_prediction({
+        "prop_type": prop_type,
+        "features": completed_features,
+    })
         print(f"🎯 Prediction result: {prediction_output}")
         return prediction_output
 
