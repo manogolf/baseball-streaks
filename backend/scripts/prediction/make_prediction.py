@@ -71,6 +71,8 @@ def make_prediction(payload: dict, rf_model=None, lr_model=None) -> dict:
 
     print(f"🔢 RF: {rf_proba:.4f}, LR: {lr_proba:.4f}, Hybrid: {hybrid:.4f}")
 
+    recommendation = "over" if hybrid >= 0.5 else "under"
+
     return {
         "probability": hybrid,                # used in frontend logic
         "recommendation": recommendation,    # UI label and storage
