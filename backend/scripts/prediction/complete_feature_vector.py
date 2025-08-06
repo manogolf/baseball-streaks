@@ -6,10 +6,18 @@ import os
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 FEATURE_SPEC_PATH = os.path.join(PROJECT_ROOT, "model_features.yaml")
 
+_feature_spec_cache = None
+
 def load_feature_spec():
+    global _feature_spec_cache
+    if _feature_spec_cache is not None:
+        return _feature_spec_cache
+
     with open(FEATURE_SPEC_PATH, "r") as f:
         spec = yaml.safe_load(f)
-    return spec.get("features", {})
+
+    _feature_spec_cache = spec.get("features", {})
+    return _feature_spec_cache
 
 def complete_feature_vector(input_features: dict, prop_type: str) -> dict:
     """
