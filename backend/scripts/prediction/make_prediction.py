@@ -40,7 +40,11 @@ def make_prediction(payload: dict, rf_model=None, lr_model=None) -> dict:
         lr_model = load_model_from_supabase("models", path)
 
     # 🚀 Predict
-    X = np.array([list(features.values())])
+    numeric_features = {
+        k: float(v) if isinstance(v, (int, float, bool)) else 0.0
+        for k, v in features.items()
+    }
+    X = np.array([list(numeric_features.values())])
     rf_proba = rf_model.predict_proba(X)[0][1]
     lr_proba = lr_model.predict_proba(X)[0][1]
     hybrid = round((rf_proba + lr_proba) / 2, 4)
