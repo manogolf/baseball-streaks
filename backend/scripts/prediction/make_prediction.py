@@ -72,9 +72,6 @@ def make_prediction(payload: dict, rf_model=None, lr_model=None) -> dict:
     print(f"🔢 RF: {rf_proba:.4f}, LR: {lr_proba:.4f}, Hybrid: {hybrid:.4f}")
 
     return {
-        "prop_type": prop_type,
-        "hybrid_score": hybrid,
-        "random_forest_score": rf_proba,
-        "logistic_regression_score": lr_proba,
-        "input_features": features,
-    }
+        "probability": hybrid,
+        "recommendation": "over" if hybrid >= 0.5 else "under"
+}
