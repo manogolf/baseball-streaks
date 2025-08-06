@@ -178,7 +178,6 @@ const PlayerPropForm = ({ onPropAdded }) => {
       }
 
       // 🧠 Merge form + context
-      // 🧠 Merge form + context
       const payload = {
         prop_type: formData.prop_type,
         features: {
@@ -203,12 +202,18 @@ const PlayerPropForm = ({ onPropAdded }) => {
 
       if (typeof json.probability === "number" && !isNaN(json.probability)) {
         const confidence = Math.round(json.probability * 100);
+        const { player_id, team_id } = context;
+
         setPrediction({
           probability: json.probability,
-          recommendation:
-            json.recommendation || (json.probability >= 0.5 ? "over" : "under"),
+          recommendation: json.recommendation,
           confidence,
-          preparedProp: payload,
+          preparedProp: {
+            ...payload.features, // not full payload, just features here
+            player_id,
+            team_id,
+            game_id: context.game_id,
+          },
         });
       } else {
         setError("Prediction failed: Invalid probability returned.");
@@ -263,10 +268,16 @@ const PlayerPropForm = ({ onPropAdded }) => {
       };
 
       // 🧠 Step 2: Resolve player_id and team_id centrally
-      const { player_id, team_id } = await resolvePlayerAndTeam({
-        player_name: base.player_name,
-        team_abbr: base.team_abbr,
-      });
+      const { player_id, team_id } = prediction.preparedProp;
+
+      if (!player_id) {
+        setError("❌ Missing player_id — cannot submit prop.");
+        setSubmitting(false);
+        return;
+      }
+      if (!team_id) {
+        console.warn("⚠️ Could not resolve team_id for player", player_id);
+      }
 
       if (!player_id) {
         setError("❌ Missing player_id — cannot submit prop.");
