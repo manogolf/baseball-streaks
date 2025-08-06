@@ -202,14 +202,12 @@ const PlayerPropForm = ({ onPropAdded }) => {
       console.log("📊 Prediction result:", json);
 
       if (typeof json.probability === "number" && !isNaN(json.probability)) {
-        const confidence = (json.probability * 100).toFixed(2); // 📈 confidence
-        const recommendation =
-          json.recommendation || (json.probability >= 0.5 ? "over" : "under"); // 🎯 fallback logic
-
+        const confidence = Math.round(json.probability * 100);
         setPrediction({
-          probability: json.probability.toFixed(4), // 🔢 raw
-          recommendation, // 🎯
-          confidence, // 📈
+          probability: json.probability,
+          recommendation:
+            json.recommendation || (json.probability >= 0.5 ? "over" : "under"),
+          confidence,
           preparedProp: payload,
         });
       } else {
@@ -318,8 +316,8 @@ const PlayerPropForm = ({ onPropAdded }) => {
         created_at: now,
         prediction_timestamp: now,
         prop_source: "user_added",
-        predicted_outcome: predictJson.predicted_outcome ?? null,
-        confidence_score: predictJson.confidence_score ?? null,
+        predicted_outcome: predictJson.recommendation ?? null,
+        confidence_score: predictJson.probability ?? null,
         ...context,
       };
 
@@ -508,7 +506,6 @@ const PlayerPropForm = ({ onPropAdded }) => {
         <div className="mt-4 p-3 bg-green-100 text-green-800 rounded-md text-center">
           🎯 Prediction: <strong>{prediction.recommendation}</strong> <br />
           📈 Confidence: <strong>{prediction.confidence}%</strong> <br />
-          🔢 Raw Probability: <code>{prediction.probability}</code>
         </div>
       )}
 
