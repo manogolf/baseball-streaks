@@ -527,13 +527,17 @@ const PlayerPropForm = ({ onPropAdded }) => {
           {submitting ? <span className="loader mr-2"></span> : "➕ Add Prop"}
         </button>
       </div>
-      {prediction && (
-        <div className="mt-4 p-3 bg-green-100 text-green-800 rounded-md text-center">
-          🎯 Prediction: <strong>{prediction.recommendation}</strong> <br />
-          📈 Confidence Score:{" "}
-          <strong>{Number(prediction.confidence_score).toFixed(4)}</strong>
-        </div>
-      )}
+      {console.log("📊 Prediction received in render:", prediction)}
+
+      {prediction &&
+        typeof prediction.confidence_score === "number" &&
+        !isNaN(prediction.confidence_score) && (
+          <div className="mt-4 p-3 bg-green-100 text-green-800 rounded-md text-center">
+            🎯 Prediction: <strong>{prediction.recommendation}</strong> <br />
+            📈 Confidence Score:{" "}
+            <strong>{prediction.confidence_score.toFixed(4)}</strong>
+          </div>
+        )}
       {successToast && (
         <div className="mt-4 p-3 bg-yellow-100 text-yellow-800 rounded-md text-center">
           {successMessage}
