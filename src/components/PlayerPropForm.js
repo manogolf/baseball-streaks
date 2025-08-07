@@ -518,7 +518,8 @@ const PlayerPropForm = ({ onPropAdded }) => {
       {prediction && (
         <div className="mt-4 p-3 bg-green-100 text-green-800 rounded-md text-center">
           🎯 Prediction: <strong>{prediction.recommendation}</strong> <br />
-          📈 Confidence: <strong>{prediction.confidence}%</strong> <br />
+          📈 Confidence:{" "}
+          <strong>{(prediction.confidence * 100).toFixed(4)}%</strong> <br />
         </div>
       )}
 
