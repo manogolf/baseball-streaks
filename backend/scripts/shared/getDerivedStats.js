@@ -151,6 +151,6 @@ export async function getDerivedStats(
     }
   }
 
-  console.log(`✅ Derived stats for ${playerId} on ${gameDate}:`, result);
-  return result;
+  //  console.log(`✅ Derived stats for ${playerId} on ${gameDate}:`, result);
+  //  return result;
 }

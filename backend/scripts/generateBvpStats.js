@@ -8,6 +8,10 @@ import dayjs from "dayjs";
 const BATCH_DELAY_MS = 500;
 const BUCKET_SIZE = 10000;
 
+let totalInserted = 0;
+let totalSkipped = 0;
+let totalFailed = 0;
+
 async function runFullBackfill() {
   const argStart = process.argv.find((arg) => arg.startsWith("--startDate="));
   const argEnd = process.argv.find((arg) => arg.startsWith("--endDate="));
@@ -77,8 +81,10 @@ async function runFullBackfill() {
 
     offset += BUCKET_SIZE;
   }
-
   console.log("🏁 Full BvP backfill complete");
+  console.log(
+    `📊 Totals — Inserted=${totalInserted}, Skipped=${totalSkipped}, Failed=${totalFailed}`
+  );
 }
 
 async function processGame(gameId) {
@@ -138,15 +144,15 @@ async function processGame(gameId) {
 
       const pitcherId = matchup?.matchup?.pitcher?.id || matchup?.pitcher?.id;
 
-      if (!pitcherId) {
-        console.warn(`⚠️ Could not find pitcher for batter ${batterId}`);
-        skipped++;
-        continue;
-      }
+      //      if (!pitcherId) {
+      //        console.warn(`⚠️ Could not find pitcher for batter ${batterId}`);
+      //        skipped++;
+      //        continue;
+      //      }
 
       const stats = computeBvpStats(batterId, pitcherId, allPlays);
       if (!stats) {
-        console.warn(`⚠️ No BvP stats found for batter ${batterId}`);
+        //        console.warn(`⚠️ No BvP stats found for batter ${batterId}`);
         skipped++;
         continue;
       }
@@ -210,27 +216,28 @@ async function processGame(gameId) {
       .from("bvp_stats")
       .upsert(upsertPayload, { onConflict: "game_id,batter_id,pitcher_id" });
 
-    if (upsertError) {
-      console.error(
-        `❌ Failed to upsert BvP for batter ${row.player_id}:`,
-        upsertError
-      );
-      failed++;
-    } else if (Object.keys(upsertPayload).length > 3) {
-      console.log(
-        `📦 Upserted (setIfMissing) BvP stats for batter ${row.player_id}`
-      );
-      inserted++;
-    } else {
-      console.log(
-        `⚠️ Skipped upsert — no new BvP values for batter ${row.player_id}`
-      );
-      skipped++;
-    }
+    //    if (upsertError) {
+    //      console.error(
+    //        `❌ Failed to upsert BvP for batter ${row.player_id}:`,
+    //        upsertError
+    //      );
+    //      failed++;
+    //    } else if (Object.keys(upsertPayload).length > 3) {
+    //      console.log`📦 Upserted (setIfMissing) BvP stats for batter ${row.player_id}`();
+    //      inserted++;
+    //    } else {
+    //     console.log(
+    //        `⚠️ Skipped upsert — no new BvP values for batter ${row.player_id}`
+    //      );
+    //      skipped++;
+    //    }
   }
   console.log(
     `✅ Game ${gameId} complete: Inserted=${inserted}, Skipped=${skipped}, Failed=${failed}`
   );
+  totalInserted += inserted;
+  totalSkipped += skipped;
+  totalFailed += failed;
 }
 
 function computeBvpStats(batterId, pitcherId, allPlays) {
