@@ -520,8 +520,8 @@ const PlayerPropForm = ({ onPropAdded }) => {
           🎯 Prediction: <strong>{prediction.recommendation}</strong> <br />
           📈 Confidence Score:{" "}
           <strong>
-            {typeof prediction.confidence_score === "number"
-              ? prediction.confidence_score.toFixed(4)
+            {!isNaN(Number(prediction.confidence_score))
+              ? Number(prediction.confidence_score).toFixed(4)
               : "—"}
           </strong>
         </div>
