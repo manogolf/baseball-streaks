@@ -529,15 +529,19 @@ const PlayerPropForm = ({ onPropAdded }) => {
       </div>
       {console.log("📊 Prediction received in render:", prediction)}
 
-      {prediction &&
-        typeof prediction.confidence_score === "number" &&
-        !isNaN(prediction.confidence_score) && (
-          <div className="mt-4 p-3 bg-green-100 text-green-800 rounded-md text-center">
-            🎯 Prediction: <strong>{prediction.recommendation}</strong> <br />
-            📈 Confidence Score:{" "}
-            <strong>{prediction.confidence_score.toFixed(4)}</strong>
-          </div>
-        )}
+      {prediction && (
+        <div className="mt-4 p-3 bg-green-100 text-green-800 rounded-md text-center">
+          🎯 Prediction: <strong>{prediction.recommendation}</strong> <br />
+          📈 Confidence Score:{" "}
+          <strong>
+            {typeof prediction.confidence_score === "number"
+              ? prediction.confidence_score.toFixed(4)
+              : typeof prediction.confidence === "number"
+              ? (prediction.confidence / 100).toFixed(4)
+              : "—"}
+          </strong>
+        </div>
+      )}
       {successToast && (
         <div className="mt-4 p-3 bg-yellow-100 text-yellow-800 rounded-md text-center">
           {successMessage}
