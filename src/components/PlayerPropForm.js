@@ -290,28 +290,39 @@ const PlayerPropForm = ({ onPropAdded }) => {
       }
 
       // 🧠 Step 3: Predict
-      const predictRes = await fetch(`${apiUrl}/api/predict`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prop_type: formData.prop_type,
-          features: {
-            ...base,
-            player_id,
-            team_id,
-            game_id: resolvedGameId,
-          },
-        }),
-      });
-      const predictJson = await predictRes.json();
-      console.log("🎯 Received prediction response:", predictJson); // ✅ Add this line
+      try {
+        console.log("📤 Sending prediction request...");
+        const predictRes = await fetch(`${apiUrl}/api/predict`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prop_type: formData.prop_type,
+            features: {
+              ...base,
+              player_id,
+              team_id,
+              game_id: resolvedGameId,
+            },
+          }),
+        });
 
-      if (!predictRes.ok || !predictJson || predictJson.error) {
-        setError(
-          "Prediction failed: " + (predictJson?.error ?? "unknown error")
-        );
+        console.log("📥 Response received, parsing JSON...");
+        const predictJson = await predictRes.json();
+        console.log("🎯 Received prediction JSON:", predictJson);
+
+        if (!predictRes.ok || !predictJson || predictJson.error) {
+          setError(
+            "Prediction failed: " + (predictJson?.error ?? "unknown error")
+          );
+          setSubmitting(false);
+          return;
+        }
+
+        setPrediction(predictJson);
+      } catch (err) {
+        console.error("❌ Prediction request failed:", err);
+        setError("Prediction failed due to unexpected error.");
         setSubmitting(false);
-        return;
       }
 
       // 🧠 Step 4: Build final submission
