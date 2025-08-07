@@ -51,8 +51,10 @@ async def predict(request: Request) -> dict:
         "prop_type": prop_type,
         "features": completed_features,
     })
-        print(f"🎯 Prediction result: {prediction_output}")
         return prediction_output
+    except RuntimeError as e:
+    # predictable failure (timeouts, load issues) -> 503
+        raise HTTPException(status_code=503, detail=str(e))
 
     except Exception as e:
         print(f"❌ Prediction error: {str(e)}")

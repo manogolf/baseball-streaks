@@ -31,6 +31,11 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 # 📦 Model cache (by bucket+path)
 model_cache = {}
 
+# backend/scripts/prediction/make_prediction.py
+import requests
+
+REQUEST_TIMEOUT = 15  # seconds
+
 def load_model_from_supabase(bucket: str, path: str):
     cache_key = (bucket, path)
     if cache_key in model_cache:
@@ -39,14 +44,21 @@ def load_model_from_supabase(bucket: str, path: str):
     print(f"📥 Downloading model: {bucket}/{path}")
     res = supabase.storage.from_(bucket).create_signed_url(path, 3600)
     signed_url = res['signedURL']
-    with tempfile.NamedTemporaryFile(delete=True) as tmp:
-        response = requests.get(signed_url)
-        response.raise_for_status()
-        tmp.write(response.content)
-        tmp.flush()
-        model = joblib.load(tmp.name)
-        model_cache[cache_key] = model
-        return model
+
+    try:
+        with tempfile.NamedTemporaryFile(delete=True) as tmp:
+            r = requests.get(signed_url, timeout=REQUEST_TIMEOUT)
+            r.raise_for_status()
+            tmp.write(r.content)
+            tmp.flush()
+            model = joblib.load(tmp.name)
+    except requests.Timeout:
+        raise RuntimeError(f"Timeout fetching model {path}")
+    except Exception as e:
+        raise RuntimeError(f"Failed loading model {path}: {e}")
+
+    model_cache[cache_key] = model
+    return model
 
 # 🧠 Prediction cache by (prop_type, player_id, game_id)
 prediction_cache = {}

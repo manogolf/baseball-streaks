@@ -160,6 +160,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
    * 🧠 Predict outcome (unchanged logic)
    */
   const handlePredict = async () => {
+    if (submitting) return; // 🚫 Prevent double submit
     setSubmitting(true);
     setError(null);
 
@@ -167,13 +168,11 @@ const PlayerPropForm = ({ onPropAdded }) => {
       // 🧩 Validate input
       if (!formData.player_name || !formData.team || !formData.prop_type) {
         setError("Missing required form fields.");
-        setSubmitting(false);
         return;
       }
 
       if (!context) {
         setError("Game context not ready yet.");
-        setSubmitting(false);
         return;
       }
 
@@ -183,22 +182,14 @@ const PlayerPropForm = ({ onPropAdded }) => {
         features: {
           ...formData,
           ...context,
-          prop_value: parseFloat(formData.prop_value), // ensure numeric
+          prop_value: parseFloat(formData.prop_value),
         },
       };
 
       console.log("📤 Submitting prediction payload:", payload);
 
-      const res = await fetch(`${apiUrl}/api/predict`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload), // ✅ Correct: no extra wrapper
-      });
-
-      const json = await res.json();
-      console.log("📊 Prediction result:", json);
+      // ⏳ Attempt with retry wrapper
+      const json = await fetchWithRetry(`${apiUrl}/api/predict`, payload, 2);
 
       if (typeof json.probability === "number" && !isNaN(json.probability)) {
         const confidence = Math.round(json.probability * 100);
@@ -209,7 +200,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
           recommendation: json.recommendation,
           confidence,
           preparedProp: {
-            ...payload.features, // not full payload, just features here
+            ...payload.features,
             player_id,
             team_id,
             game_id: context.game_id,
@@ -225,6 +216,25 @@ const PlayerPropForm = ({ onPropAdded }) => {
       setSubmitting(false);
     }
   };
+
+  async function fetchWithRetry(url, payload, retries = 1) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+      } catch (err) {
+        console.warn(`⚠️ Predict attempt ${attempt + 1} failed:`, err);
+        if (attempt === retries) throw err;
+        await new Promise((r) => setTimeout(r, 500)); // small backoff
+      }
+    }
+  }
 
   /**
    * ➕ Submit prop to Supabase
@@ -532,19 +542,18 @@ const PlayerPropForm = ({ onPropAdded }) => {
       </div>
       {console.log("📊 Prediction received in render:", prediction)}
 
-      {prediction && (
+      {prediction ? (
         <div className="mt-4 p-3 bg-green-100 text-green-800 rounded-md text-center">
-          🎯 Prediction: <strong>{prediction.recommendation}</strong> <br />
+          🎯 Prediction: <strong>{prediction.recommendation}</strong>
+          <br />
           📈 Confidence Score:{" "}
           <strong>
             {typeof prediction.confidence_score === "number"
               ? prediction.confidence_score.toFixed(4)
-              : typeof prediction.confidence === "number"
-              ? (prediction.confidence / 100).toFixed(4)
               : "—"}
           </strong>
         </div>
-      )}
+      ) : null}
       {successToast && (
         <div className="mt-4 p-3 bg-yellow-100 text-yellow-800 rounded-md text-center">
           {successMessage}

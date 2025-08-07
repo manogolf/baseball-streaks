@@ -19,6 +19,11 @@ from backend.app.routes.api import player_list
 
 app = FastAPI()
 
+# backend/app/api_server.py
+@app.get("/health")
+def health():
+    return {"ok": True}
+
 # ✅ CORS
 app.add_middleware(
     CORSMiddleware,
