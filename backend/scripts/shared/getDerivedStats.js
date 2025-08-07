@@ -20,9 +20,9 @@ export async function getDerivedStats(
 
   const DEBUG_MODE = false; // Set to true when you want full logs
 
-  console.log(
-    `📊 Calculating derived stats for player ${playerId} on ${gameDate}`
-  );
+  //  console.log(
+  //    `📊 Calculating derived stats for player ${playerId} on ${gameDate}`
+  //  );
 
   if (!Array.isArray(VALID_PROP_TYPES) || VALID_PROP_TYPES.length === 0) {
     throw new Error("❌ VALID_PROP_TYPES is missing or empty");
