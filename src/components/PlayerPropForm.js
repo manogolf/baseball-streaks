@@ -304,6 +304,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
         }),
       });
       const predictJson = await predictRes.json();
+      console.log("🎯 Received prediction response:", predictJson); // ✅ Add this line
 
       if (!predictRes.ok || !predictJson || predictJson.error) {
         setError(
@@ -517,7 +518,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
       </div>
       {prediction && (
         <div className="mt-4 p-3 bg-green-100 text-green-800 rounded-md text-center">
-          🎯 Prediction: <strong>{prediction.recommendation}</strong> <br />
+          <strong>{prediction.recommendation}</strong> <br />
           📈 Confidence Score:{" "}
           <strong>
             {!isNaN(Number(prediction.confidence_score))
