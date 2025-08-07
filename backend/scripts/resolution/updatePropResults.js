@@ -42,12 +42,13 @@
 // 📄 File: backend/scripts/resolution/updatePropResults.js
 // 🧠 Purpose: Grade and resolve player props from stats (user-added and stat-derived).
 
-import { supabase } from "../shared/index.js";
+import fs from "fs";
+import { supabase } from "../shared/supabaseBackend.js";
 import {
   expireOldPendingProps,
   determineStatus,
-} from "../../../src/shared/archive/propUtils.js";
-import { didPlayerParticipate } from "../../../src/shared/archive/playerUtils.js";
+} from "../shared/propUtilsBackend.js";
+import { didPlayerParticipate } from "../shared/playerUtilsBackend.js";
 import { getPendingProps } from "../shared/supabaseBackend.js";
 import { resolveStatForPlayer, hasMeaningfulStats } from "./statResolvers.js";
 import {

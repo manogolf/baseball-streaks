@@ -23,7 +23,7 @@ import { supabase } from "./shared/supabaseBackend.js";
 import { getDerivedStats } from "./shared/getDerivedStats.js";
 import { parseArgs } from "node:util";
 
-const DEFAULT_LOOKBACK_DAYS = 7; // ← Customize this if you want
+const DEFAULT_LOOKBACK_DAYS = 2; // ← Customize this if you want
 
 function getDateRangeFromLookback(days) {
   const end = new Date();

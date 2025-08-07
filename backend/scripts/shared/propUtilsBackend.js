@@ -89,3 +89,30 @@ export function getRollingAverage(history, propType, windowSize) {
 export function normalizePropType(label) {
   return label.toLowerCase().replace(/[()]/g, "").replace(/\s+/g, "_");
 }
+
+export function determineStatus(actual, line, overUnder) {
+  const direction = overUnder?.toLowerCase?.();
+
+  if (typeof actual !== "number" || typeof line !== "number" || !direction) {
+    return "invalid";
+  }
+
+  if (actual === line) return "push";
+
+  const isWin =
+    (direction === "over" && actual > line) ||
+    (direction === "under" && actual < line);
+
+  return isWin ? "win" : "loss";
+}
+
+export function expireOldPendingProps(props = []) {
+  const todayISO = toISODate(todayET());
+  return props.map((prop) => {
+    const propDate = toISODate(prop.game_date);
+    if (prop.status === "pending" && propDate < todayISO) {
+      return { ...prop, status: "expired" };
+    }
+    return prop;
+  });
+}

@@ -1,4 +1,4 @@
-// backend/scripts/shared/derivePropValue.js
+// backend/scripts/resolution/derivePropValue.js
 
 export function derivePropValue(propType, stats) {
   const { batting = {}, pitching = {} } = stats || {};

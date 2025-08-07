@@ -232,3 +232,17 @@ export function getTeamAbbreviationFromBoxscore(player, gameData) {
     null
   );
 }
+
+export function didPlayerParticipate(stats) {
+  if (!stats || typeof stats !== "object") return false;
+
+  const hasBattingStats =
+    stats.batting &&
+    Object.values(stats.batting).some((v) => typeof v === "number" && v > 0);
+
+  const hasPitchingStats =
+    stats.pitching &&
+    Object.values(stats.pitching).some((v) => typeof v === "number" && v > 0);
+
+  return hasBattingStats || hasPitchingStats;
+}
