@@ -46,10 +46,6 @@ export async function getDerivedStats(
           continue;
         }
 
-        console.warn(
-          `⚠️ No rolling avg for player ${playerId}, prop ${propType}, d${days}`
-        );
-
         const fromDate = new Date(now);
         fromDate.setDate(now.getDate() - days);
 
@@ -142,7 +138,7 @@ export async function getDerivedStats(
               console.log(`✅ Computed fallback avg for ${key}:`, result[key]);
             }
           } else {
-            console.warn(`⚠️ Fallback failed for ${key} — count = 0`);
+            // console.warn(`⚠️ Fallback failed for ${key} — count = 0`);
           }
         }
 
