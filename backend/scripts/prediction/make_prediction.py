@@ -83,8 +83,8 @@ def make_prediction(payload: dict) -> dict:
     recommendation = "over" if hybrid >= 0.5 else "under"
 
     return {
-        "probability": hybrid,
+        "probability": float(hybrid),
         "recommendation": recommendation,
         "predicted_outcome": recommendation,
-        "confidence_score": hybrid
-    }
+        "confidence_score": float(hybrid)
+}
