@@ -290,6 +290,8 @@ const PlayerPropForm = ({ onPropAdded }) => {
       }
 
       // 🧠 Step 3: Predict
+      let predictJson = null;
+
       try {
         console.log("📤 Sending prediction request...");
         const predictRes = await fetch(`${apiUrl}/api/predict`, {
@@ -307,7 +309,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
         });
 
         console.log("📥 Response received, parsing JSON...");
-        const predictJson = await predictRes.json();
+        predictJson = await predictRes.json();
         console.log("🎯 Received prediction JSON:", predictJson);
 
         if (!predictRes.ok || !predictJson || predictJson.error) {
@@ -323,6 +325,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
         console.error("❌ Prediction request failed:", err);
         setError("Prediction failed due to unexpected error.");
         setSubmitting(false);
+        return;
       }
 
       // 🧠 Step 4: Build final submission
