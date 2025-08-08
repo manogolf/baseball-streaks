@@ -8,6 +8,7 @@ import { nowET, todayET } from "../shared/timeUtils.js";
 import { useAuth } from "../context/AuthContext.js";
 import { getPropTypeOptions } from "../../shared/propUtils.js";
 import { enrichGameContext } from "../../shared/enrichGameContext.js";
+import { useRef, useCallback } from "react";
 
 //const isLocal = window.location.hostname === "localhost";
 //const apiUrl = isLocal
@@ -18,6 +19,7 @@ const apiUrl = "https://baseball-streaks-sq44.onrender.com";
 
 // ✅ Unified resolution of player and team ID
 const PlayerPropForm = ({ onPropAdded }) => {
+  const inFlightRef = useRef(false);
   const today = todayET();
   const auth = useAuth();
 
@@ -37,54 +39,57 @@ const PlayerPropForm = ({ onPropAdded }) => {
   const [players, setPlayers] = useState([]);
 
   useEffect(() => {
-    async function loadContext() {
-      const { player_id, player_name, team, game_date } = formData;
+    let cancelled = false;
 
-      if (!player_id || !game_date) return;
+    const timeout = setTimeout(() => {
+      (async () => {
+        const { player_id, player_name, team, game_date } = formData;
 
-      const { player_id: resolvedPlayerId, team_id: teamId } =
-        await resolvePlayerAndTeam({
-          player_id,
-          player_name,
-          team_abbr: team,
-        });
+        // ✅ guard: need player, team, date
+        if (!player_id || !team || !game_date) return;
 
-      console.log("🔍 resolvePlayerAndTeam result:", {
-        resolvedPlayerId,
-        teamId,
-      });
+        try {
+          const { player_id: resolvedPlayerId, team_id: teamId } =
+            await resolvePlayerAndTeam({
+              player_id,
+              player_name,
+              team_abbr: team,
+            });
 
-      if (!resolvedPlayerId) {
-        console.warn(`⚠️ Could not resolve player_id`);
-        return;
-      }
+          console.log("🔍 resolvePlayerAndTeam result:", {
+            resolvedPlayerId,
+            teamId,
+          });
 
-      if (!teamId) {
-        console.warn(
-          `⚠️ Could not resolve team_id for player ${resolvedPlayerId}`
-        );
-        return;
-      }
+          if (!resolvedPlayerId || !teamId) {
+            console.warn("⚠️ Could not resolve player_id or team_id");
+            return;
+          }
 
-      try {
-        const ctx = await enrichGameContext({
-          team_id: teamId,
-          gameDate: game_date,
-        });
+          const ctx = await enrichGameContext({
+            team_id: teamId,
+            gameDate: game_date,
+          });
 
-        const enrichedContext = {
-          ...ctx,
-          player_id: resolvedPlayerId,
-          team_id: teamId,
-        };
+          const enrichedContext = {
+            ...ctx,
+            player_id: resolvedPlayerId,
+            team_id: teamId,
+          };
 
-        setContext(enrichedContext);
-      } catch (err) {
-        console.error("❌ Failed to enrich game context:", err);
-      }
-    }
+          if (!cancelled) setContext(enrichedContext);
+        } catch (err) {
+          if (!cancelled) {
+            console.error("❌ Failed to enrich game context:", err);
+          }
+        }
+      })();
+    }, 200); // small debounce
 
-    loadContext();
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
   }, [
     formData.player_id,
     formData.player_name,
@@ -159,82 +164,81 @@ const PlayerPropForm = ({ onPropAdded }) => {
   /**
    * 🧠 Predict outcome (unchanged logic)
    */
-  const handlePredict = async () => {
-    if (submitting) return; // 🚫 Prevent double submit
-    setSubmitting(true);
-    setError(null);
+  // replace your handler with this exact pattern
+  const handlePredict = useCallback(
+    async (e) => {
+      e?.preventDefault?.();
 
-    try {
-      // 🧩 Validate input
-      if (!formData.player_name || !formData.team || !formData.prop_type) {
-        setError("Missing required form fields.");
+      const trace = Math.random().toString(36).slice(2);
+      console.log(
+        `🚦 handlePredict START trace=${trace} inFlight=${inFlightRef.current}`
+      );
+
+      if (inFlightRef.current) {
+        console.warn(`⛔️ Blocked duplicate submit trace=${trace}`);
         return;
       }
+      inFlightRef.current = true;
+      setSubmitting(true);
+      setError(null);
 
-      if (!context) {
-        setError("Game context not ready yet.");
-        return;
-      }
-
-      // 🧠 Merge form + context
-      const payload = {
-        prop_type: formData.prop_type,
-        features: {
-          ...formData,
-          ...context,
-          prop_value: parseFloat(formData.prop_value),
-        },
-      };
-
-      console.log("📤 Submitting prediction payload:", payload);
-
-      // ⏳ Attempt with retry wrapper
-      const json = await fetchWithRetry(`${apiUrl}/api/predict`, payload, 2);
-
-      if (typeof json.probability === "number" && !isNaN(json.probability)) {
-        const confidence = Math.round(json.probability * 100);
-        const { player_id, team_id } = context;
-
-        setPrediction({
-          probability: json.probability,
-          recommendation: json.recommendation,
-          confidence,
-          preparedProp: {
-            ...payload.features,
-            player_id,
-            team_id,
-            game_id: context.game_id,
-          },
-        });
-      } else {
-        setError("Prediction failed: Invalid probability returned.");
-      }
-    } catch (err) {
-      console.error("❌ Prediction Error:", err);
-      setError("Prediction failed: " + err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  async function fetchWithRetry(url, payload, retries = 1) {
-    for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const res = await fetch(url, {
+        // … your validations …
+
+        // build payload exactly once here
+        const payload = {
+          prop_type: formData.prop_type,
+          features: {
+            ...formData,
+            ...context,
+            prop_value: parseFloat(formData.prop_value),
+          },
+        };
+
+        console.log(`📤 POST /api/predict trace=${trace}`, payload);
+
+        const res = await fetch(`${apiUrl}/api/predict`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
 
+        // log *before* parsing so we can see dupes timing
+        console.log(`📥 response trace=${trace} status=${res.status}`);
+
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return await res.json();
+
+        const json = await res.json();
+        console.log(`🎯 json trace=${trace}`, json);
+
+        if (typeof json.probability !== "number" || isNaN(json.probability)) {
+          throw new Error("Invalid probability in response");
+        }
+
+        const confidence = Math.round(json.probability * 100);
+
+        setPrediction({
+          probability: json.probability,
+          recommendation: json.recommendation,
+          confidence, // %
+          preparedProp: {
+            ...payload.features,
+            player_id: context.player_id,
+            team_id: context.team_id,
+            game_id: context.game_id,
+          },
+        });
       } catch (err) {
-        console.warn(`⚠️ Predict attempt ${attempt + 1} failed:`, err);
-        if (attempt === retries) throw err;
-        await new Promise((r) => setTimeout(r, 500)); // small backoff
+        console.error(`❌ handlePredict error trace=${trace}`, err);
+        setError("Prediction failed: " + (err?.message ?? "unknown error"));
+      } finally {
+        inFlightRef.current = false;
+        setSubmitting(false);
+        console.log(`🏁 handlePredict END trace=${trace}`);
       }
-    }
-  }
+    },
+    [formData, context, apiUrl]
+  );
 
   /**
    * ➕ Submit prop to Supabase
@@ -244,150 +248,87 @@ const PlayerPropForm = ({ onPropAdded }) => {
     setSubmitting(true);
     setError("");
 
-    // 🛑 Ensure user is logged in
     if (!userId) {
       setError("You must be logged in to submit a prop.");
       setSubmitting(false);
       return;
     }
 
-    try {
-      // 👉 Step 1: Resolve MLB game ID
-      const resolvedGameId = context?.game_id;
-      if (!resolvedGameId) {
-        setError("Game context missing game_id.");
-        setSubmitting(false);
-        return;
-      }
-
-      if (!resolvedGameId) {
-        setError("Could not find a game for this team on the selected date.");
-        setSubmitting(false);
-        return;
-      }
-
-      // 🧠 Step 1: Merge all available data into one clean object
-      const base = {
-        player_name: formData.player_name,
-        team: formData.team, // ✅ Use this for 'team' column in DB
-        prop_type: formData.prop_type,
-        prop_value: parseFloat(formData.prop_value),
-        over_under: formData.over_under?.toLowerCase(),
-        game_date: formData.game_date,
-        user_id: userId,
-        team_id: prediction.preparedProp?.team_id, // ✅ include team_id here
-      };
-
-      // 🧠 Step 2: Resolve player_id and team_id centrally
-      const { player_id, team_id } = prediction.preparedProp;
-
-      if (!player_id) {
-        setError("❌ Missing player_id — cannot submit prop.");
-        setSubmitting(false);
-        return;
-      }
-      if (!team_id) {
-        console.warn("⚠️ Could not resolve team_id for player", player_id);
-      }
-
-      if (!player_id) {
-        setError("❌ Missing player_id — cannot submit prop.");
-        setSubmitting(false);
-        return;
-      }
-      if (!team_id) {
-        console.warn("⚠️ Could not resolve team_id for player", player_id);
-      }
-
-      // 🧠 Step 3: Predict
-      let predictJson = null;
-
-      try {
-        console.log("📤 Sending prediction request...");
-        const predictRes = await fetch(`${apiUrl}/api/predict`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            prop_type: formData.prop_type,
-            features: {
-              ...base,
-              player_id,
-              team_id,
-              game_id: resolvedGameId,
-            },
-          }),
-        });
-
-        console.log("📥 Response received, parsing JSON...");
-        predictJson = await predictRes.json();
-        console.log("🎯 Received prediction JSON:", predictJson);
-
-        if (!predictRes.ok || !predictJson || predictJson.error) {
-          setError(
-            "Prediction failed: " + (predictJson?.error ?? "unknown error")
-          );
-          setSubmitting(false);
-          return;
-        }
-
-        setPrediction(predictJson);
-      } catch (err) {
-        console.error("❌ Prediction request failed:", err);
-        setError("Prediction failed due to unexpected error.");
-        setSubmitting(false);
-        return;
-      }
-
-      // 🧠 Step 4: Build final submission
-      const now = nowET().toISO();
-
-      console.log("🔍 prediction before submission:", prediction);
-      // Strip unsupported keys from context
-      const { team_abbr, ...cleanContext } = context;
-
-      const finalSubmission = {
-        ...base,
-        player_id,
-        team_id,
-        game_id: resolvedGameId,
-        status: "pending",
-        created_at: now,
-        prediction_timestamp: now,
-        prop_source: "user_added",
-        predicted_outcome: predictJson.recommendation ?? null,
-        confidence_score: predictJson.probability ?? null,
-        ...cleanContext,
-      };
-
-      // ✅ Final insert
-      const { error: insertError } = await supabase
-        .from("player_props")
-        .insert([finalSubmission]);
-
-      if (insertError) {
-        console.error("❌ Failed to insert prop:", insertError.message);
-      } else {
-        console.log("✅ Prop successfully submitted:", finalSubmission);
-      }
-
-      // ✅ Success
-      console.log("✅ Prop successfully added to Supabase.");
-      onPropAdded?.();
-      setSuccessMessage("✅ Prop successfully added!");
-      setSuccessToast(true);
-      setFormData({
-        player_name: "",
-        team: "",
-        prop_type: "",
-        prop_value: 0.5,
-        over_under: "under",
-        game_date: today,
-      });
-      setPrediction(null);
-      setTimeout(() => setSuccessToast(false), 4000);
-    } finally {
+    const resolvedGameId = context?.game_id;
+    if (!resolvedGameId) {
+      setError("Could not find a game for this team on the selected date.");
       setSubmitting(false);
+      return;
     }
+
+    if (!prediction?.preparedProp) {
+      setError("Please click “Predict Outcome” before adding the prop.");
+      setSubmitting(false);
+      return;
+    }
+
+    const { player_id, team_id } = prediction.preparedProp;
+    if (!player_id) {
+      setError("❌ Missing player_id — cannot submit prop.");
+      setSubmitting(false);
+      return;
+    }
+    if (!team_id) {
+      console.warn("⚠️ Could not resolve team_id for player", player_id);
+    }
+
+    const base = {
+      player_name: formData.player_name,
+      team: formData.team,
+      prop_type: formData.prop_type,
+      prop_value: parseFloat(formData.prop_value),
+      over_under: formData.over_under?.toLowerCase(),
+      game_date: formData.game_date,
+      user_id: userId,
+      team_id, // from prediction.preparedProp
+    };
+
+    const now = nowET().toISO();
+    const { team_abbr, ...cleanContext } = context;
+
+    const finalSubmission = {
+      ...base,
+      player_id,
+      team_id,
+      game_id: resolvedGameId,
+      status: "pending",
+      created_at: now,
+      prediction_timestamp: now,
+      prop_source: "user_added",
+      // ✅ use already-computed prediction
+      predicted_outcome: prediction?.recommendation ?? null,
+      confidence_score: prediction?.probability ?? null,
+      ...cleanContext,
+    };
+
+    const { error: insertError } = await supabase
+      .from("player_props")
+      .insert([finalSubmission]);
+
+    if (insertError) {
+      console.error("❌ Failed to insert prop:", insertError.message);
+    } else {
+      console.log("✅ Prop successfully submitted:", finalSubmission);
+    }
+
+    onPropAdded?.();
+    setSuccessMessage("✅ Prop successfully added!");
+    setSuccessToast(true);
+    setFormData({
+      player_name: "",
+      team: "",
+      prop_type: "",
+      prop_value: 0.5,
+      over_under: "under",
+      game_date: todayET(),
+    });
+    setPrediction(null);
+    setSubmitting(false);
   };
 
   return (
@@ -540,8 +481,6 @@ const PlayerPropForm = ({ onPropAdded }) => {
           {submitting ? <span className="loader mr-2"></span> : "➕ Add Prop"}
         </button>
       </div>
-      {console.log("📊 Prediction received in render:", prediction)}
-
       {prediction && (
         <div className="mt-4 p-3 bg-green-100 text-green-800 rounded-md text-center">
           🎯 Prediction: <strong>{prediction.recommendation}</strong> <br />
