@@ -1,11 +1,11 @@
 # backend/app/api_server.py
-
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
 # 🧼 Route imports
 from app.routes.api.player_profile import router as player_profile_router
@@ -16,10 +16,30 @@ from app.routes.api.user_vs_model_accuracy import router as user_vs_model_accura
 from app.routes.api.user_vs_model_accuracy_weekly import router as user_vs_model_weekly_router
 from app.routes.api.model_accuracy_weekly import router as model_accuracy_weekly_router
 from backend.app.routes.api import player_list
+from app.services.model_registry import load_model
 
-app = FastAPI()
+COMMON_PROPS = [
+    "hits", "home_runs", "rbi", "runs_scored", "strikeouts_batting", "walks",
+    "total_bases", "singles", "doubles", "triples", "stolen_bases",
+    "strikeouts_pitching", "outs_recorded", "earned_runs", "hits_allowed",
+    "walks_allowed", "hits_runs_rbis", "runs_rbis",
+]
 
-# backend/app/api_server.py
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 🔥 Warm-up models on startup
+    for p in COMMON_PROPS:
+        for algo in ("random_forest", "logistic_regression"):
+            try:
+                load_model(p, algo)
+                print(f"✅ Warmed model: {p} / {algo}")
+            except Exception as e:
+                print(f"⚠️ Failed to warm model {p} / {algo}: {e}")
+    yield
+    # Optional cleanup after shutdown
+
+app = FastAPI(lifespan=lifespan)
+
 @app.get("/health")
 def health():
     return {"ok": True}
@@ -36,7 +56,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-print("✅ Registering /api/predict route")
 
 # ✅ Register routes
 app.include_router(predict_router, prefix="/api")
