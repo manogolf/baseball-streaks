@@ -71476,3 +71476,1310 @@
 [2025-08-07T23:01:05.223Z] 📤 Fetching model_training_props with missing positions...
 [2025-08-07T23:01:05.313Z] 📦 Prepared 0 rows for update
 [2025-08-07T23:01:05.314Z] 🎉 Done! Total positions updated: 0
+[2025-08-08T00:00:00.603Z] 🕒 Cron triggered at 2025-08-08T00:00:00.603Z
+[2025-08-08T00:00:00.610Z] 🔁 Scheduled Cron Job: Starting scheduled tasks...
+[2025-08-08T00:00:00.612Z] 📊 Syncing stats for yesterday...
+[2025-08-08T00:00:00.849Z] 📅 2025-08-06 → Found 15 final games
+[2025-08-08T00:00:01.372Z] ✅ Saved Alexander Canario (672744)
+[2025-08-08T00:00:01.502Z] ✅ Saved Paul Skenes (694973)
+[2025-08-08T00:00:01.620Z] ✅ Saved Spencer Horwitz (687462)
+[2025-08-08T00:00:01.762Z] ✅ Saved Bryan Reynolds (668804)
+[2025-08-08T00:00:01.893Z] ✅ Saved Joey Bart (663698)
+[2025-08-08T00:00:02.030Z] ✅ Saved Oneil Cruz (665833)
+[2025-08-08T00:00:02.168Z] ✅ Saved Liover Peguero (678894)
+[2025-08-08T00:00:02.273Z] ✅ Saved Jared Triolo (669707)
+[2025-08-08T00:00:02.359Z] ✅ Saved Mitch Keller (656605)
+[2025-08-08T00:00:02.468Z] ✅ Saved Tommy Pham (502054)
+[2025-08-08T00:00:02.540Z] ✅ Saved Yohan Ramírez (670990)
+[2025-08-08T00:00:02.619Z] ✅ Saved Isaac Mattson (676755)
+[2025-08-08T00:00:02.684Z] ✅ Saved Andrew McCutchen (457705)
+[2025-08-08T00:00:02.796Z] ✅ Saved Dauri Moreta (664294)
+[2025-08-08T00:00:02.908Z] ✅ Saved Isiah Kiner-Falefa (643396)
+[2025-08-08T00:00:02.978Z] ✅ Saved Kyle Nicolas (693312)
+[2025-08-08T00:00:03.060Z] ✅ Saved Carmen Mlodzinski (669387)
+[2025-08-08T00:00:03.146Z] ✅ Saved Ryan Borucki (621366)
+[2025-08-08T00:00:03.272Z] ✅ Saved Dennis Santana (642701)
+[2025-08-08T00:00:03.344Z] ✅ Saved Henry Davis (680779)
+[2025-08-08T00:00:03.434Z] ✅ Saved Mike Burrows (681347)
+[2025-08-08T00:00:03.497Z] ✅ Saved Andrew Heaney (571760)
+[2025-08-08T00:00:03.569Z] ✅ Saved Cam Sanders (676742)
+[2025-08-08T00:00:03.682Z] ✅ Saved Jack Suwinski (669261)
+[2025-08-08T00:00:03.773Z] ✅ Saved Nick Gonzales (693304)
+[2025-08-08T00:00:03.874Z] ✅ Saved Braxton Ashcraft (677952)
+[2025-08-08T00:00:04.086Z] ✅ Saved Casey Schmitt (669477)
+[2025-08-08T00:00:04.191Z] ✅ Saved Jerar Encarnacion (666464)
+[2025-08-08T00:00:04.271Z] ✅ Saved Heliot Ramos (671218)
+[2025-08-08T00:00:04.397Z] ✅ Saved Kai-Wei Teng (678906)
+[2025-08-08T00:00:04.479Z] ✅ Saved Andrew Knizner (668800)
+[2025-08-08T00:00:04.559Z] ✅ Saved Randy Rodríguez (678495)
+[2025-08-08T00:00:04.655Z] ✅ Saved Logan Webb (657277)
+[2025-08-08T00:00:04.720Z] ✅ Saved Ryan Walker (676254)
+[2025-08-08T00:00:04.785Z] ✅ Saved José Buttó (676130)
+[2025-08-08T00:00:04.848Z] ✅ Saved Matt Chapman (656305)
+[2025-08-08T00:00:04.935Z] ✅ Saved Patrick Bailey (672275)
+[2025-08-08T00:00:05.015Z] ✅ Saved Wilmer Flores (527038)
+[2025-08-08T00:00:05.086Z] ✅ Saved Carson Seymour (693313)
+[2025-08-08T00:00:05.172Z] ✅ Saved Spencer Bivens (702352)
+[2025-08-08T00:00:05.351Z] ✅ Saved Dominic Smith (642086)
+[2025-08-08T00:00:05.439Z] ✅ Saved Jung Hoo Lee (808982)
+[2025-08-08T00:00:05.540Z] ✅ Saved Joey Lucchesi (664192)
+[2025-08-08T00:00:05.644Z] ✅ Saved Rafael Devers (646240)
+[2025-08-08T00:00:05.762Z] ✅ Saved Tristan Beck (663941)
+[2025-08-08T00:00:05.844Z] ✅ Saved Carson Whisenhunt (687931)
+[2025-08-08T00:00:05.939Z] ✅ Saved Grant McCray (687529)
+[2025-08-08T00:00:06.035Z] ✅ Saved Christian Koss (683766)
+[2025-08-08T00:00:06.114Z] ✅ Saved Willy Adames (642715)
+[2025-08-08T00:00:06.209Z] ✅ Saved Robbie Ray (592662)
+[2025-08-08T00:00:06.290Z] ✅ Saved Justin Verlander (434378)
+[2025-08-08T00:00:06.375Z] ✅ Saved Matt Gage (657424)
+[2025-08-08T00:00:06.636Z] ✅ Saved Brandon Marsh (669016)
+[2025-08-08T00:00:06.718Z] ✅ Saved Jesús Luzardo (666200)
+[2025-08-08T00:00:06.793Z] ✅ Saved Cristopher Sánchez (650911)
+[2025-08-08T00:00:06.886Z] ✅ Saved Bryce Harper (547180)
+[2025-08-08T00:00:06.957Z] ✅ Saved J.T. Realmuto (592663)
+[2025-08-08T00:00:07.027Z] ✅ Saved Zack Wheeler (554430)
+[2025-08-08T00:00:07.095Z] ✅ Saved Edmundo Sosa (624641)
+[2025-08-08T00:00:07.182Z] ✅ Saved Weston Wilson (642215)
+[2025-08-08T00:00:07.249Z] ✅ Saved Jhoan Duran (661395)
+[2025-08-08T00:00:07.338Z] ✅ Saved Orion Kerkering (689147)
+[2025-08-08T00:00:07.418Z] ✅ Saved Nick Castellanos (592206)
+[2025-08-08T00:00:07.489Z] ✅ Saved Joe Ross (605452)
+[2025-08-08T00:00:07.567Z] ✅ Saved Bryson Stott (681082)
+[2025-08-08T00:00:07.656Z] ✅ Saved Kyle Schwarber (656941)
+[2025-08-08T00:00:07.770Z] ✅ Saved Otto Kemp (805249)
+[2025-08-08T00:00:07.853Z] ✅ Saved Taijuan Walker (592836)
+[2025-08-08T00:00:07.943Z] ✅ Saved Rafael Marchán (665561)
+[2025-08-08T00:00:08.026Z] ✅ Saved Matt Strahm (621381)
+[2025-08-08T00:00:08.116Z] ✅ Saved Ranger Suárez (624133)
+[2025-08-08T00:00:08.195Z] ✅ Saved Harrison Bader (664056)
+[2025-08-08T00:00:08.297Z] ✅ Saved Tanner Banks (621383)
+[2025-08-08T00:00:08.391Z] ✅ Saved Max Lazar (676661)
+[2025-08-08T00:00:08.468Z] ✅ Saved Max Kepler (596146)
+[2025-08-08T00:00:08.547Z] ✅ Saved Alan Rangel (660604)
+[2025-08-08T00:00:08.622Z] ✅ Saved Jordan Romano (605447)
+[2025-08-08T00:00:08.753Z] ✅ Saved Trea Turner (607208)
+[2025-08-08T00:00:08.827Z] ✅ Saved Jeremiah Jackson (669236)
+[2025-08-08T00:00:08.924Z] ✅ Saved Dean Kremer (665152)
+[2025-08-08T00:00:08.993Z] ✅ Saved Keegan Akin (669211)
+[2025-08-08T00:00:09.093Z] ✅ Saved Trevor Rogers (669432)
+[2025-08-08T00:00:09.229Z] ✅ Saved Dylan Carlson (666185)
+[2025-08-08T00:00:09.301Z] ✅ Saved Brandon Young (687064)
+[2025-08-08T00:00:09.371Z] ✅ Saved Cade Povich (700249)
+[2025-08-08T00:00:09.448Z] ✅ Saved Gunnar Henderson (683002)
+[2025-08-08T00:00:09.524Z] ✅ Saved Adley Rutschman (668939)
+[2025-08-08T00:00:09.611Z] ✅ Saved Yaramil Hiraldo (682274)
+[2025-08-08T00:00:09.689Z] ✅ Saved Tyler O'Neill (641933)
+[2025-08-08T00:00:09.760Z] ✅ Saved Jordan Westburg (676059)
+[2025-08-08T00:00:09.846Z] ✅ Saved Luis Vázquez (676679)
+[2025-08-08T00:00:09.918Z] ✅ Saved Corbin Martin (656686)
+[2025-08-08T00:00:09.988Z] ✅ Saved Ryan Noda (676116)
+[2025-08-08T00:00:10.056Z] ✅ Saved Jackson Holliday (702616)
+[2025-08-08T00:00:10.134Z] ✅ Saved Tomoyuki Sugano (608372)
+[2025-08-08T00:00:10.199Z] ✅ Saved Kade Strowd (669704)
+[2025-08-08T00:00:10.263Z] ✅ Saved Grant Wolfram (664991)
+[2025-08-08T00:00:10.341Z] ✅ Saved Elvin Rodríguez (660730)
+[2025-08-08T00:00:10.432Z] ✅ Saved Yennier Cano (666974)
+[2025-08-08T00:00:10.520Z] ✅ Saved Dietrich Enns (608650)
+[2025-08-08T00:00:10.595Z] ✅ Saved Vidal Bruján (660644)
+[2025-08-08T00:00:10.680Z] ✅ Saved Colton Cowser (681297)
+[2025-08-08T00:00:10.748Z] ✅ Saved Coby Mayo (691723)
+[2025-08-08T00:00:10.825Z] ✅ Saved Alex Jackson (656577)
+[2025-08-08T00:00:11.011Z] ✅ Saved Luis Torrens (620443)
+[2025-08-08T00:00:11.083Z] ✅ Saved Tyrone Taylor (621438)
+[2025-08-08T00:00:11.163Z] ✅ Saved Francisco Alvarez (682626)
+[2025-08-08T00:00:11.241Z] ✅ Saved Mark Vientos (668901)
+[2025-08-08T00:00:11.339Z] ✅ Saved Jeff McNeil (643446)
+[2025-08-08T00:00:11.412Z] ✅ Saved Sean Manaea (640455)
+[2025-08-08T00:00:11.487Z] ✅ Saved Brett Baty (683146)
+[2025-08-08T00:00:11.567Z] ✅ Saved Justin Hagenman (663795)
+[2025-08-08T00:00:11.641Z] ✅ Saved Gregory Soto (642397)
+[2025-08-08T00:00:11.713Z] ✅ Saved Kodai Senga (673540)
+[2025-08-08T00:00:11.794Z] ✅ Saved Pete Alonso (624413)
+[2025-08-08T00:00:11.872Z] ✅ Saved David Peterson (656849)
+[2025-08-08T00:00:11.937Z] ✅ Saved Starling Marte (516782)
+[2025-08-08T00:00:12.006Z] ✅ Saved Frankie Montas (593423)
+[2025-08-08T00:00:12.069Z] ✅ Saved Ryne Stanek (592773)
+[2025-08-08T00:00:12.133Z] ✅ Saved Ryan Helsley (664854)
+[2025-08-08T00:00:12.212Z] ✅ Saved Clay Holmes (605280)
+[2025-08-08T00:00:12.281Z] ✅ Saved Francisco Lindor (596019)
+[2025-08-08T00:00:12.355Z] ✅ Saved Brandon Nimmo (607043)
+[2025-08-08T00:00:12.445Z] ✅ Saved Edwin Díaz (621242)
+[2025-08-08T00:00:12.509Z] ✅ Saved Tyler Rogers (643511)
+[2025-08-08T00:00:12.589Z] ✅ Saved Juan Soto (665742)
+[2025-08-08T00:00:12.657Z] ✅ Saved Reed Garrett (657585)
+[2025-08-08T00:00:12.725Z] ✅ Saved Ronny Mauricio (677595)
+[2025-08-08T00:00:12.798Z] ✅ Saved Brooks Raley (548384)
+[2025-08-08T00:00:12.885Z] ✅ Saved Cedric Mullins (656775)
+[2025-08-08T00:00:12.947Z] ✅ Saved Nic Enright (663671)
+[2025-08-08T00:00:13.037Z] ✅ Saved Austin Hedges (595978)
+[2025-08-08T00:00:13.109Z] ✅ Saved Daniel Schneemann (682177)
+[2025-08-08T00:00:13.182Z] ✅ Saved Slade Cecconi (677944)
+[2025-08-08T00:00:13.248Z] ✅ Saved Brayan Rocchio (677587)
+[2025-08-08T00:00:13.321Z] ✅ Saved Gabriel Arias (672356)
+[2025-08-08T00:00:13.387Z] ✅ Saved Matt Festa (670036)
+[2025-08-08T00:00:13.457Z] ✅ Saved Carlos Hernández (672578)
+[2025-08-08T00:00:13.517Z] ✅ Saved Nolan Jones (666134)
+[2025-08-08T00:00:13.579Z] ✅ Saved Bo Naylor (666310)
+[2025-08-08T00:00:13.642Z] ✅ Saved Logan Allen (671106)
+[2025-08-08T00:00:13.718Z] ✅ Saved David Fry (681807)
+[2025-08-08T00:00:13.782Z] ✅ Saved Cade Smith (671922)
+[2025-08-08T00:00:13.853Z] ✅ Saved José Ramírez (608070)
+[2025-08-08T00:00:13.947Z] ✅ Saved Steven Kwan (680757)
+[2025-08-08T00:00:14.013Z] ✅ Saved Angel Martínez (682657)
+[2025-08-08T00:00:14.092Z] ✅ Saved Kolby Allard (663465)
+[2025-08-08T00:00:14.155Z] ✅ Saved Kyle Manzardo (700932)
+[2025-08-08T00:00:14.234Z] ✅ Saved Jakob Junis (596001)
+[2025-08-08T00:00:14.299Z] ✅ Saved Joey Cantillo (676282)
+[2025-08-08T00:00:14.372Z] ✅ Saved Erik Sabrowski (681870)
+[2025-08-08T00:00:14.457Z] ✅ Saved Gavin Williams (668909)
+[2025-08-08T00:00:14.559Z] ✅ Saved Hunter Gaddis (683769)
+[2025-08-08T00:00:14.632Z] ✅ Saved Tanner Bibee (676440)
+[2025-08-08T00:00:14.709Z] ✅ Saved Carlos Santana (467793)
+[2025-08-08T00:00:14.797Z] ✅ Saved C.J. Kayfus (692216)
+[2025-08-08T00:00:14.941Z] ✅ Saved Brant Hurter (676428)
+[2025-08-08T00:00:15.049Z] ✅ Saved Zach McKinstry (656716)
+[2025-08-08T00:00:15.137Z] ✅ Saved Tarik Skubal (669373)
+[2025-08-08T00:00:15.235Z] ✅ Saved Casey Mize (663554)
+[2025-08-08T00:00:15.313Z] ✅ Saved Rafael Montero (606160)
+[2025-08-08T00:00:15.382Z] ✅ Saved Jahmai Jones (663330)
+[2025-08-08T00:00:15.491Z] ✅ Saved Luke Jackson (592426)
+[2025-08-08T00:00:15.562Z] ✅ Saved Riley Greene (682985)
+[2025-08-08T00:00:15.624Z] ✅ Saved Javier Báez (595879)
+[2025-08-08T00:00:15.700Z] ✅ Saved Tyler Holton (663947)
+[2025-08-08T00:00:15.769Z] ✅ Saved Kerry Carpenter (681481)
+[2025-08-08T00:00:15.847Z] ✅ Saved Kyle Finnegan (640448)
+[2025-08-08T00:00:15.926Z] ✅ Saved Jack Flaherty (656427)
+[2025-08-08T00:00:15.993Z] ✅ Saved Spencer Torkelson (679529)
+[2025-08-08T00:00:16.059Z] ✅ Saved Gleyber Torres (650402)
+[2025-08-08T00:00:16.144Z] ✅ Saved Jake Rogers (668670)
+[2025-08-08T00:00:16.248Z] ✅ Saved Tommy Kahnle (592454)
+[2025-08-08T00:00:16.324Z] ✅ Saved Matt Vierling (663837)
+[2025-08-08T00:00:16.402Z] ✅ Saved Andy Ibáñez (628451)
+[2025-08-08T00:00:16.465Z] ✅ Saved Chris Paddack (663978)
+[2025-08-08T00:00:16.538Z] ✅ Saved Dillon Dingler (693307)
+[2025-08-08T00:00:16.605Z] ✅ Saved Charlie Morton (450203)
+[2025-08-08T00:00:16.671Z] ✅ Saved Will Vest (676684)
+[2025-08-08T00:00:16.738Z] ✅ Saved Colt Keith (690993)
+[2025-08-08T00:00:16.817Z] ✅ Saved Wenceel Pérez (672761)
+[2025-08-08T00:00:16.882Z] ✅ Saved Troy Melton (675512)
+[2025-08-08T00:00:16.959Z] ✅ Saved Michael Tonkin (543859)
+[2025-08-08T00:00:17.028Z] ✅ Saved Brooks Kriske (621139)
+[2025-08-08T00:00:17.130Z] ✅ Saved Justin Topa (623437)
+[2025-08-08T00:00:17.213Z] ✅ Saved Kody Clemens (665019)
+[2025-08-08T00:00:17.280Z] ✅ Saved Brooks Lee (686797)
+[2025-08-08T00:00:17.355Z] ✅ Saved Austin Martin (668885)
+[2025-08-08T00:00:17.442Z] ✅ Saved José Ureña (570632)
+[2025-08-08T00:00:17.527Z] ✅ Saved Erasmo Ramírez (541640)
+[2025-08-08T00:00:17.605Z] ✅ Saved Alan Roden (702176)
+[2025-08-08T00:00:17.669Z] ✅ Saved Edouard Julien (666397)
+[2025-08-08T00:00:17.746Z] ✅ Saved Pierson Ohl (701487)
+[2025-08-08T00:00:17.821Z] ✅ Saved Mickey Gasper (681508)
+[2025-08-08T00:00:17.887Z] ✅ Saved Ryan Fitzgerald (680837)
+[2025-08-08T00:00:17.949Z] ✅ Saved Ryan Jeffers (680777)
+[2025-08-08T00:00:18.024Z] ✅ Saved Cole Sands (663485)
+[2025-08-08T00:00:18.096Z] ✅ Saved Thomas Hatch (641672)
+[2025-08-08T00:00:18.171Z] ✅ Saved Bailey Ober (641927)
+[2025-08-08T00:00:18.233Z] ✅ Saved Kody Funderburk (681892)
+[2025-08-08T00:00:18.307Z] ✅ Saved Travis Adams (701519)
+[2025-08-08T00:00:18.376Z] ✅ Saved Royce Lewis (668904)
+[2025-08-08T00:00:18.460Z] ✅ Saved Trevor Larnach (663616)
+[2025-08-08T00:00:18.529Z] ✅ Saved Zebby Matthews (805673)
+[2025-08-08T00:00:18.642Z] ✅ Saved Joe Ryan (657746)
+[2025-08-08T00:00:18.711Z] ✅ Saved Matt Wallner (670242)
+[2025-08-08T00:00:18.812Z] ✅ Saved Christian Vázquez (543877)
+[2025-08-08T00:00:18.883Z] ✅ Saved Luke Keaschall (807712)
+[2025-08-08T00:00:19.018Z] ✅ Saved Daniel Palencia (694037)
+[2025-08-08T00:00:19.089Z] ✅ Saved Cade Horton (690990)
+[2025-08-08T00:00:19.162Z] ✅ Saved Kyle Tucker (663656)
+[2025-08-08T00:00:19.236Z] ✅ Saved Ian Happ (664023)
+[2025-08-08T00:00:19.309Z] ✅ Saved Caleb Thielbar (573204)
+[2025-08-08T00:00:19.381Z] ✅ Saved Shota Imanaga (684007)
+[2025-08-08T00:00:19.468Z] ✅ Saved Michael Busch (683737)
+[2025-08-08T00:00:19.537Z] ✅ Saved Carson Kelly (608348)
+[2025-08-08T00:00:19.610Z] ✅ Saved Pete Crow-Armstrong (691718)
+[2025-08-08T00:00:19.685Z] ✅ Saved Drew Pomeranz (519141)
+[2025-08-08T00:00:19.773Z] ✅ Saved Willi Castro (650489)
+[2025-08-08T00:00:19.844Z] ✅ Saved Seiya Suzuki (673548)
+[2025-08-08T00:00:19.918Z] ✅ Saved Jon Berti (542932)
+[2025-08-08T00:00:20.030Z] ✅ Saved Reese McGuire (624512)
+[2025-08-08T00:00:20.124Z] ✅ Saved Andrew Kittredge (552640)
+[2025-08-08T00:00:20.235Z] ✅ Saved Matthew Boyd (571510)
+[2025-08-08T00:00:20.319Z] ✅ Saved Dansby Swanson (621020)
+[2025-08-08T00:00:20.394Z] ✅ Saved Colin Rea (607067)
+[2025-08-08T00:00:20.460Z] ✅ Saved Ryan Brasier (518489)
+[2025-08-08T00:00:20.523Z] ✅ Saved Taylor Rogers (573124)
+[2025-08-08T00:00:20.587Z] ✅ Saved Nate Pearson (663878)
+[2025-08-08T00:00:20.657Z] ✅ Saved Nico Hoerner (663538)
+[2025-08-08T00:00:20.743Z] ✅ Saved Brad Keller (641745)
+[2025-08-08T00:00:20.819Z] ✅ Saved Ben Brown (676962)
+[2025-08-08T00:00:20.912Z] ✅ Saved Justin Turner (457759)
+[2025-08-08T00:00:20.976Z] ✅ Saved Matt Shaw (807713)
+[2025-08-08T00:00:21.080Z] ✅ Saved Elly De La Cruz (682829)
+[2025-08-08T00:00:21.145Z] ✅ Saved Luis Mey (682825)
+[2025-08-08T00:00:21.210Z] ✅ Saved Emilio Pagán (641941)
+[2025-08-08T00:00:21.285Z] ✅ Saved Noelvi Marte (682622)
+[2025-08-08T00:00:21.355Z] ✅ Saved Jake Fraley (641584)
+[2025-08-08T00:00:21.418Z] ✅ Saved Scott Barlow (605130)
+[2025-08-08T00:00:21.482Z] ✅ Saved Tony Santillan (663574)
+[2025-08-08T00:00:21.556Z] ✅ Saved Brady Singer (663903)
+[2025-08-08T00:00:21.630Z] ✅ Saved Matt McLain (680574)
+[2025-08-08T00:00:21.717Z] ✅ Saved Ke'Bryan Hayes (663647)
+[2025-08-08T00:00:21.784Z] ✅ Saved Nick Martinez (607259)
+[2025-08-08T00:00:21.850Z] ✅ Saved TJ Friedl (670770)
+[2025-08-08T00:00:21.923Z] ✅ Saved Austin Hays (669720)
+[2025-08-08T00:00:21.990Z] ✅ Saved Santiago Espinal (669289)
+[2025-08-08T00:00:22.053Z] ✅ Saved Miguel Andujar (609280)
+[2025-08-08T00:00:22.133Z] ✅ Saved Yosver Zulueta (691172)
+[2025-08-08T00:00:22.204Z] ✅ Saved Spencer Steer (668715)
+[2025-08-08T00:00:22.288Z] ✅ Saved Jose Trevino (624431)
+[2025-08-08T00:00:22.372Z] ✅ Saved Tyler Stephenson (663886)
+[2025-08-08T00:00:22.449Z] ✅ Saved Graham Ashcraft (668933)
+[2025-08-08T00:00:22.512Z] ✅ Saved Gavin Lux (666158)
+[2025-08-08T00:00:22.584Z] ✅ Saved Zack Littell (641793)
+[2025-08-08T00:00:22.666Z] ✅ Saved Sam Moll (594580)
+[2025-08-08T00:00:22.732Z] ✅ Saved Andrew Abbott (671096)
+[2025-08-08T00:00:22.806Z] ✅ Saved Brent Suter (608718)
+[2025-08-08T00:00:22.871Z] ✅ Saved Chase Burns (695505)
+[2025-08-08T00:00:22.996Z] ✅ Saved Jonah Heim (641680)
+[2025-08-08T00:00:23.074Z] ✅ Saved Shawn Armstrong (542888)
+[2025-08-08T00:00:23.150Z] ✅ Saved Wyatt Langford (694671)
+[2025-08-08T00:00:23.217Z] ✅ Saved Hoby Milner (571948)
+[2025-08-08T00:00:23.303Z] ✅ Saved Alejandro Osuna (696030)
+[2025-08-08T00:00:23.381Z] ✅ Saved Merrill Kelly (518876)
+[2025-08-08T00:00:23.484Z] ✅ Saved Joc Pederson (592626)
+[2025-08-08T00:00:23.564Z] ✅ Saved Jack Leiter (683004)
+[2025-08-08T00:00:23.644Z] ✅ Saved Rowdy Tellez (642133)
+[2025-08-08T00:00:23.739Z] ✅ Saved Luis Curvelo (681168)
+[2025-08-08T00:00:23.852Z] ✅ Saved Corey Seager (608369)
+[2025-08-08T00:00:23.934Z] ✅ Saved Jon Gray (592351)
+[2025-08-08T00:00:24.009Z] ✅ Saved Robert Garcia (676395)
+[2025-08-08T00:00:24.097Z] ✅ Saved Marcus Semien (543760)
+[2025-08-08T00:00:24.170Z] ✅ Saved Josh Jung (673962)
+[2025-08-08T00:00:24.238Z] ✅ Saved Kyle Higashioka (543309)
+[2025-08-08T00:00:24.304Z] ✅ Saved Ezequiel Duran (677649)
+[2025-08-08T00:00:24.384Z] ✅ Saved Jacob deGrom (594798)
+[2025-08-08T00:00:24.451Z] ✅ Saved Josh Smith (669701)
+[2025-08-08T00:00:24.529Z] ✅ Saved Patrick Corbin (571578)
+[2025-08-08T00:00:24.622Z] ✅ Saved Sam Haggerty (664059)
+[2025-08-08T00:00:24.705Z] ✅ Saved Adolis García (666969)
+[2025-08-08T00:00:24.798Z] ✅ Saved Phil Maton (664208)
+[2025-08-08T00:00:24.872Z] ✅ Saved Nathan Eovaldi (543135)
+[2025-08-08T00:00:24.962Z] ✅ Saved Danny Coulombe (543056)
+[2025-08-08T00:00:25.037Z] ✅ Saved Cole Winn (668390)
+[2025-08-08T00:00:25.114Z] ✅ Saved José Caballero (676609)
+[2025-08-08T00:00:25.186Z] ✅ Saved Carlos Rodón (607074)
+[2025-08-08T00:00:25.248Z] ✅ Saved Luke Weaver (596133)
+[2025-08-08T00:00:25.328Z] ✅ Saved Amed Rosario (642708)
+[2025-08-08T00:00:25.397Z] ✅ Saved Aaron Judge (592450)
+[2025-08-08T00:00:25.467Z] ✅ Saved Ryan McMahon (641857)
+[2025-08-08T00:00:25.562Z] ✅ Saved Devin Williams (642207)
+[2025-08-08T00:00:25.637Z] ✅ Saved Tim Hill (657612)
+[2025-08-08T00:00:25.705Z] ✅ Saved Paul Goldschmidt (502671)
+[2025-08-08T00:00:25.772Z] ✅ Saved Jasson Domínguez (691176)
+[2025-08-08T00:00:25.840Z] ✅ Saved Austin Wells (669224)
+[2025-08-08T00:00:25.907Z] ✅ Saved Ben Rice (700250)
+[2025-08-08T00:00:25.994Z] ✅ Saved Brent Headrick (687396)
+[2025-08-08T00:00:26.068Z] ✅ Saved Will Warren (701542)
+[2025-08-08T00:00:26.142Z] ✅ Saved Anthony Volpe (683011)
+[2025-08-08T00:00:26.219Z] ✅ Saved Cody Bellinger (641355)
+[2025-08-08T00:00:26.305Z] ✅ Saved Giancarlo Stanton (519317)
+[2025-08-08T00:00:26.387Z] ✅ Saved Mark Leiter Jr. (643410)
+[2025-08-08T00:00:26.463Z] ✅ Saved Jazz Chisholm Jr. (665862)
+[2025-08-08T00:00:26.531Z] ✅ Saved Max Fried (608331)
+[2025-08-08T00:00:26.603Z] ✅ Saved Luis Gil (661563)
+[2025-08-08T00:00:26.671Z] ✅ Saved Camilo Doval (666808)
+[2025-08-08T00:00:26.733Z] ✅ Saved Yerry De los Santos (660787)
+[2025-08-08T00:00:26.808Z] ✅ Saved Trent Grisham (663757)
+[2025-08-08T00:00:26.874Z] ✅ Saved David Bednar (670280)
+[2025-08-08T00:00:26.960Z] ✅ Saved Cam Schlittler (693645)
+[2025-08-08T00:00:27.106Z] ✅ Saved Nick Anderson (623433)
+[2025-08-08T00:00:27.170Z] ✅ Saved Mickey Moniak (666160)
+[2025-08-08T00:00:27.231Z] ✅ Saved Adael Amador (691182)
+[2025-08-08T00:00:27.292Z] ✅ Saved Victor Vodnik (680767)
+[2025-08-08T00:00:27.357Z] ✅ Saved Jimmy Herget (623474)
+[2025-08-08T00:00:27.430Z] ✅ Saved Warming Bernabel (682653)
+[2025-08-08T00:00:27.506Z] ✅ Saved Braxton Fulford (690924)
+[2025-08-08T00:00:27.577Z] ✅ Saved Kyle Freeland (607536)
+[2025-08-08T00:00:27.638Z] ✅ Saved Austin Gomber (596295)
+[2025-08-08T00:00:27.697Z] ✅ Saved Tyler Freeman (671289)
+[2025-08-08T00:00:27.771Z] ✅ Saved Dugan Darnell (699911)
+[2025-08-08T00:00:27.849Z] ✅ Saved Juan Mejia (675848)
+[2025-08-08T00:00:27.916Z] ✅ Saved Yanquiel Fernández (692585)
+[2025-08-08T00:00:27.980Z] ✅ Saved Hunter Goodman (696100)
+[2025-08-08T00:00:28.049Z] ✅ Saved Ryan Rolison (669020)
+[2025-08-08T00:00:28.119Z] ✅ Saved Kyle Farmer (571657)
+[2025-08-08T00:00:28.203Z] ✅ Saved Bradley Blalock (687134)
+[2025-08-08T00:00:28.270Z] ✅ Saved Jordan Beck (687597)
+[2025-08-08T00:00:28.333Z] ✅ Saved Tanner Gordon (685299)
+[2025-08-08T00:00:28.414Z] ✅ Saved Brenton Doyle (686668)
+[2025-08-08T00:00:28.489Z] ✅ Saved Ezequiel Tovar (678662)
+[2025-08-08T00:00:28.545Z] ✅ Saved Orlando Arcia (606115)
+[2025-08-08T00:00:28.634Z] ✅ Saved Anthony Molina (683627)
+[2025-08-08T00:00:28.704Z] ✅ Saved Austin Nola (543592)
+[2025-08-08T00:00:28.781Z] ✅ Saved Angel Chivilli (683409)
+[2025-08-08T00:00:28.856Z] ✅ Saved Jaden Hill (677955)
+[2025-08-08T00:00:28.923Z] ✅ Saved Tommy Nance (667297)
+[2025-08-08T00:00:28.989Z] ✅ Saved Bo Bichette (666182)
+[2025-08-08T00:00:29.060Z] ✅ Saved Louis Varland (686973)
+[2025-08-08T00:00:29.115Z] ✅ Saved Brendon Little (663893)
+[2025-08-08T00:00:29.172Z] ✅ Saved Ernie Clement (676391)
+[2025-08-08T00:00:29.231Z] ✅ Saved Chris Bassitt (605135)
+[2025-08-08T00:00:29.306Z] ✅ Saved Daulton Varsho (662139)
+[2025-08-08T00:00:29.375Z] ✅ Saved Kevin Gausman (592332)
+[2025-08-08T00:00:29.441Z] ✅ Saved Buddy Kennedy (671083)
+[2025-08-08T00:00:29.510Z] ✅ Saved Eric Lauer (641778)
+[2025-08-08T00:00:29.616Z] ✅ Saved Jeff Hoffman (656546)
+[2025-08-08T00:00:29.716Z] ✅ Saved Davis Schneider (676914)
+[2025-08-08T00:00:29.800Z] ✅ Saved José Berríos (621244)
+[2025-08-08T00:00:29.885Z] ✅ Saved Seranthony Domínguez (622554)
+[2025-08-08T00:00:29.952Z] ✅ Saved Nathan Lukes (664770)
+[2025-08-08T00:00:30.050Z] ✅ Saved Joey Loperfido (694388)
+[2025-08-08T00:00:30.123Z] ✅ Saved Addison Barger (680718)
+[2025-08-08T00:00:30.197Z] ✅ Saved Max Scherzer (453286)
+[2025-08-08T00:00:30.282Z] ✅ Saved Mason Fluharty (689254)
+[2025-08-08T00:00:30.385Z] ✅ Saved Yariel Rodríguez (684320)
+[2025-08-08T00:00:30.469Z] ✅ Saved Braydon Fisher (680755)
+[2025-08-08T00:00:30.555Z] ✅ Saved Ty France (664034)
+[2025-08-08T00:00:30.622Z] ✅ Saved Tyler Heineman (623168)
+[2025-08-08T00:00:30.694Z] ✅ Saved Vladimir Guerrero Jr. (665489)
+[2025-08-08T00:00:30.782Z] ✅ Saved Myles Straw (664702)
+[2025-08-08T00:00:30.867Z] ✅ Saved Alejandro Kirk (672386)
+[2025-08-08T00:00:30.988Z] ✅ Saved Luis Rengifo (650859)
+[2025-08-08T00:00:31.065Z] ✅ Saved Oswald Peraza (672724)
+[2025-08-08T00:00:31.135Z] ✅ Saved Gustavo Campero (672569)
+[2025-08-08T00:00:31.208Z] ✅ Saved Zach Neto (687263)
+[2025-08-08T00:00:31.294Z] ✅ Saved Christian Moore (695681)
+[2025-08-08T00:00:31.370Z] ✅ Saved Connor Brogdon (641401)
+[2025-08-08T00:00:31.464Z] ✅ Saved Travis d'Arnaud (518595)
+[2025-08-08T00:00:31.541Z] ✅ Saved José Soriano (667755)
+[2025-08-08T00:00:31.615Z] ✅ Saved Taylor Ward (621493)
+[2025-08-08T00:00:31.689Z] ✅ Saved Jack Kochanowicz (686799)
+[2025-08-08T00:00:31.770Z] ✅ Saved Andrew Chafin (605177)
+[2025-08-08T00:00:31.839Z] ✅ Saved Mike Trout (545361)
+[2025-08-08T00:00:31.983Z] ✅ Saved Kenley Jansen (445276)
+[2025-08-08T00:00:32.062Z] ✅ Saved Jo Adell (666176)
+[2025-08-08T00:00:32.157Z] ✅ Saved Ryan Zeferjahn (666171)
+[2025-08-08T00:00:32.237Z] ✅ Saved Nolan Schanuel (694384)
+[2025-08-08T00:00:32.320Z] ✅ Saved Yusei Kikuchi (579328)
+[2025-08-08T00:00:32.393Z] ✅ Saved Bryce Teodosio (669326)
+[2025-08-08T00:00:32.464Z] ✅ Saved Carson Fulmer (608334)
+[2025-08-08T00:00:32.557Z] ✅ Saved Logan O'Hoppe (681351)
+[2025-08-08T00:00:32.625Z] ✅ Saved Brock Burke (656271)
+[2025-08-08T00:00:32.699Z] ✅ Saved Reid Detmers (672282)
+[2025-08-08T00:00:32.767Z] ✅ Saved Kyle Hendricks (543294)
+[2025-08-08T00:00:32.837Z] ✅ Saved Luis García (472610)
+[2025-08-08T00:00:32.905Z] ✅ Saved Tyler Anderson (542881)
+[2025-08-08T00:00:32.978Z] ✅ Saved Niko Kavadas (694359)
+[2025-08-08T00:00:33.089Z] ✅ Saved Taylor Walls (670764)
+[2025-08-08T00:00:33.175Z] ✅ Saved Brandon Lowe (664040)
+[2025-08-08T00:00:33.326Z] ✅ Saved Christopher Morel (666624)
+[2025-08-08T00:00:33.485Z] ✅ Saved Pete Fairbanks (664126)
+[2025-08-08T00:00:33.561Z] ✅ Saved Ryan Pepiot (686752)
+[2025-08-08T00:00:33.682Z] ✅ Saved Mason Englert (669438)
+[2025-08-08T00:00:33.747Z] ✅ Saved Shane Baz (669358)
+[2025-08-08T00:00:33.818Z] ✅ Saved Chandler Simpson (802415)
+[2025-08-08T00:00:33.908Z] ✅ Saved Tristan Gray (656484)
+[2025-08-08T00:00:33.999Z] ✅ Saved Mason Montgomery (682254)
+[2025-08-08T00:00:34.075Z] ✅ Saved Jake Mangum (663968)
+[2025-08-08T00:00:34.167Z] ✅ Saved Jonny DeLuca (676356)
+[2025-08-08T00:00:34.252Z] ✅ Saved Ian Seymour (693855)
+[2025-08-08T00:00:34.324Z] ✅ Saved Garrett Cleavinger (664076)
+[2025-08-08T00:00:34.416Z] ✅ Saved Hunter Feduccia (676439)
+[2025-08-08T00:00:34.496Z] ✅ Saved Edwin Uceta (670955)
+[2025-08-08T00:00:34.572Z] ✅ Saved Josh Lowe (666139)
+[2025-08-08T00:00:34.656Z] ✅ Saved Nick Fortes (663743)
+[2025-08-08T00:00:34.733Z] ✅ Saved Griffin Jax (643377)
+[2025-08-08T00:00:34.827Z] ✅ Saved Yandy Díaz (650490)
+[2025-08-08T00:00:34.907Z] ✅ Saved Adrian Houser (605288)
+[2025-08-08T00:00:34.986Z] ✅ Saved Bryan Baker (641329)
+[2025-08-08T00:00:35.057Z] ✅ Saved Ha-Seong Kim (673490)
+[2025-08-08T00:00:35.139Z] ✅ Saved Junior Caminero (691406)
+[2025-08-08T00:00:35.233Z] ✅ Saved Drew Rasmussen (656876)
+[2025-08-08T00:00:35.332Z] ✅ Saved Joe Boyle (671212)
+[2025-08-08T00:00:35.598Z] ✅ Saved Will Smith (669257)
+[2025-08-08T00:00:35.694Z] ✅ Saved Ben Casparius (676508)
+[2025-08-08T00:00:35.802Z] ✅ Saved Michael Conforto (624424)
+[2025-08-08T00:00:35.888Z] ✅ Saved Dalton Rushing (687221)
+[2025-08-08T00:00:35.970Z] ✅ Saved Tyler Glasnow (607192)
+[2025-08-08T00:00:36.053Z] ✅ Saved Alex Vesia (681911)
+[2025-08-08T00:00:36.130Z] ✅ Saved Max Muncy (571970)
+[2025-08-08T00:00:36.196Z] ✅ Saved Anthony Banda (607455)
+[2025-08-08T00:00:36.265Z] ✅ Saved Freddie Freeman (518692)
+[2025-08-08T00:00:36.335Z] ✅ Saved Esteury Ruiz (665923)
+[2025-08-08T00:00:36.422Z] ✅ Saved Shohei Ohtani (660271)
+[2025-08-08T00:00:36.522Z] ✅ Saved Justin Wrobleski (680736)
+[2025-08-08T00:00:36.587Z] ✅ Saved Teoscar Hernández (606192)
+[2025-08-08T00:00:36.706Z] ✅ Saved Andy Pages (681624)
+[2025-08-08T00:00:36.772Z] ✅ Saved Clayton Kershaw (477132)
+[2025-08-08T00:00:36.845Z] ✅ Saved Mookie Betts (605141)
+[2025-08-08T00:00:36.922Z] ✅ Saved Alex Call (669743)
+[2025-08-08T00:00:37.052Z] ✅ Saved Blake Snell (605483)
+[2025-08-08T00:00:37.177Z] ✅ Saved Brock Stewart (592779)
+[2025-08-08T00:00:37.255Z] ✅ Saved Emmet Sheehan (686218)
+[2025-08-08T00:00:37.338Z] ✅ Saved Miguel Rojas (500743)
+[2025-08-08T00:00:37.410Z] ✅ Saved Alexis Díaz (664747)
+[2025-08-08T00:00:37.493Z] ✅ Saved Jack Dreyer (676263)
+[2025-08-08T00:00:37.567Z] ✅ Saved Blake Treinen (595014)
+[2025-08-08T00:00:37.642Z] ✅ Saved Alex Freeland (690976)
+[2025-08-08T00:00:37.714Z] ✅ Saved Yoshinobu Yamamoto (808967)
+[2025-08-08T00:00:37.819Z] ✅ Saved Michael McGreevy (700241)
+[2025-08-08T00:00:37.922Z] ✅ Saved Nolan Gorman (669357)
+[2025-08-08T00:00:38.001Z] ✅ Saved Matt Svanson (694335)
+[2025-08-08T00:00:38.070Z] ✅ Saved Jordan Walker (691023)
+[2025-08-08T00:00:38.159Z] ✅ Saved Victor Scott II (687363)
+[2025-08-08T00:00:38.221Z] ✅ Saved Willson Contreras (575929)
+[2025-08-08T00:00:38.292Z] ✅ Saved Andre Granillo (701552)
+[2025-08-08T00:00:38.427Z] ✅ Saved Kyle Leahy (681517)
+[2025-08-08T00:00:38.554Z] ✅ Saved Lars Nootbaar (663457)
+[2025-08-08T00:00:38.653Z] ✅ Saved Miles Mikolas (571945)
+[2025-08-08T00:00:38.794Z] ✅ Saved Ryan Fernandez (681676)
+[2025-08-08T00:00:38.926Z] ✅ Saved Gordon Graceffo (700669)
+[2025-08-08T00:00:39.016Z] ✅ Saved JoJo Romero (668941)
+[2025-08-08T00:00:39.127Z] ✅ Saved Garrett Hampson (641658)
+[2025-08-08T00:00:39.220Z] ✅ Saved Alec Burleson (676475)
+[2025-08-08T00:00:39.320Z] ✅ Saved Sonny Gray (543243)
+[2025-08-08T00:00:39.390Z] ✅ Saved Thomas Saggese (695336)
+[2025-08-08T00:00:39.498Z] ✅ Saved Yohel Pozo (650968)
+[2025-08-08T00:00:39.579Z] ✅ Saved Riley O'Brien (676617)
+[2025-08-08T00:00:39.655Z] ✅ Saved Andre Pallante (669467)
+[2025-08-08T00:00:39.740Z] ✅ Saved Pedro Pagés (686780)
+[2025-08-08T00:00:39.811Z] ✅ Saved Matthew Liberatore (669461)
+[2025-08-08T00:00:39.879Z] ✅ Saved Brendan Donovan (680977)
+[2025-08-08T00:00:39.950Z] ✅ Saved Roddery Muñoz (682610)
+[2025-08-08T00:00:40.012Z] ✅ Saved Masyn Winn (691026)
+[2025-08-08T00:00:40.075Z] ✅ Saved Iván Herrera (671056)
+[2025-08-08T00:00:40.227Z] ✅ Saved Lake Bachar (669199)
+[2025-08-08T00:00:40.293Z] ✅ Saved Dane Myers (667472)
+[2025-08-08T00:00:40.362Z] ✅ Saved Heriberto Hernandez (681715)
+[2025-08-08T00:00:40.426Z] ✅ Saved Sandy Alcantara (645261)
+[2025-08-08T00:00:40.496Z] ✅ Saved Edward Cabrera (665795)
+[2025-08-08T00:00:40.601Z] ✅ Saved Troy Johnston (687859)
+[2025-08-08T00:00:40.704Z] ✅ Saved Tyler Phillips (663969)
+[2025-08-08T00:00:40.785Z] ✅ Saved Eric Wagaman (676572)
+[2025-08-08T00:00:40.874Z] ✅ Saved Ronny Henriquez (678692)
+[2025-08-08T00:00:40.969Z] ✅ Saved Cal Quantrill (615698)
+[2025-08-08T00:00:41.034Z] ✅ Saved Jakob Marsee (805300)
+[2025-08-08T00:00:41.125Z] ✅ Saved Calvin Faucher (676534)
+[2025-08-08T00:00:41.189Z] ✅ Saved Javier Sanoja (691594)
+[2025-08-08T00:00:41.256Z] ✅ Saved Cade Gibson (806188)
+[2025-08-08T00:00:41.361Z] ✅ Saved Xavier Edwards (669364)
+[2025-08-08T00:00:41.455Z] ✅ Saved Kyle Stowers (669065)
+[2025-08-08T00:00:41.526Z] ✅ Saved Graham Pauley (688363)
+[2025-08-08T00:00:41.609Z] ✅ Saved Liam Hicks (689414)
+[2025-08-08T00:00:41.676Z] ✅ Saved Josh Simpson (681006)
+[2025-08-08T00:00:41.740Z] ✅ Saved Anthony Bender (669622)
+[2025-08-08T00:00:41.829Z] ✅ Saved Agustín Ramírez (682663)
+[2025-08-08T00:00:41.892Z] ✅ Saved Janson Junk (676083)
+[2025-08-08T00:00:41.954Z] ✅ Saved Derek Hill (656537)
+[2025-08-08T00:00:42.022Z] ✅ Saved Eury Pérez (691587)
+[2025-08-08T00:00:42.104Z] ✅ Saved Otto Lopez (672640)
+[2025-08-08T00:00:42.186Z] ✅ Saved Valente Bellozo (678368)
+[2025-08-08T00:00:42.270Z] ✅ Saved Framber Valdez (664285)
+[2025-08-08T00:00:42.368Z] ✅ Saved Bryan Abreu (650556)
+[2025-08-08T00:00:42.439Z] ✅ Saved Cooper Hummel (669450)
+[2025-08-08T00:00:42.515Z] ✅ Saved Héctor Neris (593576)
+[2025-08-08T00:00:42.580Z] ✅ Saved Victor Caratini (605170)
+[2025-08-08T00:00:42.680Z] ✅ Saved Cam Smith (701358)
+[2025-08-08T00:00:42.751Z] ✅ Saved Mauricio Dubón (643289)
+[2025-08-08T00:00:42.828Z] ✅ Saved Hunter Brown (686613)
+[2025-08-08T00:00:42.893Z] ✅ Saved Josh Hader (623352)
+[2025-08-08T00:00:42.965Z] ✅ Saved Steven Okert (595345)
+[2025-08-08T00:00:43.026Z] ✅ Saved Kaleb Ort (672391)
+[2025-08-08T00:00:43.103Z] ✅ Saved Bennett Sousa (656986)
+[2025-08-08T00:00:43.166Z] ✅ Saved Jose Altuve (514888)
+[2025-08-08T00:00:43.259Z] ✅ Saved Taylor Trammell (666211)
+[2025-08-08T00:00:43.334Z] ✅ Saved Jeremy Peña (665161)
+[2025-08-08T00:00:43.423Z] ✅ Saved Ramón Urías (602104)
+[2025-08-08T00:00:43.489Z] ✅ Saved Bryan King (687911)
+[2025-08-08T00:00:43.558Z] ✅ Saved Nick Hernandez (663321)
+[2025-08-08T00:00:43.627Z] ✅ Saved Carlos Correa (621043)
+[2025-08-08T00:00:43.700Z] ✅ Saved Jason Alexander (669920)
+[2025-08-08T00:00:43.770Z] ✅ Saved Jesús Sánchez (660821)
+[2025-08-08T00:00:43.842Z] ✅ Saved Christian Walker (572233)
+[2025-08-08T00:00:43.907Z] ✅ Saved Spencer Arrighetti (681293)
+[2025-08-08T00:00:43.977Z] ✅ Saved Colton Gordon (676467)
+[2025-08-08T00:00:44.059Z] ✅ Saved Chas McCormick (676801)
+[2025-08-08T00:00:44.128Z] ✅ Saved Yainer Diaz (673237)
+[2025-08-08T00:00:44.261Z] ✅ Saved Brady House (691781)
+[2025-08-08T00:00:44.343Z] ✅ Saved Shinnosuke Ogasawara (829272)
+[2025-08-08T00:00:44.416Z] ✅ Saved Jose A. Ferrer (678606)
+[2025-08-08T00:00:44.501Z] ✅ Saved CJ Abrams (682928)
+[2025-08-08T00:00:44.562Z] ✅ Saved Konnor Pilkington (663455)
+[2025-08-08T00:00:44.634Z] ✅ Saved Drew Millas (686452)
+[2025-08-08T00:00:44.697Z] ✅ Saved Riley Adams (656180)
+[2025-08-08T00:00:44.767Z] ✅ Saved Nathaniel Lowe (663993)
+[2025-08-08T00:00:44.862Z] ✅ Saved Josh Bell (605137)
+[2025-08-08T00:00:44.945Z] ✅ Saved PJ Poulin (676571)
+[2025-08-08T00:00:45.019Z] ✅ Saved Clayton Beeter (690925)
+[2025-08-08T00:00:45.085Z] ✅ Saved Cole Henry (669371)
+[2025-08-08T00:00:45.148Z] ✅ Saved Robert Hassell III (690987)
+[2025-08-08T00:00:45.222Z] ✅ Saved Brad Lord (695418)
+[2025-08-08T00:00:45.335Z] ✅ Saved Paul DeJong (657557)
+[2025-08-08T00:00:45.397Z] ✅ Saved Daylen Lile (695734)
+[2025-08-08T00:00:45.480Z] ✅ Saved José Tena (677588)
+[2025-08-08T00:00:45.550Z] ✅ Saved James Wood (695578)
+[2025-08-08T00:00:45.622Z] ✅ Saved MacKenzie Gore (669022)
+[2025-08-08T00:00:45.685Z] ✅ Saved Cade Cavalli (676917)
+[2025-08-08T00:00:45.765Z] ✅ Saved Jacob Young (696285)
+[2025-08-08T00:00:45.837Z] ✅ Saved Jake Irvin (663623)
+[2025-08-08T00:00:45.898Z] ✅ Saved Orlando Ribalta (687377)
+[2025-08-08T00:00:45.969Z] ✅ Saved Mitchell Parker (680730)
+[2025-08-08T00:00:46.038Z] ✅ Saved Jackson Rutledge (671131)
+[2025-08-08T00:00:46.099Z] ✅ Saved Luis García Jr. (671277)
+[2025-08-08T00:00:46.172Z] ✅ Saved Lawrence Butler (671732)
+[2025-08-08T00:00:46.231Z] ✅ Saved Luis Severino (622663)
+[2025-08-08T00:00:46.297Z] ✅ Saved Luis Urías (649966)
+[2025-08-08T00:00:46.367Z] ✅ Saved Brent Rooker (667670)
+[2025-08-08T00:00:46.445Z] ✅ Saved J.T. Ginn (669372)
+[2025-08-08T00:00:46.560Z] ✅ Saved Justin Sterner (686993)
+[2025-08-08T00:00:46.620Z] ✅ Saved Ben Bowden (641386)
+[2025-08-08T00:00:46.690Z] ✅ Saved Tyler Ferguson (621053)
+[2025-08-08T00:00:46.763Z] ✅ Saved Willie MacIver (680862)
+[2025-08-08T00:00:46.853Z] ✅ Saved Carlos Cortes (666126)
+[2025-08-08T00:00:46.922Z] ✅ Saved Max Schuemann (680474)
+[2025-08-08T00:00:46.991Z] ✅ Saved Michael Kelly (547184)
+[2025-08-08T00:00:47.059Z] ✅ Saved Osvaldo Bido (674370)
+[2025-08-08T00:00:47.128Z] ✅ Saved Gio Urshela (570482)
+[2025-08-08T00:00:47.195Z] ✅ Saved Jacob Lopez (682052)
+[2025-08-08T00:00:47.280Z] ✅ Saved Tyler Soderstrom (691016)
+[2025-08-08T00:00:47.355Z] ✅ Saved Elvis Alvarado (665660)
+[2025-08-08T00:00:47.428Z] ✅ Saved Darell Hernaiz (687231)
+[2025-08-08T00:00:47.499Z] ✅ Saved Nick Kurtz (701762)
+[2025-08-08T00:00:47.593Z] ✅ Saved Colby Thomas (687515)
+[2025-08-08T00:00:47.671Z] ✅ Saved Shea Langeliers (669127)
+[2025-08-08T00:00:47.744Z] ✅ Saved Jack Perkins (678022)
+[2025-08-08T00:00:47.814Z] ✅ Saved Sean Newcomb (656794)
+[2025-08-08T00:00:47.894Z] ✅ Saved Jeffrey Springs (605488)
+[2025-08-08T00:00:47.961Z] ✅ Saved JJ Bleday (668709)
+[2025-08-08T00:00:48.053Z] ✅ Saved Luis Morales (806960)
+[2025-08-08T00:00:48.181Z] ✅ Saved Roman Anthony (701350)
+[2025-08-08T00:00:48.245Z] ✅ Saved Steven Matz (571927)
+[2025-08-08T00:00:48.309Z] ✅ Saved Romy Gonzalez (663853)
+[2025-08-08T00:00:48.372Z] ✅ Saved Walker Buehler (621111)
+[2025-08-08T00:00:48.452Z] ✅ Saved Greg Weissert (669711)
+[2025-08-08T00:00:48.553Z] ✅ Saved Connor Wong (657136)
+[2025-08-08T00:00:48.617Z] ✅ Saved Alex Bregman (608324)
+[2025-08-08T00:00:48.679Z] ✅ Saved Trevor Story (596115)
+[2025-08-08T00:00:48.744Z] ✅ Saved Rob Refsnyder (608701)
+[2025-08-08T00:00:48.810Z] ✅ Saved Brayan Bello (678394)
+[2025-08-08T00:00:48.881Z] ✅ Saved Wilyer Abreu (677800)
+[2025-08-08T00:00:48.955Z] ✅ Saved Garrett Whitlock (676477)
+[2025-08-08T00:00:49.022Z] ✅ Saved Garrett Crochet (676979)
+[2025-08-08T00:00:49.084Z] ✅ Saved Chris Murphy (669684)
+[2025-08-08T00:00:49.174Z] ✅ Saved Justin Wilson (458677)
+[2025-08-08T00:00:49.260Z] ✅ Saved David Hamilton (666152)
+[2025-08-08T00:00:49.329Z] ✅ Saved Abraham Toro (647351)
+[2025-08-08T00:00:49.417Z] ✅ Saved Carlos Narváez (665966)
+[2025-08-08T00:00:49.489Z] ✅ Saved Jarren Duran (680776)
+[2025-08-08T00:00:49.556Z] ✅ Saved Isaiah Campbell (663462)
+[2025-08-08T00:00:49.619Z] ✅ Saved Ceddanne Rafaela (678882)
+[2025-08-08T00:00:49.681Z] ✅ Saved Jordan Hicks (663855)
+[2025-08-08T00:00:49.742Z] ✅ Saved Lucas Giolito (608337)
+[2025-08-08T00:00:49.804Z] ✅ Saved Masataka Yoshida (807799)
+[2025-08-08T00:00:49.900Z] ✅ Saved Dustin May (669160)
+[2025-08-08T00:00:49.993Z] ✅ Saved Aroldis Chapman (547973)
+[2025-08-08T00:00:50.070Z] ✅ Saved Adam Frazier (624428)
+[2025-08-08T00:00:50.161Z] ✅ Saved Sam Long (669674)
+[2025-08-08T00:00:50.236Z] ✅ Saved Tyler Tolbert (686475)
+[2025-08-08T00:00:50.321Z] ✅ Saved Jonathan India (663697)
+[2025-08-08T00:00:50.391Z] ✅ Saved Hunter Harvey (640451)
+[2025-08-08T00:00:50.456Z] ✅ Saved Salvador Perez (521692)
+[2025-08-08T00:00:50.550Z] ✅ Saved Randal Grichuk (545341)
+[2025-08-08T00:00:50.653Z] ✅ Saved Nick Loftin (679845)
+[2025-08-08T00:00:50.740Z] ✅ Saved John Rave (670231)
+[2025-08-08T00:00:50.804Z] ✅ Saved Lucas Erceg (668674)
+[2025-08-08T00:00:50.874Z] ✅ Saved Luke Maile (571912)
+[2025-08-08T00:00:50.941Z] ✅ Saved Taylor Clarke (664199)
+[2025-08-08T00:00:51.001Z] ✅ Saved Carlos Estévez (608032)
+[2025-08-08T00:00:51.082Z] ✅ Saved Ryan Bergert (686701)
+[2025-08-08T00:00:51.163Z] ✅ Saved Vinnie Pasquantino (686469)
+[2025-08-08T00:00:51.233Z] ✅ Saved Kyle Isbel (664728)
+[2025-08-08T00:00:51.309Z] ✅ Saved Daniel Lynch IV (663738)
+[2025-08-08T00:00:51.377Z] ✅ Saved Michael Wacha (608379)
+[2025-08-08T00:00:51.455Z] ✅ Saved Mike Yastrzemski (573262)
+[2025-08-08T00:00:51.522Z] ✅ Saved Bailey Falter (663559)
+[2025-08-08T00:00:51.650Z] ✅ Saved Maikel Garcia (672580)
+[2025-08-08T00:00:51.728Z] ✅ Saved Seth Lugo (607625)
+[2025-08-08T00:00:51.814Z] ✅ Saved Noah Cameron (702070)
+[2025-08-08T00:00:51.895Z] ✅ Saved Angel Zerpa (672582)
+[2025-08-08T00:00:51.973Z] ✅ Saved Bobby Witt Jr. (677951)
+[2025-08-08T00:00:52.050Z] ✅ Saved John Schreiber (670167)
+[2025-08-08T00:00:52.243Z] ✅ Saved Spencer Strider (675911)
+[2025-08-08T00:00:52.318Z] ✅ Saved Nick Allen (669397)
+[2025-08-08T00:00:52.473Z] ✅ Saved Dylan Dodd (689266)
+[2025-08-08T00:00:52.549Z] ✅ Saved Dylan Lee (669276)
+[2025-08-08T00:00:52.613Z] ✅ Saved Michael Harris II (671739)
+[2025-08-08T00:00:52.716Z] ✅ Saved Pierce Johnson (572955)
+[2025-08-08T00:00:52.789Z] ✅ Saved Luke Williams (663897)
+[2025-08-08T00:00:52.862Z] ✅ Saved Jurickson Profar (595777)
+[2025-08-08T00:00:52.928Z] ✅ Saved Carlos Carrasco (471911)
+[2025-08-08T00:00:52.995Z] ✅ Saved Drake Baldwin (686948)
+[2025-08-08T00:00:53.078Z] ✅ Saved Matt Olson (621566)
+[2025-08-08T00:00:53.147Z] ✅ Saved Sean Murphy (669221)
+[2025-08-08T00:00:53.232Z] ✅ Saved Jonathan Ornelas (680716)
+[2025-08-08T00:00:53.315Z] ✅ Saved Nacho Alvarez Jr. (805373)
+[2025-08-08T00:00:53.390Z] ✅ Saved Tyler Kinley (641755)
+[2025-08-08T00:00:53.476Z] ✅ Saved Austin Cox (680735)
+[2025-08-08T00:00:53.549Z] ✅ Saved Aaron Bummer (607481)
+[2025-08-08T00:00:53.616Z] ✅ Saved Eli White (642201)
+[2025-08-08T00:00:53.685Z] ✅ Saved Ozzie Albies (645277)
+[2025-08-08T00:00:53.760Z] ✅ Saved Raisel Iglesias (628452)
+[2025-08-08T00:00:53.827Z] ✅ Saved Joey Wentz (666214)
+[2025-08-08T00:00:53.891Z] ✅ Saved Erick Fedde (607200)
+[2025-08-08T00:00:53.967Z] ✅ Saved Sandy León (506702)
+[2025-08-08T00:00:54.048Z] ✅ Saved Marcell Ozuna (542303)
+[2025-08-08T00:00:54.132Z] ✅ Saved Bryce Elder (693821)
+[2025-08-08T00:00:54.231Z] ✅ Saved Daysbel Hernández (678226)
+[2025-08-08T00:00:54.309Z] ✅ Saved Joey Ortiz (687401)
+[2025-08-08T00:00:54.378Z] ✅ Saved Logan Henderson (701656)
+[2025-08-08T00:00:54.457Z] ✅ Saved Christian Yelich (592885)
+[2025-08-08T00:00:54.539Z] ✅ Saved Isaac Collins (686555)
+[2025-08-08T00:00:54.619Z] ✅ Saved Sal Frelick (686217)
+[2025-08-08T00:00:54.693Z] ✅ Saved Abner Uribe (682842)
+[2025-08-08T00:00:54.760Z] ✅ Saved Anthony Seigler (678011)
+[2025-08-08T00:00:54.827Z] ✅ Saved Grant Anderson (681982)
+[2025-08-08T00:00:54.908Z] ✅ Saved Andrew Vaughn (683734)
+[2025-08-08T00:00:54.981Z] ✅ Saved Quinn Priester (682990)
+[2025-08-08T00:00:55.051Z] ✅ Saved Brandon Lockridge (663604)
+[2025-08-08T00:00:55.132Z] ✅ Saved Jose Quintana (500779)
+[2025-08-08T00:00:55.214Z] ✅ Saved Andruw Monasterio (655316)
+[2025-08-08T00:00:55.291Z] ✅ Saved Aaron Ashby (676879)
+[2025-08-08T00:00:55.357Z] ✅ Saved Caleb Durbin (702332)
+[2025-08-08T00:00:55.428Z] ✅ Saved Freddy Peralta (642547)
+[2025-08-08T00:00:55.504Z] ✅ Saved Blake Perkins (663368)
+[2025-08-08T00:00:55.580Z] ✅ Saved Easton McGee (668834)
+[2025-08-08T00:00:55.705Z] ✅ Saved Nick Mears (683232)
+[2025-08-08T00:00:55.782Z] ✅ Saved William Contreras (661388)
+[2025-08-08T00:00:55.870Z] ✅ Saved Brice Turang (668930)
+[2025-08-08T00:00:55.958Z] ✅ Saved Danny Jansen (643376)
+[2025-08-08T00:00:56.030Z] ✅ Saved Brandon Woodruff (605540)
+[2025-08-08T00:00:56.104Z] ✅ Saved DL Hall (669084)
+[2025-08-08T00:00:56.198Z] ✅ Saved Jared Koenig (657649)
+[2025-08-08T00:00:56.284Z] ✅ Saved Trevor Megill (656730)
+[2025-08-08T00:00:56.459Z] ✅ Saved Jose Herrera (645444)
+[2025-08-08T00:00:56.532Z] ✅ Saved Andrew Hoffmann (694851)
+[2025-08-08T00:00:56.613Z] ✅ Saved Eduardo Rodriguez (593958)
+[2025-08-08T00:00:56.684Z] ✅ Saved Brandon Pfaadt (694297)
+[2025-08-08T00:00:56.752Z] ✅ Saved Adrian Del Castillo (680728)
+[2025-08-08T00:00:56.824Z] ✅ Saved Connor Kaiser (663731)
+[2025-08-08T00:00:56.909Z] ✅ Saved Tyler Locklear (682988)
+[2025-08-08T00:00:56.992Z] ✅ Saved Jake McCarthy (664983)
+[2025-08-08T00:00:57.068Z] ✅ Saved Jalen Beeks (656222)
+[2025-08-08T00:00:57.149Z] ✅ Saved Ketel Marte (606466)
+[2025-08-08T00:00:57.213Z] ✅ Saved Kendall Graveman (608665)
+[2025-08-08T00:00:57.306Z] ✅ Saved Blaze Alexander (677942)
+[2025-08-08T00:00:57.375Z] ✅ Saved Ryne Nelson (669194)
+[2025-08-08T00:00:57.443Z] ✅ Saved Anthony DeSclafani (543101)
+[2025-08-08T00:00:57.519Z] ✅ Saved Geraldo Perdomo (672695)
+[2025-08-08T00:00:57.600Z] ✅ Saved John Curtiss (595928)
+[2025-08-08T00:00:57.676Z] ✅ Saved Jake Woodford (663765)
+[2025-08-08T00:00:57.762Z] ✅ Saved Corbin Carroll (682998)
+[2025-08-08T00:00:57.836Z] ✅ Saved Zac Gallen (668678)
+[2025-08-08T00:00:57.906Z] ✅ Saved Lourdes Gurriel Jr. (666971)
+[2025-08-08T00:00:57.992Z] ✅ Saved Andrew Saalfrank (685314)
+[2025-08-08T00:00:58.066Z] ✅ Saved Casey Kelly (543391)
+[2025-08-08T00:00:58.153Z] ✅ Saved James McCann (543510)
+[2025-08-08T00:00:58.241Z] ✅ Saved Alek Thomas (677950)
+[2025-08-08T00:00:58.350Z] ✅ Saved Jorge Barrosa (678489)
+[2025-08-08T00:00:58.430Z] ✅ Saved Kyle Backhus (679775)
+[2025-08-08T00:00:58.512Z] ✅ Saved Nestor Cortes (641482)
+[2025-08-08T00:00:58.592Z] ✅ Saved Yuki Matsui (673513)
+[2025-08-08T00:00:58.669Z] ✅ Saved Freddy Fermin (666023)
+[2025-08-08T00:00:58.743Z] ✅ Saved Mason Miller (695243)
+[2025-08-08T00:00:58.818Z] ✅ Saved Robert Suarez (663158)
+[2025-08-08T00:00:58.903Z] ✅ Saved David Morgan (688158)
+[2025-08-08T00:00:59.044Z] ✅ Saved Wandy Peralta (593974)
+[2025-08-08T00:00:59.128Z] ✅ Saved Jackson Merrill (701538)
+[2025-08-08T00:00:59.205Z] ✅ Saved Jose Iglesias (578428)
+[2025-08-08T00:00:59.294Z] ✅ Saved Jason Adam (592094)
+[2025-08-08T00:00:59.379Z] ✅ Saved Yu Darvish (506433)
+[2025-08-08T00:00:59.452Z] ✅ Saved Jeremiah Estrada (669093)
+[2025-08-08T00:00:59.539Z] ✅ Saved Gavin Sheets (657757)
+[2025-08-08T00:00:59.626Z] ✅ Saved Ramón Laureano (657656)
+[2025-08-08T00:00:59.737Z] ✅ Saved Dylan Cease (656302)
+[2025-08-08T00:00:59.838Z] ✅ Saved Adrian Morejon (670970)
+[2025-08-08T00:00:59.919Z] ✅ Saved Manny Machado (592518)
+[2025-08-08T00:01:00.005Z] ✅ Saved Nick Pivetta (601713)
+[2025-08-08T00:01:00.083Z] ✅ Saved Sean Reynolds (669308)
+[2025-08-08T00:01:00.176Z] ✅ Saved Fernando Tatis Jr. (665487)
+[2025-08-08T00:01:00.250Z] ✅ Saved Bryce Johnson (669369)
+[2025-08-08T00:01:00.340Z] ✅ Saved Xander Bogaerts (593428)
+[2025-08-08T00:01:00.442Z] ✅ Saved Elias Díaz (553869)
+[2025-08-08T00:01:00.522Z] ✅ Saved Jake Cronenworth (630105)
+[2025-08-08T00:01:00.606Z] ✅ Saved Luis Arraez (650333)
+[2025-08-08T00:01:00.683Z] ✅ Saved Ryan O'Hearn (656811)
+[2025-08-08T00:01:00.861Z] ✅ Saved Josh Naylor (647304)
+[2025-08-08T00:01:00.939Z] ✅ Saved Cole Young (702284)
+[2025-08-08T00:01:01.011Z] ✅ Saved Logan Evans (688138)
+[2025-08-08T00:01:01.101Z] ✅ Saved Donovan Solano (456781)
+[2025-08-08T00:01:01.215Z] ✅ Saved Randy Arozarena (668227)
+[2025-08-08T00:01:01.303Z] ✅ Saved J.P. Crawford (641487)
+[2025-08-08T00:01:01.460Z] ✅ Saved Casey Legumina (668984)
+[2025-08-08T00:01:01.648Z] ✅ Saved Dominic Canzone (686527)
+[2025-08-08T00:01:01.752Z] ✅ Saved Jackson Kowar (663804)
+[2025-08-08T00:01:01.862Z] ✅ Saved Cal Raleigh (663728)
+[2025-08-08T00:01:01.940Z] ✅ Saved Caleb Ferguson (657571)
+[2025-08-08T00:01:02.021Z] ✅ Saved Miles Mastrobuoni (670156)
+[2025-08-08T00:01:02.129Z] ✅ Saved Matt Brash (666374)
+[2025-08-08T00:01:02.210Z] ✅ Saved Logan Gilbert (669302)
+[2025-08-08T00:01:02.296Z] ✅ Saved Bryan Woo (693433)
+[2025-08-08T00:01:02.392Z] ✅ Saved Eugenio Suárez (553993)
+[2025-08-08T00:01:02.520Z] ✅ Saved Luis Castillo (622491)
+[2025-08-08T00:01:02.646Z] ✅ Saved George Kirby (669923)
+[2025-08-08T00:01:02.738Z] ✅ Saved Dylan Moore (664238)
+[2025-08-08T00:01:02.815Z] ✅ Saved Andrés Muñoz (662253)
+[2025-08-08T00:01:02.910Z] ✅ Saved Mitch Garver (641598)
+[2025-08-08T00:01:03.008Z] ✅ Saved Gabe Speier (642100)
+[2025-08-08T00:01:03.180Z] ✅ Saved Julio Rodríguez (677594)
+[2025-08-08T00:01:03.272Z] ✅ Saved Eduard Bazardo (660825)
+[2025-08-08T00:01:03.371Z] ✅ Saved Jorge Polanco (593871)
+[2025-08-08T00:01:03.447Z] ✅ Saved Carlos Vargas (672841)
+[2025-08-08T00:01:03.544Z] ✅ Saved Corey Julks (667452)
+[2025-08-08T00:01:03.665Z] ✅ Saved Lenyn Sosa (672820)
+[2025-08-08T00:01:03.779Z] ✅ Saved Steven Wilson (621051)
+[2025-08-08T00:01:03.854Z] ✅ Saved Tyler Alexander (641302)
+[2025-08-08T00:01:03.927Z] ✅ Saved Davis Martin (663436)
+[2025-08-08T00:01:04.013Z] ✅ Saved Brandon Eisert (685126)
+[2025-08-08T00:01:04.148Z] ✅ Saved Josh Rojas (668942)
+[2025-08-08T00:01:04.265Z] ✅ Saved Mike Tauchman (643565)
+[2025-08-08T00:01:04.401Z] ✅ Saved Shane Smith (681343)
+[2025-08-08T00:01:04.516Z] ✅ Saved Brooks Baldwin (681460)
+[2025-08-08T00:01:04.606Z] ✅ Saved Kyle Teel (691019)
+[2025-08-08T00:01:04.693Z] ✅ Saved Chase Meidroth (805367)
+[2025-08-08T00:01:04.766Z] ✅ Saved Grant Taylor (691799)
+[2025-08-08T00:01:04.850Z] ✅ Saved Curtis Mead (678554)
+[2025-08-08T00:01:04.946Z] ✅ Saved Colson Montgomery (695657)
+[2025-08-08T00:01:05.030Z] ✅ Saved Aaron Civale (650644)
+[2025-08-08T00:01:05.111Z] ✅ Saved Jonathan Cannon (686563)
+[2025-08-08T00:01:05.207Z] ✅ Saved Edgar Quero (700337)
+[2025-08-08T00:01:05.336Z] ✅ Saved Andrew Benintendi (643217)
+[2025-08-08T00:01:05.420Z] ✅ Saved Jordan Leasure (673929)
+[2025-08-08T00:01:05.503Z] ✅ Saved Sean Burke (680732)
+[2025-08-08T00:01:05.628Z] ✅ Saved Bryan Hudson (663542)
+[2025-08-08T00:01:05.722Z] ✅ Saved Mike Vasil (678024)
+[2025-08-08T00:01:05.804Z] ✅ Saved Michael A. Taylor (572191)
+[2025-08-08T00:01:05.881Z] ✅ Saved Luis Robert Jr. (673357)
+[2025-08-08T00:01:05.964Z] ✅ Saved Tyler Gilbert (656457)
+[2025-08-08T00:01:05.965Z] ✅ Stats sync complete.
+[2025-08-08T00:01:06.044Z] 🔧 Resolving 11 pending props...
+[2025-08-08T00:01:06.044Z] 📡 Checking prop: Mookie Betts - singles
+[2025-08-08T00:01:06.171Z] ⏳ Skipping unresolved game (status: Scheduled)
+[2025-08-08T00:01:06.171Z] 📡 Checking prop: Lenyn Sosa - hits_runs_rbis
+[2025-08-08T00:01:06.219Z] 📡 Resolving stat for Lenyn Sosa (hits_runs_rbis) — Game ID: 776830
+[2025-08-08T00:01:06.318Z] 📊 Raw stats for Lenyn Sosa (hits_runs_rbis): {
+  "batting": {
+    "summary": "0-4 | HBP, 2 K, R",
+    "gamesPlayed": 1,
+    "flyOuts": 0,
+    "groundOuts": 1,
+    "airOuts": 1,
+    "runs": 1,
+    "doubles": 0,
+    "triples": 0,
+    "homeRuns": 0,
+    "strikeOuts": 2,
+    "baseOnBalls": 0,
+    "intentionalWalks": 0,
+    "hits": 0,
+    "hitByPitch": 1,
+    "atBats": 4,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "groundIntoDoublePlay": 0,
+    "groundIntoTriplePlay": 0,
+    "plateAppearances": 5,
+    "totalBases": 0,
+    "rbi": 0,
+    "leftOnBase": 1,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "catchersInterference": 0,
+    "pickoffs": 0,
+    "atBatsPerHomeRun": "-.--",
+    "popOuts": 1,
+    "lineOuts": 0
+  },
+  "pitching": {},
+  "fielding": ".000",
+  "summary": "0-4 | HBP, 2 K, R",
+  "gamesPlayed": 1,
+  "flyOuts": 0,
+  "groundOuts": 1,
+  "airOuts": 1,
+  "runs": 1,
+  "doubles": 0,
+  "triples": 0,
+  "homeRuns": 0,
+  "strikeOuts": 2,
+  "baseOnBalls": 0,
+  "intentionalWalks": 0,
+  "hits": 0,
+  "hitByPitch": 1,
+  "atBats": 4,
+  "caughtStealing": 0,
+  "stolenBases": 0,
+  "stolenBasePercentage": ".---",
+  "groundIntoDoublePlay": 0,
+  "groundIntoTriplePlay": 0,
+  "plateAppearances": 5,
+  "totalBases": 0,
+  "rbi": 0,
+  "leftOnBase": 1,
+  "sacBunts": 0,
+  "sacFlies": 0,
+  "catchersInterference": 0,
+  "pickoffs": 0,
+  "atBatsPerHomeRun": "-.--",
+  "popOuts": 1,
+  "lineOuts": 0,
+  "gamesStarted": 1,
+  "assists": 2,
+  "putOuts": 1,
+  "errors": 0,
+  "chances": 3,
+  "passedBall": 0,
+  "player_id": 672820,
+  "team_abbr": null
+}
+[2025-08-08T00:01:06.322Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching",
+  "fielding",
+  "summary",
+  "gamesPlayed",
+  "flyOuts",
+  "groundOuts",
+  "airOuts",
+  "runs",
+  "doubles",
+  "triples",
+  "homeRuns",
+  "strikeOuts",
+  "baseOnBalls",
+  "intentionalWalks",
+  "hits",
+  "hitByPitch",
+  "atBats",
+  "caughtStealing",
+  "stolenBases",
+  "stolenBasePercentage",
+  "groundIntoDoublePlay",
+  "groundIntoTriplePlay",
+  "plateAppearances",
+  "totalBases",
+  "rbi",
+  "leftOnBase",
+  "sacBunts",
+  "sacFlies",
+  "catchersInterference",
+  "pickoffs",
+  "atBatsPerHomeRun",
+  "popOuts",
+  "lineOuts",
+  "gamesStarted",
+  "assists",
+  "putOuts",
+  "errors",
+  "chances",
+  "passedBall",
+  "player_id",
+  "team_abbr"
+]
+[2025-08-08T00:01:06.324Z] [COMBO] hits_runs_rbis input: {
+  "hits": 0,
+  "runs": 1,
+  "rbi": 0
+}
+[2025-08-08T00:01:06.324Z] 🎯 Extracted value from boxscore: 1
+[2025-08-08T00:01:06.422Z] 📡 Checking prop: Logan Gilbert - strikeouts_pitching
+[2025-08-08T00:01:06.459Z] 📡 Resolving stat for Logan Gilbert (strikeouts_pitching) — Game ID: 776830
+[2025-08-08T00:01:06.509Z] 📊 Raw stats for Logan Gilbert (strikeouts_pitching): {
+  "batting": {},
+  "pitching": {
+    "summary": "5.0 IP, ER, 6 K, 3 BB",
+    "gamesPlayed": 1,
+    "gamesStarted": 1,
+    "flyOuts": 4,
+    "groundOuts": 5,
+    "airOuts": 4,
+    "runs": 1,
+    "doubles": 1,
+    "triples": 0,
+    "homeRuns": 1,
+    "strikeOuts": 6,
+    "baseOnBalls": 3,
+    "intentionalWalks": 0,
+    "hits": 2,
+    "hitByPitch": 0,
+    "atBats": 17,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "numberOfPitches": 94,
+    "inningsPitched": "5.0",
+    "wins": 0,
+    "losses": 0,
+    "saves": 0,
+    "saveOpportunities": 0,
+    "holds": 0,
+    "blownSaves": 0,
+    "earnedRuns": 1,
+    "battersFaced": 20,
+    "outs": 15,
+    "gamesPitched": 1,
+    "completeGames": 0,
+    "shutouts": 0,
+    "pitchesThrown": 94,
+    "balls": 35,
+    "strikes": 59,
+    "strikePercentage": ".630",
+    "hitBatsmen": 0,
+    "balks": 0,
+    "wildPitches": 1,
+    "pickoffs": 0,
+    "rbi": 1,
+    "gamesFinished": 0,
+    "runsScoredPer9": "1.80",
+    "homeRunsPer9": "1.80",
+    "inheritedRunners": 0,
+    "inheritedRunnersScored": 0,
+    "catchersInterference": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "passedBall": 0,
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "fielding": ".000",
+  "summary": "5.0 IP, ER, 6 K, 3 BB",
+  "gamesPlayed": 1,
+  "gamesStarted": 1,
+  "flyOuts": 4,
+  "groundOuts": 5,
+  "airOuts": 4,
+  "runs": 1,
+  "doubles": 1,
+  "triples": 0,
+  "homeRuns": 1,
+  "strikeOuts": 6,
+  "baseOnBalls": 3,
+  "intentionalWalks": 0,
+  "hits": 2,
+  "hitByPitch": 0,
+  "atBats": 17,
+  "caughtStealing": 0,
+  "stolenBases": 0,
+  "stolenBasePercentage": ".---",
+  "numberOfPitches": 94,
+  "inningsPitched": "5.0",
+  "wins": 0,
+  "losses": 0,
+  "saves": 0,
+  "saveOpportunities": 0,
+  "holds": 0,
+  "blownSaves": 0,
+  "earnedRuns": 1,
+  "battersFaced": 20,
+  "outs": 15,
+  "gamesPitched": 1,
+  "completeGames": 0,
+  "shutouts": 0,
+  "pitchesThrown": 94,
+  "balls": 35,
+  "strikes": 59,
+  "strikePercentage": ".630",
+  "hitBatsmen": 0,
+  "balks": 0,
+  "wildPitches": 1,
+  "pickoffs": 0,
+  "rbi": 1,
+  "gamesFinished": 0,
+  "runsScoredPer9": "1.80",
+  "homeRunsPer9": "1.80",
+  "inheritedRunners": 0,
+  "inheritedRunnersScored": 0,
+  "catchersInterference": 0,
+  "sacBunts": 0,
+  "sacFlies": 0,
+  "passedBall": 0,
+  "popOuts": 0,
+  "lineOuts": 0,
+  "assists": 1,
+  "putOuts": 1,
+  "errors": 1,
+  "chances": 3,
+  "player_id": 669302,
+  "team_abbr": null
+}
+[2025-08-08T00:01:06.509Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching",
+  "fielding",
+  "summary",
+  "gamesPlayed",
+  "gamesStarted",
+  "flyOuts",
+  "groundOuts",
+  "airOuts",
+  "runs",
+  "doubles",
+  "triples",
+  "homeRuns",
+  "strikeOuts",
+  "baseOnBalls",
+  "intentionalWalks",
+  "hits",
+  "hitByPitch",
+  "atBats",
+  "caughtStealing",
+  "stolenBases",
+  "stolenBasePercentage",
+  "numberOfPitches",
+  "inningsPitched",
+  "wins",
+  "losses",
+  "saves",
+  "saveOpportunities",
+  "holds",
+  "blownSaves",
+  "earnedRuns",
+  "battersFaced",
+  "outs",
+  "gamesPitched",
+  "completeGames",
+  "shutouts",
+  "pitchesThrown",
+  "balls",
+  "strikes",
+  "strikePercentage",
+  "hitBatsmen",
+  "balks",
+  "wildPitches",
+  "pickoffs",
+  "rbi",
+  "gamesFinished",
+  "runsScoredPer9",
+  "homeRunsPer9",
+  "inheritedRunners",
+  "inheritedRunnersScored",
+  "catchersInterference",
+  "sacBunts",
+  "sacFlies",
+  "passedBall",
+  "popOuts",
+  "lineOuts",
+  "assists",
+  "putOuts",
+  "errors",
+  "chances",
+  "player_id",
+  "team_abbr"
+]
+[2025-08-08T00:01:06.510Z] 🎯 Extracted value from boxscore: 6
+[2025-08-08T00:01:06.642Z] 📡 Checking prop: Logan Gilbert - earned_runs
+[2025-08-08T00:01:06.672Z] 📡 Resolving stat for Logan Gilbert (earned_runs) — Game ID: 776830
+[2025-08-08T00:01:06.708Z] 📊 Raw stats for Logan Gilbert (earned_runs): {
+  "batting": {},
+  "pitching": {
+    "summary": "5.0 IP, ER, 6 K, 3 BB",
+    "gamesPlayed": 1,
+    "gamesStarted": 1,
+    "flyOuts": 4,
+    "groundOuts": 5,
+    "airOuts": 4,
+    "runs": 1,
+    "doubles": 1,
+    "triples": 0,
+    "homeRuns": 1,
+    "strikeOuts": 6,
+    "baseOnBalls": 3,
+    "intentionalWalks": 0,
+    "hits": 2,
+    "hitByPitch": 0,
+    "atBats": 17,
+    "caughtStealing": 0,
+    "stolenBases": 0,
+    "stolenBasePercentage": ".---",
+    "numberOfPitches": 94,
+    "inningsPitched": "5.0",
+    "wins": 0,
+    "losses": 0,
+    "saves": 0,
+    "saveOpportunities": 0,
+    "holds": 0,
+    "blownSaves": 0,
+    "earnedRuns": 1,
+    "battersFaced": 20,
+    "outs": 15,
+    "gamesPitched": 1,
+    "completeGames": 0,
+    "shutouts": 0,
+    "pitchesThrown": 94,
+    "balls": 35,
+    "strikes": 59,
+    "strikePercentage": ".630",
+    "hitBatsmen": 0,
+    "balks": 0,
+    "wildPitches": 1,
+    "pickoffs": 0,
+    "rbi": 1,
+    "gamesFinished": 0,
+    "runsScoredPer9": "1.80",
+    "homeRunsPer9": "1.80",
+    "inheritedRunners": 0,
+    "inheritedRunnersScored": 0,
+    "catchersInterference": 0,
+    "sacBunts": 0,
+    "sacFlies": 0,
+    "passedBall": 0,
+    "popOuts": 0,
+    "lineOuts": 0
+  },
+  "fielding": ".000",
+  "summary": "5.0 IP, ER, 6 K, 3 BB",
+  "gamesPlayed": 1,
+  "gamesStarted": 1,
+  "flyOuts": 4,
+  "groundOuts": 5,
+  "airOuts": 4,
+  "runs": 1,
+  "doubles": 1,
+  "triples": 0,
+  "homeRuns": 1,
+  "strikeOuts": 6,
+  "baseOnBalls": 3,
+  "intentionalWalks": 0,
+  "hits": 2,
+  "hitByPitch": 0,
+  "atBats": 17,
+  "caughtStealing": 0,
+  "stolenBases": 0,
+  "stolenBasePercentage": ".---",
+  "numberOfPitches": 94,
+  "inningsPitched": "5.0",
+  "wins": 0,
+  "losses": 0,
+  "saves": 0,
+  "saveOpportunities": 0,
+  "holds": 0,
+  "blownSaves": 0,
+  "earnedRuns": 1,
+  "battersFaced": 20,
+  "outs": 15,
+  "gamesPitched": 1,
+  "completeGames": 0,
+  "shutouts": 0,
+  "pitchesThrown": 94,
+  "balls": 35,
+  "strikes": 59,
+  "strikePercentage": ".630",
+  "hitBatsmen": 0,
+  "balks": 0,
+  "wildPitches": 1,
+  "pickoffs": 0,
+  "rbi": 1,
+  "gamesFinished": 0,
+  "runsScoredPer9": "1.80",
+  "homeRunsPer9": "1.80",
+  "inheritedRunners": 0,
+  "inheritedRunnersScored": 0,
+  "catchersInterference": 0,
+  "sacBunts": 0,
+  "sacFlies": 0,
+  "passedBall": 0,
+  "popOuts": 0,
+  "lineOuts": 0,
+  "assists": 1,
+  "putOuts": 1,
+  "errors": 1,
+  "chances": 3,
+  "player_id": 669302,
+  "team_abbr": null
+}
+[2025-08-08T00:01:06.709Z] 🔬 Keys present in rawStats: [
+  "batting",
+  "pitching",
+  "fielding",
+  "summary",
+  "gamesPlayed",
+  "gamesStarted",
+  "flyOuts",
+  "groundOuts",
+  "airOuts",
+  "runs",
+  "doubles",
+  "triples",
+  "homeRuns",
+  "strikeOuts",
+  "baseOnBalls",
+  "intentionalWalks",
+  "hits",
+  "hitByPitch",
+  "atBats",
+  "caughtStealing",
+  "stolenBases",
+  "stolenBasePercentage",
+  "numberOfPitches",
+  "inningsPitched",
+  "wins",
+  "losses",
+  "saves",
+  "saveOpportunities",
+  "holds",
+  "blownSaves",
+  "earnedRuns",
+  "battersFaced",
+  "outs",
+  "gamesPitched",
+  "completeGames",
+  "shutouts",
+  "pitchesThrown",
+  "balls",
+  "strikes",
+  "strikePercentage",
+  "hitBatsmen",
+  "balks",
+  "wildPitches",
+  "pickoffs",
+  "rbi",
+  "gamesFinished",
+  "runsScoredPer9",
+  "homeRunsPer9",
+  "inheritedRunners",
+  "inheritedRunnersScored",
+  "catchersInterference",
+  "sacBunts",
+  "sacFlies",
+  "passedBall",
+  "popOuts",
+  "lineOuts",
+  "assists",
+  "putOuts",
+  "errors",
+  "chances",
+  "player_id",
+  "team_abbr"
+]
+[2025-08-08T00:01:06.710Z] 🎯 Extracted value from boxscore: 1
+[2025-08-08T00:01:06.794Z] 📡 Checking prop: Henry Davis - hits
+[2025-08-08T00:01:06.821Z] ⏳ Skipping unresolved game (status: In Progress)
+[2025-08-08T00:01:06.821Z] 📡 Checking prop: Henry Davis - total_bases
+[2025-08-08T00:01:06.858Z] ⏳ Skipping unresolved game (status: In Progress)
+[2025-08-08T00:01:06.858Z] 📡 Checking prop: TJ Friedl - hits
+[2025-08-08T00:01:06.897Z] ⏳ Skipping unresolved game (status: In Progress)
+[2025-08-08T00:01:06.898Z] 📡 Checking prop: Jake Fraley - hits_runs_rbis
+[2025-08-08T00:01:06.927Z] ⏳ Skipping unresolved game (status: In Progress)
+[2025-08-08T00:01:06.927Z] 📡 Checking prop: Dane Myers - hits
+[2025-08-08T00:01:06.952Z] ⏳ Skipping unresolved game (status: In Progress)
+[2025-08-08T00:01:06.952Z] 📡 Checking prop: Dane Myers - total_bases
+[2025-08-08T00:01:06.970Z] ⏳ Skipping unresolved game (status: In Progress)
+[2025-08-08T00:01:06.970Z] 📡 Checking prop: Jared Triolo - hits_runs_rbis
+[2025-08-08T00:01:06.986Z] ⏳ Skipping unresolved game (status: In Progress)
+[2025-08-08T00:01:06.986Z] 🏁 Custom Batch Summary → ✅ 3 | 🚷 0 | ⏭️ 8 | ❌ 0
+[2025-08-08T00:01:06.986Z] ✅ Prop resolution complete.
+[2025-08-08T00:01:06.991Z] 📥 Loading known positions from player_stats...
+[2025-08-08T00:01:07.624Z] ✅ Loaded 1759 unique player positions
+[2025-08-08T00:01:07.625Z] 📤 Fetching model_training_props with missing positions...
+[2025-08-08T00:01:07.688Z] 📦 Prepared 0 rows for update
+[2025-08-08T00:01:07.689Z] 🎉 Done! Total positions updated: 0
