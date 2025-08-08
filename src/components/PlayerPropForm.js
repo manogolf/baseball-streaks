@@ -96,22 +96,13 @@ const PlayerPropForm = ({ onPropAdded }) => {
     formData.team,
     formData.game_date,
   ]);
-
-  const [propTypes, setPropTypes] = useState([]);
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false); // for Add Prop
+  const [predicting, setPredicting] = useState(false); // for Predict
   const [error, setError] = useState("");
   const [prediction, setPrediction] = useState(null);
   const [successToast, setSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const propTypeOptions = getPropTypeOptions();
-  const successMessages = [
-    "🎯 Prediction ready — make your move!",
-    "🧠 Got a prediction — trust your gut!",
-    "🚀 Data's in. Your turn to shine!",
-    "📈 Looks promising! Place your prop wisely.",
-    "🔥 Prediction locked — time to go big!",
-  ];
-
   /**
    * 🔐 Fetch the logged‑in user once on mount
    */
@@ -134,14 +125,6 @@ const PlayerPropForm = ({ onPropAdded }) => {
    * 📜 Load prop‑type dropdown once
    */
   useEffect(() => {
-    const fetchPropTypes = async () => {
-      const { data, error } = await supabase.from("prop_types").select("name");
-      if (!error && data) setPropTypes(data.map((item) => item.name));
-    };
-    fetchPropTypes();
-  }, []);
-
-  useEffect(() => {
     const fetchPlayers = async () => {
       const { data, error } = await supabase
         .from("player_ids")
@@ -155,6 +138,18 @@ const PlayerPropForm = ({ onPropAdded }) => {
 
     fetchPlayers();
   }, []);
+
+  useEffect(() => {
+    // Invalidate prediction any time inputs that affect features change
+    setPrediction(null);
+  }, [
+    formData.player_id,
+    formData.team,
+    formData.prop_type,
+    formData.prop_value,
+    formData.game_date,
+    context?.game_id, // new game = new context = invalidate
+  ]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -179,12 +174,19 @@ const PlayerPropForm = ({ onPropAdded }) => {
         return;
       }
       inFlightRef.current = true;
-      setSubmitting(true);
+
+      setPredicting(true);
       setError(null);
-
       try {
-        // … your validations …
-
+        // simple validations before building payload
+        if (!formData.player_id || !formData.team || !formData.prop_type) {
+          setError("Missing player, team, or prop type.");
+          return;
+        }
+        if (!context?.game_id) {
+          setError("Game context not ready yet.");
+          return;
+        }
         // build payload exactly once here
         const payload = {
           prop_type: formData.prop_type,
@@ -233,7 +235,7 @@ const PlayerPropForm = ({ onPropAdded }) => {
         setError("Prediction failed: " + (err?.message ?? "unknown error"));
       } finally {
         inFlightRef.current = false;
-        setSubmitting(false);
+        setPredicting(false);
         console.log(`🏁 handlePredict END trace=${trace}`);
       }
     },
@@ -294,7 +296,6 @@ const PlayerPropForm = ({ onPropAdded }) => {
     const finalSubmission = {
       ...base,
       player_id,
-      team_id,
       game_id: resolvedGameId,
       status: "pending",
       created_at: now,
@@ -463,10 +464,10 @@ const PlayerPropForm = ({ onPropAdded }) => {
         <button
           type="button"
           onClick={handlePredict}
-          disabled={!userId || submitting}
+          disabled={!userId || predicting}
           className="flex-1 md:flex-none px-4 py-2 bg-white border border-blue-500 text-black rounded-md hover:bg-blue-100 disabled:opacity-50"
         >
-          {submitting ? (
+          {predicting ? (
             <span className="loader mr-2"></span>
           ) : (
             "🧠 Predict Outcome"
