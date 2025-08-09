@@ -27,16 +27,23 @@ COMMON_PROPS = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 🔥 Warm-up models on startup
-    for p in COMMON_PROPS:
-        for algo in ("random_forest", "logistic_regression"):
-            try:
-                load_model(p, algo)
-                print(f"✅ Warmed model: {p} / {algo}")
-            except Exception as e:
-                print(f"⚠️ Failed to warm model {p} / {algo}: {e}")
+    if os.getenv("PRELOAD_MODELS", "0") == "1":
+        props = os.getenv("PREWARM_PROPS")
+        if props:
+            props_to_load = [p.strip() for p in props.split(",") if p.strip()]
+        else:
+            props_to_load = COMMON_PROPS
+
+        for p in props_to_load:
+            for algo in ("random_forest", "logistic_regression"):
+                try:
+                    load_model(p, algo)
+                    print(f"✅ Warmed model: {p} / {algo}")
+                except Exception as e:
+                    print(f"⚠️ Failed to warm model {p} / {algo}: {e}")
+    else:
+        print("⏩ Skipping model prewarm (PRELOAD_MODELS=0)")
     yield
-    # Optional cleanup after shutdown
 
 app = FastAPI(lifespan=lifespan)
 
