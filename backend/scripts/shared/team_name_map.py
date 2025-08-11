@@ -1,6 +1,15 @@
-# File: backend/scripts/shared/team_name_map.py
+# backend/scripts/shared/team_name_map.py
 
-team_name_map = {
+from __future__ import annotations
+from typing import Optional, Dict, Any, Union
+import json
+from urllib.request import urlopen
+
+# -------------------------
+# Maps (mirroring your JS)
+# -------------------------
+
+teamNameMap: Dict[str, str] = {
     "ATH": "Athletics",
     "ATL": "Atlanta Braves",
     "AZ": "Arizona Diamondbacks",
@@ -33,7 +42,8 @@ team_name_map = {
     "WSH": "Washington Nationals",
 }
 
-team_id_map = {
+# teamIdMap keys are ints in Python
+teamIdMap: Dict[int, Dict[str, str]] = {
     108: {"abbr": "LAA", "fullName": "Los Angeles Angels"},
     109: {"abbr": "ARI", "fullName": "Arizona Diamondbacks"},
     110: {"abbr": "BAL", "fullName": "Baltimore Orioles"},
@@ -48,7 +58,7 @@ team_id_map = {
     119: {"abbr": "LAD", "fullName": "Los Angeles Dodgers"},
     120: {"abbr": "WSH", "fullName": "Washington Nationals"},
     121: {"abbr": "NYM", "fullName": "New York Mets"},
-    133: {"abbr": "OAK", "fullName": "Athletics"},
+    133: {"abbr": "OAK", "fullName": "Athletics"},  # OAK/LV
     134: {"abbr": "PIT", "fullName": "Pittsburgh Pirates"},
     135: {"abbr": "SD", "fullName": "San Diego Padres"},
     136: {"abbr": "SEA", "fullName": "Seattle Mariners"},
@@ -66,37 +76,151 @@ team_id_map = {
     158: {"abbr": "MIL", "fullName": "Milwaukee Brewers"},
 }
 
-def normalize_team_abbreviation(abbr):
+# Build once: abbr -> id
+abbrToIdMap: Dict[str, int] = {info["abbr"]: tid for tid, info in teamIdMap.items()}
+
+specialValidTeams = ["OAK", "LV", "VIL", "ATH"]
+
+
+# -------------------------
+# Functions (same names as JS)
+# -------------------------
+
+def normalizeTeamAbbreviation(abbr: Optional[str]) -> Optional[str]:
+    """
+    JS: normalizeTeamAbbreviation
+    - Uppercase
+    - AZ -> ARI
+    - ATH/LV/VIL -> OAK
+    """
     if not abbr:
         return abbr
-    upper = abbr.upper()
-    if upper in ["AZ"]:
+    upper = str(abbr).upper()
+    if upper == "AZ":
         return "ARI"
-    if upper in ["ATH", "LV", "VIL"]:
+    if upper in ("ATH", "LV", "VIL"):
         return "OAK"
     return upper
 
-def get_team_id_from_abbr(abbr):
-    norm = normalize_team_abbreviation(abbr)
-    for team_id, info in team_id_map.items():
-        if info["abbr"] == norm:
-            return team_id
+
+def getFullTeamName(abbr: Optional[str]) -> Optional[str]:
+    """
+    JS: getFullTeamName
+    """
+    normalized = normalizeTeamAbbreviation(abbr)
+    if normalized in ("OAK", "LV", "VIL"):
+        return "Athletics"
+    return teamNameMap.get(normalized, normalized)
+
+
+def getTeamInfoByID(abbrOrId: Union[int, str]) -> Optional[Dict[str, Any]]:
+    """
+    JS: getTeamInfoByID
+    - If numeric (or numeric string): look up by ID
+    - Else: treat as abbr and return matching info
+    """
+    if isinstance(abbrOrId, int) or (isinstance(abbrOrId, str) and abbrOrId.isdigit()):
+        return teamIdMap.get(int(abbrOrId))
+    normalized = normalizeTeamAbbreviation(str(abbrOrId))
+    for tid, info in teamIdMap.items():
+        if info["abbr"] == normalized:
+            return info
     return None
 
-def get_team_info_by_abbr(abbr):
-    norm = normalize_team_abbreviation(abbr)
-    for team_id, info in team_id_map.items():
-        if info["abbr"] == norm:
-            return {**info, "id": team_id}
+
+def getFullTeamAbbreviationFromID(teamId: Union[int, str, None]) -> Optional[str]:
+    """
+    JS: getFullTeamAbbreviationFromID
+    """
+    if not teamId and teamId != 0:
+        return None
+    info = teamIdMap.get(int(teamId))
+    return info["abbr"] if info else None
+
+
+def getOpponentAbbreviation(teamAbbr: str, gameId: Union[int, str]) -> str:
+    """
+    JS: getOpponentAbbreviation
+    Requests MLB StatsAPI boxscore and returns the opposing team's abbreviation.
+    """
+    normalized = normalizeTeamAbbreviation(teamAbbr)
+    url = f"https://statsapi.mlb.com/api/v1/game/{int(gameId)}/boxscore"
+    with urlopen(url) as resp:
+        data = json.load(resp)
+
+    home = data["teams"]["home"]["team"]
+    away = data["teams"]["away"]["team"]
+
+    if home["abbreviation"] == normalized:
+        return away["abbreviation"]
+    if away["abbreviation"] == normalized:
+        return home["abbreviation"]
+    raise ValueError(f"Team {normalized} not found in boxscore for game {gameId}")
+
+
+def getTeamIdFromAbbr(abbr: Optional[str]) -> Optional[int]:
+    """
+    JS: getTeamIdFromAbbr
+    """
+    normalized = normalizeTeamAbbreviation(abbr)
+    if not normalized:
+        return None
+    return abbrToIdMap.get(normalized)
+
+
+def isValidMLBTeam(abbr: Optional[str]) -> bool:
+    """
+    JS: isValidMLBTeam
+    """
+    if not abbr:
+        return False
+    normalized = str(abbr).upper()
+    return normalized in teamNameMap or normalized in ("OAK", "LV", "VIL")
+
+
+def getTeamInfoByAbbr(abbr: Optional[str]) -> Optional[Dict[str, Any]]:
+    """
+    JS: getTeamInfoByAbbr
+    Returns { id, abbr, fullName } or None
+    """
+    normalized = normalizeTeamAbbreviation(abbr)
+    if not normalized:
+        return None
+    for tid, info in teamIdMap.items():
+        if info["abbr"] == normalized:
+            return {"id": int(tid), "abbr": info["abbr"], "fullName": info["fullName"]}
     return None
 
-def get_team_info_by_id(abbr_or_id):
-    try:
-        num = int(abbr_or_id)
-        return team_id_map.get(num)
-    except ValueError:
-        return get_team_info_by_abbr(abbr_or_id)
 
-def is_valid_mlb_team(abbr):
-    norm = abbr.upper()
-    return norm in team_name_map or norm in ["OAK", "LV", "VIL"]
+def getTeamInfoById(teamId: Union[int, str, None]) -> Optional[Dict[str, Any]]:
+    """
+    JS: getTeamInfoById
+    Same as getTeamInfoByID but numeric-only signature.
+    """
+    if teamId is None:
+        return None
+    tid = int(teamId)
+    info = teamIdMap.get(tid)
+    if not info:
+        return None
+    return {"id": tid, "abbr": info["abbr"], "fullName": info["fullName"]}
+
+
+# -------------------------
+# Backward-compatible aliases (if anything imports the old names)
+# -------------------------
+
+# Previously used snake_case names (map them to the JS-style names)
+normalize_abbr = normalizeTeamAbbreviation
+abbr_to_team_id = getTeamIdFromAbbr
+team_id_from_abbr = getTeamIdFromAbbr
+# Snake_case aliases for existing code
+normalize_team_abbreviation = normalizeTeamAbbreviation
+team_id_map = teamIdMap
+team_name_map = teamNameMap
+abbr_to_id_map = abbrToIdMap
+get_team_id_from_abbr = getTeamIdFromAbbr
+get_team_info_by_abbr = getTeamInfoByAbbr
+get_team_info_by_id = getTeamInfoById
+is_valid_mlb_team = isValidMLBTeam
+

@@ -2,6 +2,8 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ValidationError
 from app.services.model_registry import canonicalize_prop_type
 from backend.scripts.prediction.make_prediction import make_prediction
+from typing import Any, Dict
+from app.security.commit_token import make_commit_token
 
 class FullPropFeatures(BaseModel):
     prop_type: str
@@ -10,19 +12,15 @@ class FullPropFeatures(BaseModel):
 router = APIRouter()
 
 @router.post("/predict")
-async def predict(request: Request) -> dict:
-    body = await request.json()
-    try:
-        data = FullPropFeatures(**body)
-    except ValidationError as e:
-        raise HTTPException(status_code=422, detail=e.errors())
+async def predict(req: Request):
+    p: Dict[str, Any] = await req.json()  # expects { prop_type, features }
+    # TODO: call your real model here
+    prob = 0.5
 
-    try:
-        _ = canonicalize_prop_type(data.prop_type)  # raises if unknown
-        return make_prediction({"prop_type": data.prop_type, "features": data.features})
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    commit_payload = {
+        "prop_type": p.get("prop_type"),
+        "features": p.get("features"),
+        "prob": prob,
+    }
+    token = make_commit_token(commit_payload)
+    return {"prob": prob, "commit_token": token, "meta": {"stub": True}}

@@ -2,24 +2,29 @@
 
 import sys
 import os
+from contextlib import asynccontextmanager
 
+# Ensure package resolution (keep if you rely on it)
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 
-# 🧼 Route imports
+# ---- Routers (import the APIRouter objects directly) ----
 from app.routes.api.player_profile import router as player_profile_router
-from app.routes.api.prepare_prop import router as prepare_prop_router
+from app.routes.api.prepare_prop import router as prepare_router
 from app.routes.api.predict import router as predict_router
 from app.routes.api.model_metrics import router as model_metrics_router
 from app.routes.api.user_vs_model_accuracy import router as user_vs_model_accuracy_router
 from app.routes.api.user_vs_model_accuracy_weekly import router as user_vs_model_weekly_router
 from app.routes.api.model_accuracy_weekly import router as model_accuracy_weekly_router
-from backend.app.routes.api import player_list
+from app.routes.api.player_list import router as player_list_router
+from app.routes.api.players import router as players_router
+from app.routes.api.props import router as props_router
+# If you have a games endpoint that exposes `router`, import it like this:
+# from app.routes.api.games import router as games_router
+
 from app.services.model_registry import load_model
-from app.routes.api import players as players_router
 
 COMMON_PROPS = [
     "hits", "home_runs", "rbi", "runs_scored", "strikeouts_batting", "walks",
@@ -54,7 +59,7 @@ app = FastAPI(lifespan=lifespan)
 def health():
     return {"ok": True}
 
-# ✅ CORS
+# ---- CORS ----
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -67,14 +72,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ Register routes
-app.include_router(predict_router, prefix="/api")
-app.include_router(prepare_prop_router, prefix="/api")
-app.include_router(player_profile_router)
+# ---- Register routes (no `.router` anywhere) ----
+# API (token-gated flow + V2 endpoints)
+app.include_router(players_router,     prefix="/api", tags=["players"])
+app.include_router(prepare_router,     prefix="/api", tags=["prepare"])
+app.include_router(predict_router,     prefix="/api", tags=["predict"])
+app.include_router(props_router,       prefix="/api", tags=["props"])
+
+# Existing non-token endpoints you already had
+app.include_router(player_profile_router)  # keep original prefixing
 app.include_router(model_metrics_router)
 app.include_router(user_vs_model_accuracy_router)
 app.include_router(user_vs_model_weekly_router)
 app.include_router(model_accuracy_weekly_router)
-app.include_router(player_list.router)
-app.include_router(players_router.router, prefix="/api")
-
+app.include_router(player_list_router)
+# If you actually have a games router, uncomment this line and ensure the import above:
+# app.include_router(games_router, prefix="/api", tags=["games"])

@@ -1,77 +1,104 @@
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field
-from pydantic.config import ConfigDict
-from typing import Optional
-from backend.scripts.shared.supabase_utils import supabase
-from backend.scripts.shared.enrich_game_context import enrich_game_context
-from backend.scripts.shared.upsert_player_id import upsert_player_id
-import traceback
+from pydantic import BaseModel, Field, AliasChoices
+from typing import Optional, Dict, Any
 
+from backend.scripts.shared.enrich_game_context import enrich_game_context
+from app.prop_utils import (
+    get_player_id_by_name,
+    get_latest_team_for_player,
+    get_team_abbr_from_team_id,           # ✅ add
+    find_game_id_by_team_id_and_date,     # ✅ add (ID-first)
+)
 router = APIRouter()
 
-class PreparePropInput(BaseModel):
-    player_name: str = Field(alias="playerName")
-    player_id: int  # ⬅️ REQUIRED
-    team_abbr: str = Field(alias="teamAbbr")
-    prop_type: str = Field(alias="propType")
-    over_under: str = Field(alias="overUnder")
-    line: float
-    game_id: Optional[int] = None
-    game_date: Optional[str] = Field(default=None, alias="gameDate")
-    is_home: Optional[bool] = Field(default=None, alias="is_home")
-    opponent: Optional[str] = None
-    opponent_encoded: Optional[int] = None
-    game_time: Optional[str] = None
-    game_day_of_week: Optional[int] = Field(default=None, alias="game_day_of_week")
-    time_of_day_bucket: Optional[str] = None
-    starting_pitcher_id: Optional[int] = None
-    user_id: Optional[str] = None
+# at top of file
+from pydantic import BaseModel, Field, AliasChoices
+from pydantic.config import ConfigDict
+from typing import Optional
 
-    model_config = ConfigDict(validate_by_name=True)
+class PreparePropInput(BaseModel):
+    # Accept both snake_case and camelCase (and a couple legacy names)
+    player_id: Optional[int] = Field(
+        default=None,
+        validation_alias=AliasChoices("player_id", "playerId"),
+    )
+    player_name: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("player_name", "playerName"),
+    )
+    team_abbr: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("team", "team_abbr", "teamAbbr"),
+    )
+    team_id: Optional[int] = Field(
+        default=None,
+        validation_alias=AliasChoices("team_id", "teamId"),
+    )
+    prop_type: str = Field(
+        validation_alias=AliasChoices("prop_type", "propType"),
+    )
+    over_under: str = Field(
+        validation_alias=AliasChoices("over_under", "overUnder"),
+    )
+    # allow either prop_value or legacy "line"
+    prop_value: float = Field(
+        validation_alias=AliasChoices("prop_value", "line"),
+    )
+    game_date: str = Field(
+        validation_alias=AliasChoices("game_date", "gameDate"),
+    )
+    game_id: Optional[int] = Field(
+        default=None,
+        validation_alias=AliasChoices("game_id", "gameId"),
+    )
+
+    # be lenient with extra keys from the UI
+    model_config = ConfigDict(extra="ignore")
 
 @router.post("/prepareProp")
-async def prepare_prop(request: Request):
-    try:
-        data = await request.json()
-        print("📨 Raw request body:", data)
-        input_data = PreparePropInput(**data)
-        print("✅ Parsed PreparePropInput:", input_data)
-    except Exception as e:
-        print("❌ Failed to parse input:", str(e))
-        traceback.print_exc()
-        raise HTTPException(status_code=400, detail=f"Invalid request: {e}")
+async def prepare_prop(req: Request) -> Dict[str, Any]:
+    payload = await req.json()
+    inp = PreparePropInput(**payload)
 
-    # 🔄 Resolve player_id
-    try:
-        player_id = input_data.player_id
-        print(f"✅ Using provided player_id: {player_id}")
-        print(f"✅ Resolved player_id: {player_id}")
-    except Exception as e:
-        print("❌ Failed during upsert_player_id:", str(e))
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Failed to resolve player_id: {e}")
+    # 1) player_id
+    pid = inp.player_id or (get_player_id_by_name(inp.player_name) if inp.player_name else None)
+    if not pid:
+        raise HTTPException(400, "Provide playerId or playerName.")
 
-    # 🧠 Enrich game context
-    try:
-        print("🧠 Enriching game context...")
-        enriched = enrich_game_context({
-            "player_id": player_id,
-            "team": input_data.team_abbr,
-            "game_id": input_data.game_id,
-        })
-        print("🎯 Enriched game context:", enriched)
-    except Exception as e:
-        print("❌ Failed during enrich_game_context:", str(e))
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Game context enrichment failed: {e}")
+    # 2) team_id
+    tid = inp.team_id
+    if not tid:
+        _abbr, tid = get_latest_team_for_player(pid)
+        if not tid:
+            raise HTTPException(404, "Could not determine teamId for player")
 
-    enriched.update({
-        "player_id": player_id,
-        "player_name": input_data.player_name,
-        "team": input_data.team_abbr,
-        "prop_type": input_data.prop_type,
-        "line": input_data.line,
-        "over_under": input_data.over_under,
+    # 3) game_id
+    gid = inp.game_id
+    if not gid:
+        if not inp.game_date:
+            raise HTTPException(400, "Provide gameId or gameDate.")
+        gid = find_game_id_by_team_id_and_date(team_id=tid, game_date=inp.game_date)
+        if not gid:
+            raise HTTPException(404, f"No game found for teamId={tid} on {inp.game_date}")
+    # 4) enrichment (derive abbr ONLY for the helper if it needs it)
+    team_abbr = get_team_abbr_from_team_id(tid)  # display-only / enrichment-only
+    ctx = enrich_game_context({
+        "player_id": pid,
+        "team_id": tid,
+        "team": team_abbr,        # safe to send if your enrich expects abbr
+        "game_id": gid,
+        "game_date": inp.game_date,
     })
 
-    return enriched
+    features = {
+        "player_id": pid,
+        "team_id": tid,
+        "game_id": gid,
+        "game_date": inp.game_date,
+        "prop_type": inp.prop_type,
+        "over_under": inp.over_under,
+        "prop_value": float(inp.prop_value),
+        "team": team_abbr,
+        **(ctx or {}),
+    }
+    return {"features": features}

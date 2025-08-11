@@ -12,6 +12,7 @@ import LoginPage from "../Pages/Login.js";
 import PlayerProfileDashboard from "../Pages/PlayerProfileDashboard.js"; // adjust path if needed
 import ModelMetricsDashboard from "../Pages/ModelMetricsDashboard.js";
 import PlayerTeamBrowser from "../Pages/PlayerTeamBrowser.js";
+import PlayerPropsPage from "../Pages/PlayerPropsPage.js";
 
 export default function AppRouter() {
   return (
@@ -68,6 +69,7 @@ export default function AppRouter() {
         <Route path="/player/:playerId" element={<PlayerProfileDashboard />} />
         <Route path="/metrics" element={<ModelMetricsDashboard />} />
         <Route path="/players" element={<PlayerTeamBrowser />} />
+        <Route path="/props/v2" element={<PlayerPropsPage />} />
       </Routes>
     </BrowserRouter>
   );
