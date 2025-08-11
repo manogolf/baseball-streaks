@@ -1,8 +1,9 @@
+# .github/workflows/refresh-player-ids.yml
 name: refresh-player-ids
 on:
   schedule:
-    - cron: "15 6 * * *" # daily at 06:15 UTC
-  workflow_dispatch:
+    - cron: "15 6 * * *"
+  workflow_dispatch: {}
 
 jobs:
   refresh:
@@ -12,17 +13,22 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install deps
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+
+      - name: Install backend deps
         run: |
           python -m pip install --upgrade pip
-          if [ -f backend/requirements.txt ]; then
-            pip install -r backend/requirements.txt
-                    else
-            pip install MLB-StatsAPI supabase postgrest
-          fi
+          pip install -r backend/requirements.txt
+
       - name: Run refresher
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          PYTHONPATH=$(pwd) python backend/app/jobs/refresh_player_ids.py
+          PYTHONPATH="$GITHUB_WORKSPACE" python backend/app/jobs/refresh_player_ids.py
