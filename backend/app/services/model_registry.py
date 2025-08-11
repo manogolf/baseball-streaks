@@ -90,23 +90,33 @@ def _download_from_supabase(bucket: str, path: str) -> bytes:
     r.raise_for_status()
     return r.content
 
-# ── Disk-first model loader with LR suffix flexibility & Supabase fallback ────
-LR_SUFFIX_CANDIDATES = ["logistic_regression_compressed.pkl", "log_reg_compressed.pkl"]
+# ---- Filename candidates (prefer uncompressed) --------------------------------
+LR_SUFFIX_CANDIDATES = [
+    "logistic_regression.pkl",
+    "log_reg.pkl",
+    "logistic_regression.joblib",
+    "log_reg.joblib",
+    "logistic_regression_compressed.pkl",
+    "log_reg_compressed.pkl",
+]
 
-def _disk_model_path_candidates(prop_type: str, algo: str) -> List[Path]:
+RF_SUFFIX_CANDIDATES = [
+    "random_forest.pkl",
+    "random_forest.joblib",
+    "random_forest_compressed.pkl",
+]
+
+# ---- Filename candidates (only uncompressed .pkl) ----------------------------
+def _model_file_candidates(prop_type: str, algo: str) -> list[Path]:
     if algo == "logistic_regression":
-        return [(MODEL_DIR / prop_type / f"{prop_type}_{s}").resolve() for s in LR_SUFFIX_CANDIDATES]
-    # Random Forest is fixed name
-    return [(MODEL_DIR / prop_type / f"{prop_type}_{algo}_compressed.pkl").resolve()]
+        names = [f"{prop_type}_logistic_regression.pkl"]
+    elif algo == "random_forest":
+        names = [f"{prop_type}_random_forest.pkl"]
+    else:
+        names = [f"{prop_type}_{algo}.pkl"]
+    return [(MODEL_DIR / prop_type / n).resolve() for n in names]
 
 def load_model(prop_type: str, algo: str) -> Any:
-    """
-    Lazy-load a single model.
-      1. Try disk candidates under $MODEL_DIR/{prop}/
-      2. Fallback to Supabase 'models/{prop}/{prop}_{algo}_compressed.pkl' (if configured),
-         and persist to disk for next time.
-    Cached by (prop_type, algo).
-    """
     key = (prop_type, algo)
     if key in _MODEL_CACHE:
         return _MODEL_CACHE[key]
@@ -115,28 +125,34 @@ def load_model(prop_type: str, algo: str) -> Any:
         if key in _MODEL_CACHE:
             return _MODEL_CACHE[key]
 
-        # 1 Disk
-        for p in _disk_model_path_candidates(prop_type, algo):
+        tried: list[str] = []
+
+        # 1) Disk-first: exact .pkl names only
+        for p in _model_file_candidates(prop_type, algo):
+            tried.append(str(p))
             if p.exists():
                 model = joblib_load(str(p))
                 _MODEL_CACHE[key] = model
                 return model
 
-        # 2 Supabase fallback
-        rel = f"{prop_type}/{prop_type}_{algo}_compressed.pkl"
-        blob = _download_from_supabase("models", rel)  # raises if _supabase missing
+        # 2) Optional Supabase fallback with the *same* filenames
+        if _supabase:
+            last_err: Exception | None = None
+            for p in _model_file_candidates(prop_type, algo):
+                rel = f"{prop_type}/{p.name}"  # e.g., home_runs/home_runs_random_forest.pkl
+                tried.append(f"supabase://models/{rel}")
+                try:
+                    blob = _download_from_supabase("models", rel)
+                    p.parent.mkdir(parents=True, exist_ok=True)
+                    with open(p, "wb") as f:
+                        f.write(blob)
+                    model = joblib_load(str(p))
+                    _MODEL_CACHE[key] = model
+                    return model
+                except Exception as e:
+                    last_err = e
+                    continue
 
-        # Persist to first candidate path (so future loads are disk-native)
-        target = _disk_model_path_candidates(prop_type, algo)[0]
-        try:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            with open(target, "wb") as f:
-                f.write(blob)
-            model = joblib_load(str(target))
-        except Exception:
-            with tempfile.NamedTemporaryFile(delete=True) as tmp:
-                tmp.write(blob); tmp.flush()
-                model = joblib_load(tmp.name)
-
-        _MODEL_CACHE[key] = model
-        return model
+        # Nothing worked → raise with what we tried
+        details = "; ".join(tried) or "(no paths attempted)"
+        raise RuntimeError(f"Model not found for {prop_type}/{algo}. Tried: {details}")

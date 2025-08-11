@@ -1,7 +1,7 @@
 // src/components/PlayerPropFormv2.js
 import React, { useState, useEffect, useRef } from "react";
 
-const BASE_API = "http://localhost:8001";
+const BASE_API = "https://baseball-streaks-sq44.onrender.com";
 
 // simple helpers
 async function getApi(path, params = {}) {

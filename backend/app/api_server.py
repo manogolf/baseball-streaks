@@ -26,6 +26,12 @@ from app.routes.api.props import router as props_router
 
 from app.services.model_registry import load_model
 
+# --- verify players router at startup ---
+import app.routes.api.players as players_mod
+print("players.py file:", players_mod.__file__)
+print("players routes:", [r.path for r in players_router.routes])
+
+
 COMMON_PROPS = [
     "hits", "home_runs", "rbi", "runs_scored", "strikeouts_batting", "walks",
     "total_bases", "singles", "doubles", "triples", "stolen_bases",
