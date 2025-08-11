@@ -9,76 +9,79 @@ import os
 import time
 from typing import Any, Dict
 
+# -------- base64 helpers (URL-safe, no padding) --------
 def _b64e(b: bytes) -> str:
-    """URL-safe base64 encode without padding."""
     return base64.urlsafe_b64encode(b).decode("utf-8").rstrip("=")
 
 def _b64d(s: str) -> bytes:
-    """URL-safe base64 decode handling missing padding."""
     pad = "=" * (-len(s) % 4)
     return base64.urlsafe_b64decode(s + pad)
 
+# -------- small env helpers --------
+def _get_secret_bytes(override: str | None) -> bytes:
+    secret = override or os.getenv("PROP_COMMIT_SECRET", "dev-secret-change-me")
+    return secret.encode("utf-8")
+
+def _get_ttl_seconds(override: int | None) -> int:
+    try:
+        return int(override if override is not None else os.getenv("PROP_COMMIT_TTL_SEC", "600"))
+    except Exception:
+        return 600
+
+# -------- API --------
 def mint_commit_token(
-    *,
-    prob: float,
-    prop_type: str,
-    features: dict,
-    ttl_seconds: int = 600,
-    secret: str | None = None,
-    version: str = "v1",
+    *, prob: float, prop_type: str, features: dict,
+    ttl_seconds: int = 600, secret: str | None = None, version: str = "v1",
 ) -> str:
-    """Return token: '{version}.{payload}.{sig_hex}' where payload is base64url(JSON)."""
-    secret = secret or os.getenv("PROP_COMMIT_SECRET", "dev-secret-change-me")
+    """
+    Return a versioned token: "{version}.{payload_b64}.{sig_b64}"
+    We sign the BASE64 STRING (payload_b64) with HMAC-SHA256.
+    """
     now = int(time.time())
     payload_obj = {
         "features": features,
-        "prob": float(prob),
-        "prop_type": str(prop_type),
+        "prob": prob,
+        "prop_type": prop_type,
         "ts": now,
         "exp": now + int(ttl_seconds),
     }
-    payload = _b64e(json.dumps(payload_obj, separators=(",", ":")).encode("utf-8"))
-    sig = hmac.new(secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
-    return f"{version}.{payload}.{sig}"
+    payload_b64 = _b64e(json.dumps(payload_obj, separators=(",", ":")).encode("utf-8"))
+    sig = hmac.new(_get_secret_bytes(secret), payload_b64.encode("utf-8"), hashlib.sha256).digest()
+    sig_b64 = _b64e(sig)
+    return f"{version}.{payload_b64}.{sig_b64}"
 
 def verify_commit_token(
-    token: str,
-    *,
-    ttl_seconds: int | None = None,
-    secret: str | None = None,
+    token: str, *, ttl_seconds: int | None = None, secret: str | None = None,
 ) -> Dict[str, Any]:
-    """Verify token minted above; return decoded payload or raise ValueError."""
-    secret = secret or os.getenv("PROP_COMMIT_SECRET", "dev-secret-change-me")
+    """
+    Validate signature + TTL and return the payload dict.
+    Raises ValueError on invalid/expired tokens.
+    """
+    if not token or token.count(".") != 2:
+        raise ValueError("Malformed token")
 
-    try:
-        version, payload, sig = token.split(".", 2)
-    except ValueError:
-        raise ValueError("Invalid commit_token format")
-
+    version, payload_b64, sig_b64 = token.split(".", 2)
     if version != "v1":
-        raise ValueError(f"Unsupported token version: {version}")
+        raise ValueError("Unsupported token version")
 
-    expected_sig = hmac.new(secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(expected_sig, sig):
-        raise ValueError("Invalid commit_token signature")
+    # Verify HMAC over the BASE64 STRING
+    expected_sig = hmac.new(_get_secret_bytes(secret), payload_b64.encode("utf-8"), hashlib.sha256).digest()
+    got_sig = _b64d(sig_b64)
+    if not hmac.compare_digest(got_sig, expected_sig):
+        raise ValueError("Bad signature")
 
+    # Decode payload and check TTL
     try:
-        obj = json.loads(_b64d(payload).decode("utf-8"))
-    except Exception as e:
-        raise ValueError(f"Invalid commit_token payload: {e}")
+        payload = json.loads(_b64d(payload_b64).decode("utf-8"))
+    except Exception:
+        raise ValueError("Bad payload")
 
-    now = int(time.time())
-    if ttl_seconds is not None:
-        ts = int(obj.get("ts", 0))
-        if now - ts > int(ttl_seconds):
-            raise ValueError("commit_token expired (ttl)")
-    else:
-        exp = int(obj.get("exp", 0))
-        if exp and now > exp:
-            raise ValueError("commit_token expired")
+    ts = int(payload.get("ts", 0))
+    ttl = _get_ttl_seconds(ttl_seconds)
+    if ts <= 0 or (int(time.time()) - ts) > ttl:
+        raise ValueError("Token expired")
 
-    if "features" not in obj or "prop_type" not in obj or "prob" not in obj:
-        raise ValueError("commit_token payload missing required fields")
+    if "features" not in payload or "prop_type" not in payload:
+        raise ValueError("Missing fields")
 
-    obj["version"] = version
-    return obj
+    return payload
