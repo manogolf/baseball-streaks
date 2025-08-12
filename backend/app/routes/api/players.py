@@ -108,19 +108,37 @@ def resolve_player(
         rows = getattr(res, "data", []) or []
     except Exception:
         rows = []
+    
+    # 2) If empty, broaden search in accent-friendly way:
+    tokens = [t for t in norm.split(" ") if t]
 
-    # 2) If empty, AND-match tokens of normalized name to sharpen the set
-    if not rows:
+    # 2a) try FIRST token only (avoids the accent on the last name)
+    if not rows and tokens:
         try:
-            q = (
+            res2 = (
                 supabase.from_("player_ids")
                 .select("player_id, player_name, team, team_id, updated_at")
+                .ilike("player_name", f"%{tokens[0]}%")
                 .order("updated_at", desc=True)
+                .limit(100)
+                .execute()
             )
-            for tok in [t for t in norm.split(" ") if t]:
-                q = q.ilike("player_name", f"%{tok}%")
-            res2 = q.limit(50).execute()
             rows = getattr(res2, "data", []) or []
+        except Exception:
+            rows = []
+
+    # 2b) if still empty and we have a last token, try that alone
+    if not rows and len(tokens) > 1:
+        try:
+            res3 = (
+                supabase.from_("player_ids")
+                .select("player_id, player_name, team, team_id, updated_at")
+                .ilike("player_name", f"%{tokens[-1]}%")
+                .order("updated_at", desc=True)
+                .limit(100)
+                .execute()
+            )
+            rows = getattr(res3, "data", []) or []
         except Exception:
             rows = []
 
@@ -135,5 +153,5 @@ def resolve_player(
         team_abbr = (cand.get("team") or "").strip() or None
     if not team_abbr:
         raise HTTPException(status_code=404, detail="Team not found for player")
-
+    
     return {"player_id": pid, "name": cand.get("player_name") or raw, "team_abbr": team_abbr}
