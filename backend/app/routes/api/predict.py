@@ -1,22 +1,21 @@
 # backend/app/routes/api/predict.py
 from __future__ import annotations
 
-import json
-import os
-import sys
-import time
-import subprocess
+import json, os, sys, time, subprocess
 from typing import Any, Dict
-from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, AliasChoices
 from pydantic.config import ConfigDict
+from fastapi import APIRouter, HTTPException, Request
 
 from app.security.commit_token import mint_commit_token
 from app.prop_utils import get_canonical_model_name
 
 router = APIRouter()
 
-# Try to import your real predictor module (preferred)
+# env toggle: "subprocess" forces short-lived runner
+FORCE_SUBPROC = os.getenv("PREDICT_MODE", "").strip().lower() == "subprocess"
+
+# Try to import your real predictor module (preferred when not forcing subprocess)
 _predict_mod = None
 try:
     # expects: backend/scripts/prediction/make_prediction.py
@@ -35,21 +34,31 @@ class PredictInput(BaseModel):
 def _call_predict_module(prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     """
     Call in-process predictor. Supports either predict() or make_prediction().
-    Must return {"prob": float in [0,1], ...}.
+    Must return {"prob": float in [0,1]} or a dict containing probability.
     """
     if _predict_mod is None:
         raise RuntimeError("predict module not importable")
+
+    # Handle both signatures:
+    #   predict(prop_type=..., features=...)
+    #   make_prediction({"prop_type":..., "features":{...}})
     if hasattr(_predict_mod, "predict"):
         return _predict_mod.predict(prop_type=prop_type, features=features)  # type: ignore[attr-defined]
     if hasattr(_predict_mod, "make_prediction"):
-        return _predict_mod.make_prediction(prop_type=prop_type, features=features)  # type: ignore[attr-defined]
+        # Some versions expect a single payload dict
+        try:
+            return _predict_mod.make_prediction({"prop_type": prop_type, "features": features})  # type: ignore[attr-defined]
+        except TypeError:
+            # Others accept keyword args
+            return _predict_mod.make_prediction(prop_type=prop_type, features=features)  # type: ignore[attr-defined]
     raise RuntimeError("No callable predict()/make_prediction() in module")
 
 
 def _call_predict_subprocess(prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Fallback: run the predictor as a subprocess that reads JSON on stdin
-    and writes JSON to stdout.
+    Run short-lived predictor:
+      python -m backend.scripts.prediction.make_prediction
+    Send JSON on stdin, receive JSON on stdout.
     """
     payload = json.dumps({"prop_type": prop_type, "features": features})
     cmd = [sys.executable, "-m", "backend.scripts.prediction.make_prediction"]
@@ -65,7 +74,7 @@ def _call_predict_subprocess(prop_type: str, features: Dict[str, Any]) -> Dict[s
     except subprocess.CalledProcessError as e:
         raise HTTPException(
             status_code=500,
-            detail=f"predict subprocess failed: {e.stderr.decode('utf-8', 'ignore')[:4000]}",
+            detail=f"predict subprocess failed: {e.stderr.decode('utf-8','ignore')[:4000]}",
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"predict subprocess error: {e}")
@@ -77,79 +86,75 @@ def _call_predict_subprocess(prop_type: str, features: Dict[str, Any]) -> Dict[s
 
 
 def _normalize_prob(obj: Dict[str, Any]) -> float:
-    """Accept 'prob', 'probability', or 'confidence' (0..1 or 0..100)."""
-    for k in ("prob", "probability", "confidence"):
+    for k in ("prob", "probability_over", "probability", "confidence"):
         if k in obj:
             v = float(obj[k])
             if v > 1.0:
-                v /= 100.0
+                v = v / 100.0
             return max(0.0, min(1.0, v))
     raise ValueError("Predictor returned no probability field")
 
 
 @router.post("/predict")
 async def predict(req: Request):
-    # 1) Parse + validate input
+    # Parse & validate input
     try:
         payload = await req.json()
     except Exception:
         raw = (await req.body()).decode("utf-8", "ignore")
         raise HTTPException(status_code=400, detail=f"Invalid JSON body: {raw[:300]}")
 
-    try:
-        inp = PredictInput.model_validate(payload)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid payload: {e}")
-
+    inp = PredictInput.model_validate(payload)
     features: Dict[str, Any] = dict(inp.features or {})
-    prop_type: str = (inp.prop_type or "").strip()
+    prop_type: str = inp.prop_type
 
-    if not prop_type:
-        raise HTTPException(status_code=400, detail="prop_type required")
     if not features:
         raise HTTPException(status_code=400, detail="features required")
+    if not prop_type:
+        raise HTTPException(status_code=400, detail="prop_type is required")
 
-    # 2) Canonicalize model key; add internal alias 'line' if needed
-    canonical = get_canonical_model_name(prop_type) or prop_type
+    canonical = get_canonical_model_name(prop_type) or str(prop_type)
+
+    # internal alias used only for model input, not DB
     if "line" not in features and "prop_value" in features:
         try:
             features["line"] = float(features["prop_value"])
         except Exception:
             pass
 
-    # 3) Run predictor
     used_model = False
     backend = None
     model_tag = None
     t0 = time.time()
 
+    # Choose backend **inside** the request
     try:
-        if _predict_mod is not None:
-            out = _call_predict_module(canonical, features)
-            backend = "module"
-        else:
+        if FORCE_SUBPROC:
             out = _call_predict_subprocess(canonical, features)
-            backend = "subprocess"
-        used_model = True
+            used_model, backend = True, "subprocess"
+        else:
+            # try module first; if it fails, fall back to subprocess
+            try:
+                out = _call_predict_module(canonical, features)
+                used_model, backend = True, "module"
+            except Exception:
+                out = _call_predict_subprocess(canonical, features)
+                used_model, backend = True, "subprocess"
     except HTTPException:
         raise
     except Exception as e:
+        # Stub so UI flow continues
         print(f"⚠️ predict fallback: {e}")
         out = {"prob": 0.5, "stub": True}
+        used_model, backend = False, None
 
-    # 4) Normalize output + mint commit token
     try:
         prob = _normalize_prob(out)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"predictor did not return prob: {e}")
 
-    model_tag = out.get("model") or out.get("model_name") or out.get("algo")
+    model_tag = out.get("model") or out.get("model_name") or out.get("algo") or ("blend(lr,rf)" if "components" in out else None)
     dt_ms = int((time.time() - t0) * 1000)
-
-    print(
-        f"🔮 predict used_model={used_model} backend={backend} prop={canonical} "
-        f"prob={prob:.4f} nfeat={len(features)} took={dt_ms}ms model={model_tag}"
-    )
 
     token = mint_commit_token(
         prob=prob,
@@ -164,11 +169,10 @@ async def predict(req: Request):
         "used_model": used_model,
         "backend": backend,
         "model": model_tag,
-        "stub": bool(out.get("stub")),
+        "stub": not used_model or bool(out.get("stub")),
         "features_count": len(features),
         "elapsed_ms": dt_ms,
     }
-
-    passthrough = {k: v for k, v in out.items() if k not in {"prob", "probability", "confidence"}}
+    passthrough = {k: v for k, v in out.items() if k not in {"prob", "probability", "probability_over", "confidence"}}
 
     return {"prob": prob, "commit_token": token, "meta": meta, **passthrough}
