@@ -11,7 +11,6 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, AliasChoices
 from pydantic.config import ConfigDict
-
 from app.security.commit_token import mint_commit_token
 
 router = APIRouter()
@@ -71,13 +70,16 @@ def _call_predict_module(prop_type: str, features: Dict[str, Any]) -> Dict[str, 
 def _call_predict_subprocess(prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     payload = json.dumps({"prop_type": prop_type, "features": features})
 
-    # Compute repo root from this file: backend/app/routes/api/predict.py -> project root
-    PROJECT_ROOT = Path(__file__).resolve().parents[4]
+    PROJECT_ROOT = Path(__file__).resolve().parents[4]   # /opt/render/project/src
+    BACKEND_DIR  = PROJECT_ROOT / "backend"              # /opt/render/project/src/backend
 
     cmd = [sys.executable, "-m", "backend.scripts.prediction.make_prediction"]
 
     env = os.environ.copy()
-    env["PYTHONPATH"] = f"{str(PROJECT_ROOT)}:{env.get('PYTHONPATH','')}"  # ensure package root
+    pieces = [str(PROJECT_ROOT), str(BACKEND_DIR)]
+    if env.get("PYTHONPATH"):
+        pieces.append(env["PYTHONPATH"])
+    env["PYTHONPATH"] = ":".join(pieces)
 
     try:
         proc = subprocess.run(
@@ -88,12 +90,12 @@ def _call_predict_subprocess(prop_type: str, features: Dict[str, Any]) -> Dict[s
             check=True,
             timeout=60,
             env=env,
-            cwd=str(PROJECT_ROOT),  # optional, but helps consistency
+            cwd=str(PROJECT_ROOT),  # keep imports consistent
         )
     except subprocess.CalledProcessError as e:
         raise HTTPException(
             status_code=500,
-            detail=f"predict subprocess failed: {e.stderr.decode('utf-8', 'ignore')[:4000]}",
+            detail=f"predict subprocess failed: {e.stderr.decode('utf-8','ignore')[:4000]}",
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"predict subprocess error: {e}")

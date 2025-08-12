@@ -13,6 +13,15 @@ from app.services.model_registry import (
     get_expected_features,
 )
 
+try:
+    from app.services.model_registry import (
+        canonicalize_prop_type, load_model, get_expected_features
+    )
+except ModuleNotFoundError:
+    from backend.app.services.model_registry import (
+        canonicalize_prop_type, load_model, get_expected_features
+    )
+
 def _vectorize(features: Dict[str, Any], feature_list: List[str]) -> pd.DataFrame:
     """1-row DataFrame with columns EXACTLY matching training order; missing -> 0."""
     vals: List[float] = []
