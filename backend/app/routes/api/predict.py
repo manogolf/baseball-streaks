@@ -54,23 +54,57 @@ def _call_predict_module(prop_type: str, features: Dict[str, Any]) -> Dict[str, 
     raise RuntimeError("No callable predict()/make_prediction() in module")
 
 
+from pathlib import Path
+
 def _call_predict_subprocess(prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Run short-lived predictor:
-      python -m backend.scripts.prediction.make_prediction
-    Send JSON on stdin, receive JSON on stdout.
+    Run short-lived predictor with a robust path setup:
+      1) try:  python -m backend.scripts.prediction.make_prediction
+      2) else: python /abs/path/to/backend/scripts/prediction/make_prediction.py
+    We set CWD and PYTHONPATH so 'backend' and 'app' are importable.
     """
-    payload = json.dumps({"prop_type": prop_type, "features": features})
-    cmd = [sys.executable, "-m", "backend.scripts.prediction.make_prediction"]
+    payload = json.dumps({"prop_type": prop_type, "features": features}).encode("utf-8")
+
+    # Resolve paths
+    this = Path(__file__).resolve()                                   # .../backend/app/routes/api/predict.py
+    backend_dir = this.parents[3]                                      # .../backend
+    project_root = backend_dir.parent                                  # repo root
+    script_path = backend_dir / "scripts" / "prediction" / "make_prediction.py"
+
+    # Env with PYTHONPATH so 'backend' (and 'app') are importable
+    env = os.environ.copy()
+    py_path_bits = [str(project_root), str(backend_dir)]
+    if env.get("PYTHONPATH"):
+        py_path_bits.append(env["PYTHONPATH"])
+    env["PYTHONPATH"] = ":".join(py_path_bits)
+
+    # 1) Try module form
+    cmd_mod = [sys.executable, "-m", "backend.scripts.prediction.make_prediction"]
     try:
         proc = subprocess.run(
-            cmd,
-            input=payload.encode("utf-8"),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True,
-            timeout=60,
+            cmd_mod, input=payload,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            check=True, timeout=60, cwd=str(project_root), env=env
         )
+        return json.loads(proc.stdout.decode("utf-8"))
+    except subprocess.CalledProcessError as e:
+        err = e.stderr.decode("utf-8", "ignore")
+        # fall through to path form
+    except Exception as e:
+        err = str(e)
+
+    # 2) Try direct file path
+    if not script_path.exists():
+        raise HTTPException(status_code=500, detail=f"predict subprocess cannot find script at {script_path}")
+
+    cmd_file = [sys.executable, str(script_path)]
+    try:
+        proc = subprocess.run(
+            cmd_file, input=payload,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            check=True, timeout=60, cwd=str(project_root), env=env
+        )
+        return json.loads(proc.stdout.decode("utf-8"))
     except subprocess.CalledProcessError as e:
         raise HTTPException(
             status_code=500,
@@ -78,11 +112,6 @@ def _call_predict_subprocess(prop_type: str, features: Dict[str, Any]) -> Dict[s
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"predict subprocess error: {e}")
-
-    try:
-        return json.loads(proc.stdout.decode("utf-8"))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"invalid JSON from predictor: {e}")
 
 
 def _normalize_prob(obj: Dict[str, Any]) -> float:
