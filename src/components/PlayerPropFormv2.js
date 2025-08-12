@@ -3,6 +3,14 @@ import React, { useState, useEffect, useRef } from "react";
 
 const BASE_API = "https://baseball-streaks-sq44.onrender.com";
 
+// pretty labels + % helpers
+const prettyProp = (s) =>
+  s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+const pct = (p) => (p == null ? "—" : `${(p * 100).toFixed(1)}%`);
+const pickFromProb = (p) => (p >= 0.5 ? "Over" : "Under");
+const confidenceFromProb = (p) => (p >= 0.5 ? p : 1 - p);
+
 // simple helpers
 async function getApi(path, params = {}) {
   const url = new URL(BASE_API + path);
