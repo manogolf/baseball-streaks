@@ -1,6 +1,8 @@
 # backend/app/routes/api/players.py
+
 from fastapi import APIRouter, HTTPException, Query
-from typing import Optional
+from typing import Optional, List, Dict, Any
+import unicodedata, difflib
 
 from app.services.supabase_queries import (
     players_all,
@@ -8,16 +10,40 @@ from app.services.supabase_queries import (
     players_search,
     players_by_team,
 )
-from app.prop_utils import get_player_id_by_name, get_latest_team_for_player
+from app.prop_utils import get_latest_team_for_player
+from backend.scripts.shared.supabase_utils import supabase
 
 router = APIRouter()
 
-# List all players (compat)
+
+# ---------- helpers ----------
+def _strip_accents(s: str) -> str:
+    return "".join(
+        ch for ch in unicodedata.normalize("NFKD", s)
+        if unicodedata.category(ch) != "Mn"
+    )
+
+def _norm_name(s: str) -> str:
+    s = _strip_accents(s or "")
+    s = s.replace("’", "'").replace("‘", "'").replace(".", "")
+    s = " ".join(s.split())
+    return s.strip()
+
+def _best_match(target_norm: str, rows: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    best, best_score = None, 0.0
+    for r in rows:
+        nm = _norm_name(str(r.get("player_name", "")))
+        score = difflib.SequenceMatcher(None, target_norm.lower(), nm.lower()).ratio()
+        if score > best_score:
+            best, best_score = r, score
+    return best if best_score >= 0.75 else None  # tune threshold if needed
+
+
+# ---------- routes ----------
 @router.get("/players")
 def players_list_all():
     return players_all()
 
-# Lookup by id (preferred) or name (fallback)
 @router.get("/players/lookup")
 def players_lookup_route(
     player_id: str | None = Query(None),
@@ -30,7 +56,6 @@ def players_lookup_route(
         raise HTTPException(status_code=404, detail="player not found")
     return {"ok": True, "data": row}
 
-# Search by name OR id (substring)
 @router.get("/players/search")
 def players_search_route(
     q: str = Query(..., min_length=1, max_length=64),
@@ -38,7 +63,6 @@ def players_search_route(
 ):
     return {"ok": True, "data": players_search(q, limit)}
 
-# By team: prefer team_id, fallback to team text
 @router.get("/players/by_team")
 def players_by_team_route(
     team_id: int | None = Query(None, ge=1),
@@ -47,19 +71,69 @@ def players_by_team_route(
     data = players_by_team(team_id=team_id, team=team)
     return {"ok": True, "data": data}
 
-# New: resolve by NAME → {player_id, team_abbr}
+# Resolve by NAME → {player_id, team_abbr}
 @router.get("/players/resolve")
-def resolve_player(name: str = Query(..., min_length=2), date: Optional[str] = None):
+def resolve_player(
+    name: str = Query(..., min_length=2),
+    date: Optional[str] = None,  # accepted for compatibility; not used
+):
     """
-    Resolve by NAME ONLY.
+    Resolve by NAME ONLY (case/diacritic tolerant).
     Reads from public.player_ids and returns the most recent team (by updated_at).
     """
-    pid = get_player_id_by_name(name)
-    if not pid:
+    raw = name.strip()
+    norm = _norm_name(raw)
+    if not norm:
+        raise HTTPException(400, "empty name")
+
+    # If a numeric string sneaks in, treat it as an id shortcut
+    if raw.isdigit():
+        pid = int(raw)
+        team_abbr, _ = get_latest_team_for_player(pid)
+        if not team_abbr:
+            raise HTTPException(404, "Team not found for player")
+        return {"player_id": pid, "name": raw, "team_abbr": team_abbr}
+
+    # 1) Broad ILIKE on raw (fast path)
+    rows: List[Dict[str, Any]] = []
+    try:
+        res = (
+            supabase.from_("player_ids")
+            .select("player_id, player_name, team, team_id, updated_at")
+            .ilike("player_name", f"%{raw}%")
+            .order("updated_at", desc=True)
+            .limit(50)
+            .execute()
+        )
+        rows = getattr(res, "data", []) or []
+    except Exception:
+        rows = []
+
+    # 2) If empty, AND-match tokens of normalized name to sharpen the set
+    if not rows:
+        try:
+            q = (
+                supabase.from_("player_ids")
+                .select("player_id, player_name, team, team_id, updated_at")
+                .order("updated_at", desc=True)
+            )
+            for tok in [t for t in norm.split(" ") if t]:
+                q = q.ilike("player_name", f"%{tok}%")
+            res2 = q.limit(50).execute()
+            rows = getattr(res2, "data", []) or []
+        except Exception:
+            rows = []
+
+    # 3) Pick best by normalized fuzzy ratio
+    cand = _best_match(norm, rows) if rows else None
+    if not cand:
         raise HTTPException(status_code=404, detail="Player not found")
 
-    team_abbr, _team_id = get_latest_team_for_player(int(pid))
+    pid = int(cand["player_id"])
+    team_abbr, _team_id = get_latest_team_for_player(pid)
+    if not team_abbr:
+        team_abbr = (cand.get("team") or "").strip() or None
     if not team_abbr:
         raise HTTPException(status_code=404, detail="Team not found for player")
 
-    return {"player_id": int(pid), "name": name, "team_abbr": team_abbr}
+    return {"player_id": pid, "name": cand.get("player_name") or raw, "team_abbr": team_abbr}
