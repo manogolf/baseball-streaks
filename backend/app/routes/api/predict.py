@@ -7,7 +7,7 @@ import sys
 import time
 import subprocess
 from typing import Any, Dict
-
+from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, AliasChoices
 from pydantic.config import ConfigDict
@@ -69,12 +69,16 @@ def _call_predict_module(prop_type: str, features: Dict[str, Any]) -> Dict[str, 
 
 
 def _call_predict_subprocess(prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Run the script as a subprocess that reads JSON from stdin and writes JSON to stdout.
-    Module path: backend.scripts.prediction.make_prediction
-    """
     payload = json.dumps({"prop_type": prop_type, "features": features})
+
+    # Compute repo root from this file: backend/app/routes/api/predict.py -> project root
+    PROJECT_ROOT = Path(__file__).resolve().parents[4]
+
     cmd = [sys.executable, "-m", "backend.scripts.prediction.make_prediction"]
+
+    env = os.environ.copy()
+    env["PYTHONPATH"] = f"{str(PROJECT_ROOT)}:{env.get('PYTHONPATH','')}"  # ensure package root
+
     try:
         proc = subprocess.run(
             cmd,
@@ -82,7 +86,9 @@ def _call_predict_subprocess(prop_type: str, features: Dict[str, Any]) -> Dict[s
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=True,
-            timeout=120,
+            timeout=60,
+            env=env,
+            cwd=str(PROJECT_ROOT),  # optional, but helps consistency
         )
     except subprocess.CalledProcessError as e:
         raise HTTPException(
@@ -96,21 +102,6 @@ def _call_predict_subprocess(prop_type: str, features: Dict[str, Any]) -> Dict[s
         return json.loads(proc.stdout.decode("utf-8"))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"invalid JSON from predictor: {e}")
-
-
-def _normalize_prob(obj: Dict[str, Any]) -> float:
-    """
-    Liberal parsing of a probability field: 'prob', 'probability', or 'confidence'.
-    If > 1, treat as percentage. Clamp to [0,1].
-    """
-    for k in ("prob", "probability", "confidence"):
-        if k in obj:
-            v = float(obj[k])
-            if v > 1.0:
-                v = v / 100.0
-            return max(0.0, min(1.0, v))
-    raise ValueError("Predictor returned no probability-like field")
-
 
 @router.post("/predict")
 async def predict(req: Request):
