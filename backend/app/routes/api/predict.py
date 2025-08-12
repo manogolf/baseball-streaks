@@ -177,31 +177,31 @@ async def predict(req: Request):
         out = {"prob": 0.5, "stub": True}
         used_model, backend = False, None
 
-    try:
-        prob = _normalize_prob(out)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"predictor did not return prob: {e}")
+# Choose probability aligned to the user’s direction
+# Prefer an explicit 'probability_over' from the model; otherwise normalize.
+try:
+    if "probability_over" in out:
+        p_over = float(out["probability_over"])
+    else:
+        p_over = float(_normalize_prob(out))
+    p_over = max(0.0, min(1.0, p_over))
+except Exception as e:
+    raise HTTPException(status_code=500, detail=f"predictor did not return prob: {e}")
 
-    model_tag = out.get("model") or out.get("model_name") or out.get("algo") or ("blend(lr,rf)" if "components" in out else None)
-    dt_ms = int((time.time() - t0) * 1000)
+direction = (features.get("over_under") or "over").lower()
+prob = p_over if direction == "over" else (1.0 - p_over)
 
-    token = mint_commit_token(
-        prob=prob,
-        prop_type=canonical,
-        features={k: v for k, v in features.items() if k is not None},
-        ttl_seconds=int(os.getenv("PROP_COMMIT_TTL_SEC", "600")),
-        secret=os.getenv("PROP_COMMIT_SECRET", "dev-secret-change-me"),
-        version="v1",
-    )
+meta = {
+    "used_model": used_model,
+    "backend": backend,
+    "model": model_tag,
+    "stub": not used_model or bool(out.get("stub")),
+    "features_count": len(features),
+    "elapsed_ms": dt_ms,
+    "direction": direction,
+    "p_over": p_over,
+    "p_under": 1.0 - p_over,
+}
+passthrough = {k: v for k, v in out.items() if k not in {"prob", "probability", "probability_over", "confidence"}}
 
-    meta = {
-        "used_model": used_model,
-        "backend": backend,
-        "model": model_tag,
-        "stub": not used_model or bool(out.get("stub")),
-        "features_count": len(features),
-        "elapsed_ms": dt_ms,
-    }
-    passthrough = {k: v for k, v in out.items() if k not in {"prob", "probability", "probability_over", "confidence"}}
-
-    return {"prob": prob, "commit_token": token, "meta": meta, **passthrough}
+return {"prob": prob, "commit_token": token, "meta": meta, **passthrough}

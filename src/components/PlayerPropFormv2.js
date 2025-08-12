@@ -22,11 +22,14 @@ async function postApi(path, body) {
   return res.json();
 }
 
+const todayInET = () =>
+  new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+
 export default function PlayerPropFormV2() {
   // user-facing fields
   const [playerName, setPlayerName] = useState("");
   const [teamAbbr, setTeamAbbr] = useState("");
-  const [gameDate, setGameDate] = useState("");
+  const [gameDate, setGameDate] = useState(todayInET);
   const [propType, setPropType] = useState("hits");
   const [overUnder, setOverUnder] = useState("under");
   const [propValue, setPropValue] = useState("0.5");
@@ -50,26 +53,40 @@ export default function PlayerPropFormV2() {
   }, []);
 
   const PROP_TYPES = [
-    "hits",
-    "home_runs",
-    "rbi",
-    "runs_scored",
-    "strikeouts_batting",
-    "walks",
-    "total_bases",
-    "singles",
     "doubles",
-    "triples",
-    "stolen_bases",
-    "strikeouts_pitching",
-    "outs_recorded",
     "earned_runs",
+    "hits",
     "hits_allowed",
-    "walks_allowed",
     "hits_runs_rbis",
+    "home_runs",
+    "outs_recorded",
+    "rbis",
     "runs_rbis",
+    "runs_scored",
+    "singles",
+    "stolen_bases",
+    "strikeouts_batting",
+    "strikeouts_pitching",
+    "total_bases",
+    "triples",
+    "walks",
+    "walks_allowed",
   ];
 
+  // Title-case + fix RBI/ RBIs, no symbols
+  const prettyProp = (key) => {
+    let label = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    label = label.replace(/\bRbis\b/i, "RBIs").replace(/\bRbi\b/i, "RBI");
+    return label;
+  };
+
+  const PROP_OPTIONS = React.useMemo(
+    () =>
+      PROP_TYPES.map((value) => ({ value, label: prettyProp(value) })).sort(
+        (a, b) => a.label.localeCompare(b.label)
+      ),
+    []
+  );
   // --- name → (playerId, teamAbbr) resolver (manual + debounced) ---
   async function resolvePlayerByNameNow() {
     setError("");
@@ -195,8 +212,9 @@ export default function PlayerPropFormV2() {
       const res = await postApi("/api/props/add", {
         commit_token: commitToken,
       });
-      console.info("[Props V2] saved:", res);
-      setPrediction((p) => (p ? { ...p, saved: true } : p));
+      setPrediction((p) =>
+        p ? { ...p, saved: !!res.saved, duplicate: !!res.duplicate } : p
+      );
     } catch (e) {
       setError(e.message || String(e));
     }
@@ -305,16 +323,14 @@ export default function PlayerPropFormV2() {
           <select
             value={propType}
             onChange={(e) => setPropType(e.target.value)}
-            required
-            className="w-full p-2 bg-gray-50 border border-gray-300 rounded-md"
+            className="border rounded p-2"
           >
-            <option value="">Select a prop type</option>
-            {PROP_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t}
+            {PROP_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
               </option>
             ))}
-          </select>
+          </select>{" "}
         </div>
 
         {/* Prop Value */}
@@ -380,22 +396,64 @@ export default function PlayerPropFormV2() {
 
       {/* Prediction summary (theme-friendly) */}
       {prediction && (
-        <div className="mt-4 p-3 bg-green-100 text-green-800 rounded-md text-center space-y-1">
-          <div>
-            🎯 Prediction ready •{" "}
-            <strong>
-              {typeof prediction.prob === "number"
-                ? `${(prediction.prob * 100).toFixed(1)}%`
-                : "—"}
-            </strong>
-          </div>
-          {!prediction?.saved ? (
-            <div className="text-xs text-green-900/80">
-              Not saved yet. Click <em>Add Prop</em> to store it.
-            </div>
-          ) : (
-            <div className="text-xs text-green-900/80">Saved ✓</div>
-          )}
+        <div className="p-3 rounded border space-y-2">
+          {(() => {
+            // prefer server-provided; fallback to client-calculated
+            const probOver =
+              prediction.prob ??
+              prediction.probability ??
+              prediction.probability_over ??
+              null;
+            const pick =
+              prediction.recommendation ??
+              (probOver != null ? pickFromProb(probOver) : null);
+            const conf =
+              prediction.confidence_score ??
+              (probOver != null ? confidenceFromProb(probOver) : null);
+
+            return (
+              <>
+                <div className="font-medium">
+                  🎯 Prediction ready • {probOver != null ? pct(probOver) : "—"}
+                </div>
+
+                <div className="text-sm">
+                  {pick ? (
+                    <>
+                      Pick: <strong>{pick}</strong>
+                      {conf != null ? (
+                        <>
+                          {" "}
+                          • Confidence: <strong>{pct(conf)}</strong>
+                        </>
+                      ) : null}
+                    </>
+                  ) : (
+                    <span className="text-gray-600">No pick available</span>
+                  )}
+                </div>
+
+                {!prediction.saved ? (
+                  <div className="text-xs text-gray-600">
+                    Not saved yet. Click Add Prop to store it.
+                  </div>
+                ) : prediction.duplicate ? (
+                  <div className="text-xs text-amber-700">Already saved.</div>
+                ) : (
+                  <div className="text-xs text-green-700">Saved ✓</div>
+                )}
+
+                <button
+                  type="button"
+                  disabled={!commitToken || prediction?.saved}
+                  onClick={handleSaveProp}
+                  className="px-3 py-2 rounded bg-indigo-600 text-black disabled:opacity-50"
+                >
+                  {prediction?.saved ? "Saved" : "Add Prop"}
+                </button>
+              </>
+            );
+          })()}
         </div>
       )}
     </form>
