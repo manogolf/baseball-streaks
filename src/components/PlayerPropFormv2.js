@@ -55,6 +55,7 @@ export default function PlayerPropFormV2() {
   const [error, setError] = useState("");
   const [prepPreview, setPrepPreview] = useState(null);
   const [prediction, setPrediction] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     console.info("[Props V2] mounted");
@@ -216,15 +217,23 @@ export default function PlayerPropFormV2() {
   async function handleSaveProp() {
     setError("");
     if (!commitToken) return;
+    setSaving(true);
     try {
       const res = await postApi("/api/props/add", {
         commit_token: commitToken,
       });
-      setPrediction((p) =>
-        p ? { ...p, saved: !!res.saved, duplicate: !!res.duplicate } : p
-      );
+      if (res?.duplicate) {
+        setPrediction((p) => (p ? { ...p, duplicate: true } : p));
+      } else if (res?.saved) {
+        setPrediction((p) => (p ? { ...p, saved: true } : p));
+      }
+      // prevent repeat submits with the same token
+      setCommitToken(null);
     } catch (e) {
       setError(e.message || String(e));
+      {
+        setSaving(false);
+      }
     }
   }
 
@@ -395,10 +404,22 @@ export default function PlayerPropFormV2() {
         <button
           type="button"
           onClick={handleSaveProp}
-          disabled={!commitToken || loading || prediction?.saved}
+          disabled={
+            !commitToken ||
+            loading ||
+            saving ||
+            prediction?.saved ||
+            prediction?.duplicate
+          }
           className="flex-1 md:flex-none px-4 py-2 bg-white border border-green-500 text-black rounded-md hover:bg-green-100 disabled:opacity-50"
         >
-          {prediction?.saved ? "Saved ✓" : "➕ Add Prop"}
+          {saving
+            ? "Saving…"
+            : prediction?.duplicate
+            ? "Already saved"
+            : prediction?.saved
+            ? "Saved ✓"
+            : "➕ Add Prop"}
         </button>
       </div>
 
