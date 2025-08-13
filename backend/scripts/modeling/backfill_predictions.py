@@ -48,21 +48,41 @@ def _load_feature_meta() -> dict:
     _FEATURE_META = meta
     return _FEATURE_META
 
-def _expected_columns_from_meta(prop_type: str) -> list[str]:
+def _expected_columns_pair_from_meta(prop_type: str) -> tuple[list[str], list[str]]:
     """
-    Return the exact training column list for this prop type from the JSON.
-    JSON may be:
-      { "rbis": [...], "hits": [...], ... }
-    or { "rbis": {"columns":[...]}, ... }
-    or { "columns":[...] }  (global fallback)
+    Return (rf_cols, lr_cols) from feature_metadata.json.
+    Supports shapes:
+      { "prop": ["c1", ...] }
+      { "prop": {"columns":[...] } }
+      { "prop": {"random_forest":[...], "logistic_regression":[...] } }
+      { "columns":[...] }  # global fallback
     """
     meta = _load_feature_meta()
-    v = meta.get(prop_type, meta.get("columns"))
-    if isinstance(v, dict):
-        v = v.get("columns")
-    if not v or not isinstance(v, list):
-        raise ValueError(f"No columns listed in feature_metadata.json for '{prop_type}'")
-    return list(v)
+    entry = meta.get(prop_type, meta.get("columns"))
+
+    if isinstance(entry, list):
+        return list(entry), list(entry)
+
+    if isinstance(entry, dict):
+        if "columns" in entry and isinstance(entry["columns"], list):
+            cols = list(entry["columns"])
+            return cols, cols
+
+        rf = entry.get("random_forest")
+        lr = entry.get("logistic_regression")
+        if isinstance(rf, list) and isinstance(lr, list):
+            return list(rf), list(lr)
+        if isinstance(rf, list):
+            return list(rf), list(rf)
+        if isinstance(lr, list):
+            return list(lr), list(lr)
+
+        raise ValueError(
+            f"No usable columns in feature_metadata.json for '{prop_type}'. "
+            f"Available keys: {list(entry.keys())}"
+        )
+
+    raise ValueError(f"No columns listed in feature_metadata.json for '{prop_type}'")
 
 
 def _enable_pandas_truthiness_compat():
@@ -220,6 +240,45 @@ def load_models(model_prop_type: str):
     _MODEL_CACHE[model_prop_type] = (rf, lr)
     return rf, lr
 
+def _expected_columns_pair_from_meta(prop_type: str) -> tuple[list[str], list[str]]:
+    """
+    Return (rf_cols, lr_cols) from feature_metadata.json.
+    Supports:
+      { "prop": ["..."] }
+      { "prop": {"columns":[...] } }
+      { "prop": {"random_forest":[...], "logistic_regression":[...] } }
+      { "columns":[...] }  # global fallback
+    """
+    meta = _load_feature_meta()
+    entry = meta.get(prop_type, meta.get("columns"))
+
+    if isinstance(entry, list):
+        return list(entry), list(entry)
+
+    if isinstance(entry, dict):
+        if isinstance(entry.get("columns"), list):
+            cols = list(entry["columns"])
+            return cols, cols
+        rf = entry.get("random_forest")
+        lr = entry.get("logistic_regression")
+        if isinstance(rf, list) and isinstance(lr, list):
+            return list(rf), list(lr)
+        if isinstance(rf, list):
+            return list(rf), list(rf)
+        if isinstance(lr, list):
+            return list(lr), list(lr)
+        raise ValueError(f"No usable columns in feature_metadata.json for '{prop_type}'. Keys: {list(entry.keys())}")
+
+    raise ValueError(f"No columns listed in feature_metadata.json for '{prop_type}'")
+
+def _coerce_numeric_fill(X: pd.DataFrame) -> pd.DataFrame:
+    for c in X.columns:
+        if X[c].dtype == object:
+            try:
+                X[c] = pd.to_numeric(X[c], errors="coerce")
+            except Exception:
+                pass
+    return X.replace([np.inf, -np.inf], 0).fillna(0)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Robust, lazy import of build_feature_vector
@@ -290,37 +349,31 @@ def predict(model_prop_type: str, row: dict) -> tuple[str, float]:
     else:
         X = pd.DataFrame([X])
 
-    # 🔒 Strict alignment to feature_metadata.json (no model/YAML fallback)
-    expected = _expected_columns_from_meta(model_prop_type)
+    # 🔒 Strict alignment (per model)
+    rf_cols, lr_cols = _expected_columns_pair_from_meta(model_prop_type)
 
-    # (Optional one-time log for visibility)
     if model_prop_type not in _PRINTED_ALIGN:
-        extra   = [c for c in X.columns if c not in expected]
-        missing = [c for c in expected   if c not in X.columns]
-        if extra or missing:
-            print(f"🧩 Aligning features for {model_prop_type} — "
-                  f"missing:{len(missing)} extra:{len(extra)} "
-                  f"(X:{len(X.columns)} → {len(expected)})")
+        extra_rf   = [c for c in X.columns if c not in rf_cols]
+        missing_rf = [c for c in rf_cols    if c not in X.columns]
+        extra_lr   = [c for c in X.columns if c not in lr_cols]
+        missing_lr = [c for c in lr_cols    if c not in X.columns]
+        if extra_rf or missing_rf or extra_lr or missing_lr:
+            print(
+              f"🧩 Aligning {model_prop_type} — "
+              f"RF(miss:{len(missing_rf)} extra:{len(extra_rf)} -> {len(rf_cols)}), "
+              f"LR(miss:{len(missing_lr)} extra:{len(extra_lr)} -> {len(lr_cols)})"
+            )
         _PRINTED_ALIGN.add(model_prop_type)
 
-    # Drop extras, add missing (0), and order exactly like training
-    X = X.reindex(columns=expected, fill_value=0)
-
-    # numeric safety
-    for c in X.columns:
-        if X[c].dtype == object:
-            try:
-                X[c] = pd.to_numeric(X[c], errors="coerce")
-            except Exception:
-                pass
-    X = X.replace([np.inf, -np.inf], 0).fillna(0)
+    X_rf = _coerce_numeric_fill(X.reindex(columns=rf_cols, fill_value=0))
+    X_lr = _coerce_numeric_fill(X.reindex(columns=lr_cols, fill_value=0))
 
     if X.empty:
         raise ValueError(f"No usable features for prediction: {row.get('player_name')}")
 
     # Score
-    rf_prob = float(rf_model.predict_proba(X)[0][1])
-    lr_prob = float(lr_model.predict_proba(X)[0][1])
+    rf_prob = float(rf_model.predict_proba(X_rf)[0][1])
+    lr_prob = float(lr_model.predict_proba(X_lr)[0][1])
     avg_prob = (rf_prob + lr_prob) / 2.0
     pred = "over" if avg_prob >= 0.5 else "under"
     return pred, avg_prob
