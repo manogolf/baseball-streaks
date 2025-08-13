@@ -1,10 +1,23 @@
 import pandas as pd
+import numpy as np
 from supabase import create_client
 import os
 from dotenv import load_dotenv
 import yaml
 from pathlib import Path
 from backend.scripts.modeling.transform_features import transform_features
+
+def _as_scalar(v):
+    """Return a plain Python scalar from Series/DataFrame/NumPy/list-of-1."""
+    if isinstance(v, pd.Series):
+        return _as_scalar(v.iloc[0] if not v.empty else None)
+    if isinstance(v, pd.DataFrame):
+        return _as_scalar(v.iloc[0, 0] if not v.empty else None)
+    if isinstance(v, (list, tuple)) and len(v) == 1:
+        return _as_scalar(v[0])
+    if isinstance(v, np.generic):
+        return v.item()
+    return v
 
 # Load environment variables
 load_dotenv()
@@ -48,13 +61,19 @@ def load_feature_spec():
         return yaml.safe_load(f)
 
 def build_feature_vector(row, debug=False):
-    player_id = row.get("player_id")
-    game_id = row.get("game_id")
-    team = row.get("team")
+    # Pull scalars out of the (one-row) DataFrame
+    player_id = _as_scalar(df.get('player_id'))
+    game_id   = _as_scalar(df.get('game_id'))
+    team      = _as_scalar(df.get('team'))
 
-    print(f"🔍 Fetching missing fields for player_id={player_id}, game_id={game_id}, team={team}")
-
-    if not (player_id and game_id and team):
+    # Explicit validity check (no Series truthiness)
+    missing = []
+    if player_id in (None, "", np.nan):
+        missing.append("player_id")
+    if game_id in (None, "", np.nan):
+        missing.append("game_id")
+    if team in (None, "", np.nan):
+        missing.append("team")
         raise ValueError("Missing required fields to build feature vector")
 
     # ───── Fill missing fields by querying model_training_props ─────
@@ -63,6 +82,19 @@ def build_feature_vector(row, debug=False):
 
     fetched = fetch_missing_fields(player_id, game_id, team)
     print(f"📦 Fetched fields: {fetched}")
+
+    try:
+        player_id = int(player_id) if player_id not in (None, "", np.nan) else None
+    except Exception:
+        pass
+    try:
+        game_id = int(game_id) if game_id not in (None, "", np.nan) else None
+    except Exception:
+        pass
+    if team not in (None, "", np.nan):
+        team = str(team)
+    else:
+        team = None
 
     for key in missing_keys:
         if key in fetched and fetched[key] is not None:
