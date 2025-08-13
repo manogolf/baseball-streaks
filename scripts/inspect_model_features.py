@@ -8,11 +8,12 @@ MODEL_DIR = "backend/models"  # or wherever your compressed models live
 OUTPUT_PATH = "backend/scripts/modeling/feature_metadata.json"
 
 PROP_TYPES = [
-    "hits", "singles", "doubles", "triples", "home_runs",
+     "hits", "singles", "doubles", "triples", "home_runs",
     "total_bases", "rbis", "runs_scored", "strikeouts_batting",
     "walks", "stolen_bases", "strikeouts_pitching",
-    "walks_allowed", "earned_runs", "hits_allowed",
+    "walks_allowed", "earned_runs", "hits_allowed", "outs_recorded",
     "hits_runs_rbis", "runs_rbis"
+
 ]
 
 feature_metadata = {}
