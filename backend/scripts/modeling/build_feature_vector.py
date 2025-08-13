@@ -183,6 +183,23 @@ def build_feature_vector(data, debug: bool = False):
     else:
         X, y = out, None
 
+    # 🔧 Coerce X to a 1-row DataFrame no matter what transform_features returned
+    if isinstance(X, pd.DataFrame):
+        pass
+    elif isinstance(X, pd.Series):
+        X = X.to_frame().T
+    elif isinstance(X, dict):
+        X = pd.DataFrame([X])
+    elif isinstance(X, np.ndarray):
+        X = pd.DataFrame([X]) if X.ndim == 1 else pd.DataFrame(X)
+    else:
+        # last resort: wrap single object
+        X = pd.DataFrame([X])
+
+    # guard
+    if X is None or getattr(X, "empty", True):
+        return pd.DataFrame(), y
+
     return X, y
 
 if __name__ == "__main__":

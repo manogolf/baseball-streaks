@@ -234,12 +234,25 @@ def _load_build_feature_vector():
 # Prediction (blend RF + LR) — disk-only models
 # ──────────────────────────────────────────────────────────────────────────────
 def predict(model_prop_type: str, row: dict) -> tuple[str, float]:
-    _enable_pandas_truthiness_compat() 
+    _enable_pandas_truthiness_compat()  # if you kept this shim
     build_feature_vector = _load_build_feature_vector()
     rf_model, lr_model = load_models(model_prop_type)
 
-    row = to_plain_scalars(row)  # ensure pure scalars
+    row = to_plain_scalars(row)
     X, _ = build_feature_vector(pd.DataFrame([row]))
+
+    # 🔧 extra safety (handles dict/Series/ndarray)
+    if isinstance(X, pd.DataFrame):
+        pass
+    elif isinstance(X, pd.Series):
+        X = X.to_frame().T
+    elif isinstance(X, dict):
+        X = pd.DataFrame([X])
+    elif isinstance(X, np.ndarray):
+        X = pd.DataFrame([X]) if X.ndim == 1 else pd.DataFrame(X)
+    else:
+        X = pd.DataFrame([X])
+
     if X.empty:
         raise ValueError(f"No usable features for prediction: {row.get('player_name')}")
 
