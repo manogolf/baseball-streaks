@@ -22,13 +22,43 @@ from time import perf_counter
 from datetime import datetime, timezone
 from collections import defaultdict
 from pathlib import Path
-
+import traceback 
 import pandas as pd
 import numpy as np
 import joblib
 from dotenv import load_dotenv
 import traceback
 from supabase import create_client
+
+def _enable_pandas_truthiness_compat():
+    """
+    Let legacy feature code use `if series:` / `if df:` safely.
+    Makes Series truthiness -> .any(), DataFrame truthiness -> values.any().
+    """
+    try:
+        import pandas as _pd
+        from pandas.core.generic import NDFrame
+
+        def _ndframe_bool(self):  # Series/DataFrame both inherit NDFrame
+            try:
+                # empty -> False
+                if getattr(self, "empty", False):
+                    return False
+                # Series: .any() is scalar; DataFrame: values.any()
+                try:
+                    a = self.any()
+                except Exception:
+                    a = getattr(self, "values", self).any()
+                # convert to pure bool
+                return bool(getattr(a, "item", lambda: a)())
+            except Exception:
+                return False
+
+        # Patch both names used by pandas for truthiness
+        NDFrame.__bool__ = _ndframe_bool
+        NDFrame.__nonzero__ = _ndframe_bool
+    except Exception as e:
+        print(f"⚠️ Pandas truthiness compat patch failed: {e}")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Env & clients
@@ -204,6 +234,7 @@ def _load_build_feature_vector():
 # Prediction (blend RF + LR) — disk-only models
 # ──────────────────────────────────────────────────────────────────────────────
 def predict(model_prop_type: str, row: dict) -> tuple[str, float]:
+    _enable_pandas_truthiness_compat() 
     build_feature_vector = _load_build_feature_vector()
     rf_model, lr_model = load_models(model_prop_type)
 
