@@ -274,6 +274,19 @@ def process_batch(db_prop_type: str, model_prop_type: str, batch_size: int = BAT
 
     return updates
 
+def fetch_pending_prop_types() -> list[str]:
+    resp = (
+        supabase.table("model_training_props")
+        .select("prop_type", distinct=True)
+        .eq("prop_source", "mlb_api")
+        .eq("status", "resolved")          # finalized games only
+        .is_("predicted_outcome", None)    # still missing predictions
+        .limit(2000)
+        .execute()
+    )
+    rows = resp.data or []
+    return sorted({r["prop_type"] for r in rows if r.get("prop_type")})
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Entrypoint
 # ──────────────────────────────────────────────────────────────────────────────
