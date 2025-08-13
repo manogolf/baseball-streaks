@@ -27,6 +27,7 @@ import pandas as pd
 import numpy as np
 import joblib
 from dotenv import load_dotenv
+import traceback
 from supabase import create_client
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -298,12 +299,22 @@ def process_batch(db_prop_type: str, model_prop_type: str, batch_size: int = BAT
     for row in rows:
         SUMMARY[db_prop_type]["attempted"] += 1
         try:
+            # Strong normalization to scalars
             row_dict = to_plain_scalars(_normalize_row(row))
+
+            # 🔒 sanity: if anything is still a Series/DataFrame, sanitize again & assert
+            for k, v in list(row_dict.items()):
+                if isinstance(v, (pd.Series, pd.DataFrame)):
+                    row_dict[k] = to_plain_scalars({k: v}).get(k)
+            # assert nothing weird remains (will throw with the exact key)
+            for k, v in row_dict.items():
+                if isinstance(v, (pd.Series, pd.DataFrame)):
+                    raise TypeError(f"{k} remained a {type(v).__name__}")
 
             pid = str(row_dict.get("player_id"))
             gid = str(row_dict.get("game_id"))
             team = str(row_dict.get("team"))
-            print(f"🔍 Fetching missing fields for player_id={pid}, game_id={gid}, team={team}")
+            print(f"🔍 player_id={pid}, game_id={gid}, team={team}")
 
             prediction, prob = predict(model_prop_type, row_dict)
             if prediction is None:
@@ -328,6 +339,8 @@ def process_batch(db_prop_type: str, model_prop_type: str, batch_size: int = BAT
             SUMMARY[db_prop_type]["updated"] += 1
 
         except Exception as e:
+            # 🔎 Print full traceback so you see exactly where the Series truthiness happens
+            traceback.print_exc()
             msg = str(e).lower()
             if "no usable features" in msg:
                 SUMMARY[db_prop_type]["no_features"] += 1
