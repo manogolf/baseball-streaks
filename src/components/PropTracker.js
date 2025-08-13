@@ -1,153 +1,119 @@
-import { useEffect, useState } from "react";
+// /src/components/PropTracker.js
+import React, { useEffect, useMemo, useState } from "react";
 import { format, isValid } from "date-fns";
-import { todayET, currentTimeET, toISODate } from "../shared/timeUtils.js";
+import { todayET } from "../shared/timeUtils.js";
 import { supabase } from "../utils/supabaseFrontend.js";
 import Calendar from "./ui/calendar.js";
-import AccuracyByPropType from "./AccuracyByPropType.js"; // Adjust the path if necessary
+import AccuracyByPropType from "./AccuracyByPropType.js";
 import { getPropDisplayLabel } from "../../shared/propUtils.js";
 
-export default function PropTracker() {
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [allProps, setAllProps] = useState([]);
-  const [filteredProps, setFilteredProps] = useState([]);
-
+export default function PropTracker({ selectedDate, setSelectedDate }) {
+  // default to ET today if nothing chosen
   useEffect(() => {
-    if (!selectedDate) return;
+    if (!selectedDate) setSelectedDate?.(todayET());
+  }, [selectedDate, setSelectedDate]);
 
-    const selectedDateObj =
-      typeof selectedDate === "string"
-        ? new Date(selectedDate + "T00:00:00")
-        : selectedDate;
-
-    if (!isValid(selectedDateObj)) {
-      console.warn("Invalid selected date:", selectedDate);
-      return;
-    }
-
-    const selectedDateString = format(selectedDateObj, "yyyy-MM-dd");
-
-    const fetchProps = async () => {
-      const { data, error } = await supabase
-        .from("player_props")
-        .select("*")
-        .eq("game_date", selectedDateString);
-
-      if (error) {
-        console.error("Error fetching props:", error);
-      } else {
-        setAllProps(data);
-        setFilteredProps(data); // Directly set filtered props since already filtered by date
-      }
-    };
-
-    fetchProps();
+  const day = useMemo(() => {
+    if (!selectedDate) return todayET();
+    if (typeof selectedDate === "string") return selectedDate;
+    return isValid(selectedDate)
+      ? format(selectedDate, "yyyy-MM-dd")
+      : todayET();
   }, [selectedDate]);
 
-  const selectedDateObj =
-    typeof selectedDate === "string"
-      ? new Date(selectedDate + "T00:00:00")
-      : selectedDate;
+  const [props, setProps] = useState([]);
 
-  const formattedDate = isValid(selectedDateObj)
-    ? format(selectedDateObj, "PPP")
-    : "Invalid Date";
+  useEffect(() => {
+    supabase
+      .from("player_props")
+      .select("*")
+      .eq("game_date", day)
+      .order("created_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("❌ fetch props:", error);
+          setProps([]);
+        } else {
+          setProps(data || []);
+        }
+      });
+  }, [day]);
 
-  const renderPropsTable = (props) => (
-    <div className="bg-blue-50 shadow-md rounded-lg overflow-hidden border">
-      <table className="w-full text-sm text-left">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-4 py-2">Player</th>
-            <th className="px-4 py-2">Team</th>
-            <th className="px-4 py-2">Prop</th>
-            <th className="px-4 py-2">O/U</th>
-            <th className="px-4 py-2">Value</th>
-            <th className="px-4 py-2">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {props.length > 0 ? (
-            props.map((prop, index) => (
-              <tr key={index} className="border-t">
-                <td className="px-4 py-2">
-                  {prop.player_name}
-                  {prop.position && (
-                    <span className="ml-1 text-xs text-gray-500">
-                      ({prop.position})
-                    </span>
-                  )}
-                </td>
-
-                <td className="px-4 py-2">{prop.team}</td>
-                <td className="px-4 py-2">
-                  {getPropDisplayLabel(prop.prop_type)}
-                </td>
-                <td className="px-4 py-2">{prop.over_under}</td>
-                <td className="px-4 py-2">{prop.prop_value}</td>
-                <td className="px-4 py-2">
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      prop.outcome === "win"
-                        ? "bg-green-100 text-green-700"
-                        : prop.outcome === "loss"
-                        ? "bg-red-100 text-red-700"
-                        : prop.outcome === "push"
-                        ? "bg-blue-100 text-blue-700"
-                        : prop.status === "dnp"
-                        ? "bg-yellow-100 text-yellow-700" // ✅ NEW: DNP badge color
-                        : prop.status === "expired"
-                        ? "bg-gray-200 text-gray-500 italic"
-                        : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
-                    {prop.outcome
-                      ? prop.outcome.charAt(0).toUpperCase() +
-                        prop.outcome.slice(1)
-                      : prop.status === "dnp"
-                      ? "DNP" // ✅ NEW: Label for DNP
-                      : prop.status === "expired"
-                      ? "Expired"
-                      : "Pending"}
-                  </span>
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="6" className="px-4 py-4 text-center text-gray-500">
-                No props for this date
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-
-  const todayString = format(new Date(), "yyyy-MM-dd");
-  const isTodaySelected = format(selectedDateObj, "yyyy-MM-dd") === todayString;
+  const selectedDateObj = useMemo(() => new Date(`${day}T00:00:00`), [day]);
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Calendar + Props Table */}
       <div className="flex flex-row gap-8">
         <div>
           <h2 className="text-lg font-semibold">Select a Date</h2>
           <Calendar
             mode="single"
             selected={selectedDateObj}
-            onSelect={setSelectedDate}
+            onSelect={(d) =>
+              setSelectedDate?.(format(d ?? new Date(), "yyyy-MM-dd"))
+            }
             className="rounded-md border"
           />
           <AccuracyByPropType selectedDate={selectedDateObj} />
         </div>
+
         <div className="flex-1">
           <h2 className="text-lg font-semibold mb-2">
-            {isTodaySelected
-              ? "Player Props for Selected Date"
-              : `Player Props for ${formattedDate}`}
+            Player Props for {format(selectedDateObj, "PPP")}
           </h2>
-          {renderPropsTable(filteredProps)}
+
+          <div className="bg-blue-50 shadow-md rounded-lg overflow-hidden border">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2">Player</th>
+                  <th className="px-4 py-2">Team</th>
+                  <th className="px-4 py-2">Prop</th>
+                  <th className="px-4 py-2">O/U</th>
+                  <th className="px-4 py-2">Value</th>
+                  <th className="px-4 py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {props.length > 0 ? (
+                  props.map((p) => (
+                    <tr key={p.id} className="border-t">
+                      <td className="px-4 py-2">
+                        {p.player_name}
+                        {p.position && (
+                          <span className="ml-1 text-xs text-gray-500">
+                            ({p.position})
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">{p.team}</td>
+                      <td className="px-4 py-2">
+                        {getPropDisplayLabel(p.prop_type)}
+                      </td>
+                      <td className="px-4 py-2">{p.over_under}</td>
+                      <td className="px-4 py-2">{p.prop_value}</td>
+                      <td className="px-4 py-2">
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                          {(p.outcome || p.status || "pending")
+                            .toString()
+                            .replace(/^\w/, (c) => c.toUpperCase())}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan="6"
+                      className="px-4 py-4 text-center text-gray-500"
+                    >
+                      No props for {day}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

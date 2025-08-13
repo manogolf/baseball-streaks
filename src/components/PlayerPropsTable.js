@@ -1,168 +1,150 @@
-import React, { useEffect, useState } from "react";
+// /src/components/PlayerPropsTable.js
+import React, { useEffect, useMemo, useState } from "react";
+import { format, isValid } from "date-fns";
 import { supabase } from "../utils/supabaseFrontend.js";
-import { nowET, todayET, currentTimeET } from "../shared/timeUtils.js";
+import { todayET } from "../shared/timeUtils.js";
 import { getPropDisplayLabel } from "../../shared/propUtils.js";
-import { isGameLive } from "../shared/gameUtils.js";
-import useLivePropStatus from "../hooks/useLivePropStatus.js";
+// (Optional) if you want "only my props":
+// import { useAuth } from "../context/AuthContext.js";
 
 const statusColor = {
-  win: "bg-green-100 text-green-700", // ✅ Success
-  loss: "bg-red-100 text-red-700", // ❌ Failed
-  push: "bg-blue-100 text-blue-700", // ⏸️ Neutral
-  resolved: "bg-gray-200 text-gray-600", // 🧾 Resolved catch-all
-  live: "bg-yellow-100 text-yellow-800", // 🔄 In progress
-  pending: "bg-gray-100 text-gray-500 italic", // 🕓 Waiting
-  dnp: "bg-zinc-200 text-zinc-700 italic", // 🚷 Did Not Play
-  expired: "bg-gray-300 text-gray-500 italic", // 🗓️ Missed/Outdated
+  win: "bg-green-100 text-green-700",
+  loss: "bg-red-100 text-red-700",
+  push: "bg-blue-100 text-blue-700",
+  resolved: "bg-gray-200 text-gray-600",
+  live: "bg-yellow-100 text-yellow-800",
+  pending: "bg-gray-100 text-gray-500 italic",
+  dnp: "bg-zinc-200 text-zinc-700 italic",
+  expired: "bg-gray-300 text-gray-500 italic",
 };
 
-const PlayerPropsTable = () => {
-  const [props, setProps] = useState([]);
-  useLivePropStatus(props, setProps);
-  const [recentProps, setRecentProps] = useState([]);
-  const [sortConfig, setSortConfig] = useState({
-    key: "game_date",
-    direction: "asc",
-  });
+export default function PlayerPropsTable({ selectedDate, onlyMine = false }) {
+  const [rows, setRows] = useState([]);
+  const [sort, setSort] = useState({ key: "game_date", dir: "asc" });
+  // const { user } = useAuth();
+
+  const day = useMemo(() => {
+    if (!selectedDate) return todayET();
+    if (typeof selectedDate === "string") return selectedDate;
+    return isValid(selectedDate)
+      ? format(selectedDate, "yyyy-MM-dd")
+      : todayET();
+  }, [selectedDate]);
 
   useEffect(() => {
-    const fetchProps = async () => {
-      const today = todayET();
-      // console.log("📆 Fetching props for:", todayET);
-
-      const { data, error } = await supabase
-        .from("player_props")
-        .select("*")
-        .eq("game_date", todayET())
-        .neq("status", "expired");
-
-      if (error) {
-        console.error("❌ Error fetching props:", error.message);
-        return;
-      }
-
-      console.log(
-        "📦 Props returned:",
-        data.map((p) => ({
-          id: p.id,
-          player: p.player_name,
-          outcome: p.outcome,
-          status: p.status,
-        }))
-      );
-
-      setProps(data);
-    };
-
-    fetchProps();
-    const subscription = supabase
+    let q = supabase
       .from("player_props")
-      .on("INSERT", (payload) => {
-        console.log("🔔 New prop inserted!", payload.new);
-        setProps((prev) => [payload.new, ...prev]);
-        setRecentProps((prev) => [...prev, payload.new.id]);
+      .select("*")
+      .eq("game_date", day)
+      .neq("status", "expired")
+      .order("created_at", { ascending: false });
 
-        setTimeout(() => {
-          setRecentProps((prev) => prev.filter((id) => id !== payload.new.id));
-        }, 5000);
-      })
+    // If you want to show only the current user’s props, uncomment this:
+    // if (onlyMine && user?.id) q = q.eq("user_id", user.id);
+
+    q.then(({ data, error }) => {
+      if (error) {
+        console.error("❌ fetch player_props:", error);
+        setRows([]);
+      } else {
+        setRows(data || []);
+      }
+    });
+
+    // Realtime (optional; v2 syntax). Requires Realtime enabled on the table.
+    const channel = supabase
+      .channel("props-table")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "player_props",
+          filter: `game_date=eq.${day}`,
+        },
+        (payload) => setRows((prev) => [payload.new, ...prev])
+      )
       .subscribe();
 
     return () => {
-      supabase.removeSubscription(subscription);
+      supabase.removeChannel(channel);
     };
-  }, []);
+  }, [day /*, onlyMine, user?.id */]);
 
-  const sortedProps = [...props].sort((a, b) => {
-    const aVal = a[sortConfig.key];
-    const bVal = b[sortConfig.key];
-    if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
-    if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
-    return 0;
-  });
+  const sorted = useMemo(() => {
+    const arr = [...rows];
+    arr.sort((a, b) => {
+      const av = a[sort.key];
+      const bv = b[sort.key];
+      if (av < bv) return sort.dir === "asc" ? -1 : 1;
+      if (av > bv) return sort.dir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return arr;
+  }, [rows, sort]);
 
-  const handleSort = (key) => {
-    setSortConfig((prev) => ({
+  const setSortKey = (key) =>
+    setSort((prev) => ({
       key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+      dir: prev.key === key && prev.dir === "asc" ? "desc" : "asc",
     }));
-  };
 
-  const getArrow = (key) =>
-    sortConfig.key === key
-      ? sortConfig.direction === "asc"
-        ? " ↑"
-        : " ↓"
-      : "";
+  const arrow = (key) =>
+    sort.key === key ? (sort.dir === "asc" ? " ↑" : " ↓") : "";
 
   return (
     <div className="bg-blue-100 p-4 rounded-xl shadow-md overflow-x-auto">
-      <h2 className="text-lg font-semibold mb-4">Today’s Player Props</h2>
+      <h2 className="text-lg font-semibold mb-4">Player Props for {day}</h2>
+
       <table className="min-w-full text-sm text-gray-800">
         <thead className="bg-gray-100">
           <tr>
             <th
+              onClick={() => setSortKey("player_name")}
               className="px-3 py-2 text-left cursor-pointer"
-              onClick={() => handleSort("player_name")}
             >
-              Player{getArrow("player_name")}
+              Player{arrow("player_name")}
             </th>
             <th
+              onClick={() => setSortKey("team")}
               className="px-3 py-2 text-left cursor-pointer"
-              onClick={() => handleSort("team")}
             >
-              Team{getArrow("team")}
+              Team{arrow("team")}
             </th>
             <th
+              onClick={() => setSortKey("prop_type")}
               className="px-3 py-2 text-left cursor-pointer"
-              onClick={() => handleSort("prop_type")}
             >
-              Prop{getArrow("prop_type")}
-            </th>
-
-            <th
-              className="px-3 py-2 text-left cursor-pointer"
-              onClick={() => handleSort("over_under")}
-            >
-              O/U{getArrow("over_under")}
+              Prop{arrow("prop_type")}
             </th>
             <th
+              onClick={() => setSortKey("over_under")}
               className="px-3 py-2 text-left cursor-pointer"
-              onClick={() => handleSort("prop_value")}
             >
-              Value{getArrow("prop_value")}
+              O/U{arrow("over_under")}
+            </th>
+            <th
+              onClick={() => setSortKey("prop_value")}
+              className="px-3 py-2 text-left cursor-pointer"
+            >
+              Value{arrow("prop_value")}
             </th>
             <th className="px-3 py-2 text-left">Status</th>
             <th
+              onClick={() => setSortKey("game_date")}
               className="px-3 py-2 text-left cursor-pointer"
-              onClick={() => handleSort("game_date")}
             >
-              Game Date{getArrow("game_date")}
+              Game Date{arrow("game_date")}
             </th>
           </tr>
         </thead>
+
         <tbody>
-          {sortedProps.map((p) => {
-            const gameStatus = p.status?.toLowerCase();
-            const liveOverride = isGameLive(gameStatus) ? "live" : null;
-
-            const statusKey = (
-              p.outcome ??
-              liveOverride ??
-              p.status ??
-              "pending"
-            ).toLowerCase();
-
-            const label =
-              statusKey.charAt(0).toUpperCase() + statusKey.slice(1);
-
+          {sorted.map((p) => {
+            const key = (p.outcome || p.status || "pending").toLowerCase();
+            const label = key[0]?.toUpperCase() + key.slice(1);
             return (
-              <tr
-                key={p.id}
-                className={`border-t transition-all duration-500 hover:bg-gray-50 ${
-                  recentProps.includes(p.id) ? "bg-blue-100" : ""
-                }`}
-              >
+              <tr key={p.id} className="border-t hover:bg-gray-50">
                 <td className="px-3 py-2">
                   {p.player_name}
                   {p.position && (
@@ -175,27 +157,30 @@ const PlayerPropsTable = () => {
                 <td className="px-3 py-2">
                   {getPropDisplayLabel(p.prop_type)}
                 </td>
-
                 <td className="px-3 py-2">{p.over_under}</td>
                 <td className="px-3 py-2">{p.prop_value}</td>
                 <td className="px-3 py-2">
                   <span
                     className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      statusColor[statusKey] || statusColor.pending
+                      statusColor[key] || statusColor.pending
                     }`}
                   >
                     {label}
                   </span>
                 </td>
-
                 <td className="px-3 py-2">{p.game_date}</td>
               </tr>
             );
           })}
+          {sorted.length === 0 && (
+            <tr>
+              <td colSpan="7" className="px-3 py-6 text-center text-gray-500">
+                No props for {day}
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
   );
-};
-
-export default PlayerPropsTable;
+}

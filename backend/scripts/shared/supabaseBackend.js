@@ -39,26 +39,36 @@ export async function fetchResolvedProps() {
 }
 
 export async function getPendingProps() {
+  // keep ET for the DATE gate (same as before)
+  const today = todayET(); // e.g., "2025-08-12"
+
+  // 🔑 Use a full ISO timestamp for the TIME gate. Works with timestamptz.
+  const nowIso = new Date().toISOString(); // e.g., "2025-08-12T21:03:27.123Z"
+
   const { data, error } = await supabase
     .from("player_props")
     .select("*")
     .eq("status", "pending")
     .or(
-      `game_date.lt.${todayET()},and(game_date.eq.${todayET()},game_time.lte.${currentTimeET()}),and(game_date.eq.${todayET()},game_time.is.null)`
+      // game_date < today
+      // OR (game_date = today AND game_time <= now)
+      // OR (game_date = today AND game_time IS NULL)
+      `game_date.lt.${today},and(game_date.eq.${today},game_time.lte.${nowIso}),and(game_date.eq.${today},game_time.is.null)`
     )
     .order("game_date", { ascending: false })
     .order("game_time", { ascending: false });
 
   if (error) {
-    console.error("❌ Failed to fetch pending props:", error.message);
+    console.error("❌ Failed to fetch pending props:", {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      today,
+      nowIso,
+    });
     return [];
   }
-
-  return data.filter(
-    (prop) =>
-      prop.game_date < todayET() ||
-      (prop.game_date === todayET() && prop.game_time <= currentTimeET())
-  );
+  return data ?? [];
 }
 
 export async function expireOldPendingProps() {

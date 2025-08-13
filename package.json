@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@craco/craco": "^7.1.0",
-    "@supabase/supabase-js": "^1.35.6",
+    "@supabase/supabase-js": "^2.55.0",
     "bree": "^9.2.4",
     "browserify-zlib": "^0.2.0",
     "buffer": "^6.0.3",
