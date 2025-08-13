@@ -87,16 +87,15 @@ MODEL_TRAINING_PROPS_FIELDS = [
 
 # --- in fetch_missing_fields(...) ---
 def fetch_missing_fields(player_id, game_id, team):
-    response = (
-        supabase
-        .table("model_training_props")  # <= v2 style
-        .select(",".join(["player_id", "game_id", "team"] + MODEL_TRAINING_PROPS_FIELDS))
-        .eq("player_id", player_id)
-        .eq("game_id", game_id)
-        .eq("team", team)
-        .limit(1)
+    # pull the whole row; we'll pick what we need upstream
+    response = supabase.from_("model_training_props") \
+        .select("*") \
+        .eq("player_id", player_id) \
+        .eq("game_id", game_id) \
+        .eq("team", team) \
+        .limit(1) \
         .execute()
-    )
+
     if response.data and isinstance(response.data, list) and response.data:
         return response.data[0]
     return {}
@@ -128,77 +127,55 @@ def build_feature_vector(data, debug: bool = False):
     # Use a dict row for easy scalar access & mutation
     row = df.iloc[0].to_dict()
 
-    # ── pull scalars
+    # ── scalars
     player_id = _as_scalar(row.get("player_id"))
     game_id   = _as_scalar(row.get("game_id"))
     team      = _as_scalar(row.get("team"))
-    
-    # coerce types for DB queries
+
+    # ── coerce ids/types for DB lookups
     try:
-        player_id = int(player_id) if not _is_missing(player_id) else None
+        player_id = int(player_id) if player_id not in (None, "", np.nan) else None
     except Exception:
         pass
     try:
-        game_id = int(game_id) if not _is_missing(game_id) else None
+        game_id = int(game_id) if game_id not in (None, "", np.nan) else None
     except Exception:
         pass
-    team = str(team) if not _is_missing(team) else None
+    team = str(team) if team not in (None, "", np.nan) else None
 
-    # basic presence
-    missing_basic = []
-    if _is_missing(player_id): missing_basic.append("player_id")
-    if _is_missing(game_id):   missing_basic.append("game_id")
-    if _is_missing(team):      missing_basic.append("team")
-
-    # extended required fields
-    try:
-        req_fields = list(MODEL_TRAINING_PROPS_FIELDS)
-    except NameError:
-        req_fields = ["player_id", "game_id", "team"]
-
-    missing_keys = [k for k in req_fields if _is_missing(row.get(k))]
-    if debug:
-        print(f"🔑 Missing keys: {missing_keys}")
-
-    # ── fill from DB if anything is missing
-    if missing_basic or missing_keys:
+    # ── pull DB row and MERGE it wholesale (not just 'missing_keys')
+    fetched = {}
+    if player_id is not None and game_id is not None and team is not None:
         try:
-            fetched = fetch_missing_fields(player_id, game_id, team)  # your existing helper
+            fetched = fetch_missing_fields(player_id, game_id, team) or {}
         except Exception as e:
             if debug: print(f"⚠️ fetch_missing_fields failed: {e}")
             fetched = {}
 
-        if debug:
-            print(f"📦 Fetched fields: {fetched}")
+    # Normalize fetched values to scalars and merge over the input row
+    if fetched:
+        fetched = {k: _as_scalar(v) for k, v in fetched.items()}
+        row.update(fetched)
 
-        # update core ids/team if the DB returns them
-        if fetched:
-            player_id = _as_scalar(fetched.get("player_id", player_id))
-            game_id   = _as_scalar(fetched.get("game_id", game_id))
-            team      = _as_scalar(fetched.get("team", team))
-            # write back to row
-            row["player_id"] = player_id
-            row["game_id"]   = game_id
-            row["team"]      = team
+    # Safety: ensure ids/team present
+    if any(v in (None, "", np.nan) for v in (row.get("player_id"), row.get("game_id"), row.get("team"))):
+        if debug: print("🚫 Required ids/team missing after fetch")
+        return pd.DataFrame(), None
 
-            # fill other missing fields the model expects
-            for key in missing_keys:
-                if key in fetched and fetched[key] is not None:
-                    row[key] = _as_scalar(fetched[key])
+    # Rebuild single-row DataFrame for transformation
+    one = pd.DataFrame([row])
 
-        # final safety: ensure ids/team are present
-        if any(_is_missing(v) for v in (player_id, game_id, team)):
-            if debug: print("🚫 Required ids/team still missing after fetch")
-            return pd.DataFrame(), None
-        # Rebuild single-row DataFrame for transformation
-        one = pd.DataFrame([row])
-
-    # ── delegate to your transformer
-    # it might be defined as transform_features(df) or transform_features(df, debug=..)
+    # ── delegate to transformer
     try:
         from .transform_features import transform_features  # package import
     except Exception:
-        from transform_features import transform_features  # direct import fallback
+        from transform_features import transform_features   # local fallback
+
+    def _is_all_zero(df):
+        try:
+            return bool((df.fillna(0) == 0).to_numpy().all())
+        except Exception:
+            return False
 
     try:
         out = transform_features(one, debug=debug)
@@ -207,31 +184,18 @@ def build_feature_vector(data, debug: bool = False):
 
     # Normalize output to (X, y_or_None)
     if isinstance(out, tuple) and len(out) >= 1:
-        X = out[0]; y = out[1] if len(out) > 1 else None
+        X = out[0]
+        y = out[1] if len(out) > 1 else None
     else:
         X, y = out, None
 
-    # Coerce X to a 1-row DataFrame (handles dict/Series/ndarray)
-    if isinstance(X, pd.DataFrame):
-        pass
-    elif isinstance(X, pd.Series):
-        X = X.to_frame().T
-    elif isinstance(X, dict):
-        X = pd.DataFrame([X])
-    elif isinstance(X, np.ndarray):
-        X = pd.DataFrame([X]) if X.ndim == 1 else pd.DataFrame(X)
-    else:
-        X = pd.DataFrame([X])
-
-    # numeric safety + NaNs/inf -> 0
-    for c in X.columns:
-        if X[c].dtype == object:
-            try: X[c] = pd.to_numeric(X[c], errors="coerce")
-            except Exception: pass
-    X = X.replace([np.inf, -np.inf], 0).fillna(0)
-
-    if getattr(X, "empty", True):
-        return pd.DataFrame(), y
+    # ⛑️ Fallback: if transformer returns empty or all zeros, use the raw row;
+    # the caller will align to the model's schema and coerce numerics.
+    if not isinstance(X, pd.DataFrame):
+        X = pd.DataFrame(X) if X is not None else pd.DataFrame()
+    if X.empty or _is_all_zero(X):
+        if debug: print("🛟 Fallback to raw row features (pre-alignment)")
+        X = one.copy()
 
     return X, y
 
