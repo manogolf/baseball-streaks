@@ -240,6 +240,42 @@ def load_models(model_prop_type: str):
     _MODEL_CACHE[model_prop_type] = (rf, lr)
     return rf, lr
 
+def _actual_label_from_row(row: dict):
+    """
+    Compute the true 'over'/'under'/'push' from resolved data.
+    Prefers corrected_result, falls back to result; compares to line/prop_value.
+    Returns 'over'|'under'|'push' or None if unavailable.
+    """
+    # choose result
+    result = row.get("corrected_result")
+    if result is None:
+        result = row.get("result")
+    # choose line
+    line = row.get("line")
+    if line is None:
+        line = row.get("prop_value") or row.get("line_value")
+
+    try:
+        r = None if result is None else float(result)
+        l = None if line   is None else float(line)
+    except Exception:
+        return None
+
+    if r is None or l is None:
+        return None
+    if r > l:  return "over"
+    if r < l:  return "under"
+    return "push"
+
+_DEBUG_NNZ = defaultdict(int)
+
+def _nnz_cols(df: pd.DataFrame) -> int:
+    try:
+        return int((df != 0).any(axis=0).sum())
+    except Exception:
+        return 0
+
+
 def _expected_columns_pair_from_meta(prop_type: str) -> tuple[list[str], list[str]]:
     """
     Return (rf_cols, lr_cols) from feature_metadata.json.
@@ -368,6 +404,13 @@ def predict(model_prop_type: str, row: dict) -> tuple[str, float]:
     X_rf = _coerce_numeric_fill(X.reindex(columns=rf_cols, fill_value=0))
     X_lr = _coerce_numeric_fill(X.reindex(columns=lr_cols, fill_value=0))
 
+    # one-time quick visibility on sparsity per prop type
+    if _DEBUG_NNZ[model_prop_type] < 3:
+        nnz_rf = _nnz_cols(X_rf); nnz_lr = _nnz_cols(X_lr)
+        print(f"   ↳ nonzero cols — RF:{nnz_rf}/{X_rf.shape[1]}  LR:{nnz_lr}/{X_lr.shape[1]}")
+        _DEBUG_NNZ[model_prop_type] += 1
+
+
     if X.empty:
         raise ValueError(f"No usable features for prediction: {row.get('player_name')}")
 
@@ -481,8 +524,9 @@ def process_batch(db_prop_type: str, model_prop_type: str, batch_size: int = BAT
                 SUMMARY[db_prop_type]["skipped"] += 1
                 continue
 
-            outcome = row_dict.get("outcome")
-            was_correct = (prediction == outcome) if isinstance(outcome, str) and outcome else None
+            actual = _actual_label_from_row(row_dict)
+            # Only score correctness for over/under (skip pushes or missing)
+            was_correct = (prediction == actual) if actual in ("over", "under") else None
             timestamp = datetime.now(timezone.utc).isoformat()
 
             supabase.table("model_training_props").update(
@@ -532,6 +576,8 @@ def fetch_pending_prop_types() -> list[str]:
 # ──────────────────────────────────────────────────────────────────────────────
 # Entrypoint
 # ──────────────────────────────────────────────────────────────────────────────
+_enable_pandas_truthiness_compat()
+
 def main():
     started_at = perf_counter()
 
