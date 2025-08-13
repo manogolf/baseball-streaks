@@ -7,6 +7,20 @@ import yaml
 from pathlib import Path
 from backend.scripts.modeling.transform_features import transform_features
 
+
+def _is_missing(v) -> bool:
+    # catches None, "", whitespace-only, and NaN of any flavor
+    if v is None:
+        return True
+    if isinstance(v, str) and v.strip() == "":
+        return True
+    try:
+        import pandas as _pd
+        return bool(_pd.isna(v))
+    except Exception:
+        return False
+
+
 def _as_scalar(v):
     """Return a plain Python scalar from Series/DataFrame/NumPy/list-of-1."""
     if isinstance(v, pd.Series):
@@ -42,17 +56,20 @@ MODEL_TRAINING_PROPS_FIELDS = [
     "prop_source"
 ]
 
+# --- in fetch_missing_fields(...) ---
 def fetch_missing_fields(player_id, game_id, team):
-    response = supabase.from_("model_training_props") \
-        .select(",".join(["player_id", "game_id", "team"] + MODEL_TRAINING_PROPS_FIELDS)) \
-        .eq("player_id", player_id) \
-        .eq("game_id", game_id) \
-        .eq("team", team) \
-        .limit(1) \
+    response = (
+        supabase
+        .table("model_training_props")  # <= v2 style
+        .select(",".join(["player_id", "game_id", "team"] + MODEL_TRAINING_PROPS_FIELDS))
+        .eq("player_id", player_id)
+        .eq("game_id", game_id)
+        .eq("team", team)
+        .limit(1)
         .execute()
-
+    )
     if response.data and isinstance(response.data, list) and response.data:
-        return response.data[0]  # 👈 Return the single row directly
+        return response.data[0]
     return {}
 
 # ───── Load Feature Spec from YAML ─────
@@ -60,111 +77,113 @@ def load_feature_spec():
     with open("model_features.yaml", "r") as f:
         return yaml.safe_load(f)
 
-def build_feature_vector(row, debug=False):
-    # Pull scalars out of the (one-row) DataFrame
-    player_id = _as_scalar(df.get('player_id'))
-    game_id   = _as_scalar(df.get('game_id'))
-    team      = _as_scalar(df.get('team'))
+def build_feature_vector(data, debug: bool = False):
+    """
+    Accepts a dict or DataFrame (one row), ensures scalars for ids/team,
+    fetches any missing fields, then delegates to transform_features(...).
 
-    # Explicit validity check (no Series truthiness)
-    missing = []
-    if player_id in (None, "", np.nan):
-        missing.append("player_id")
-    if game_id in (None, "", np.nan):
-        missing.append("game_id")
-    if team in (None, "", np.nan):
-        missing.append("team")
-        raise ValueError("Missing required fields to build feature vector")
-
-    # ───── Fill missing fields by querying model_training_props ─────
-    missing_keys = [k for k in MODEL_TRAINING_PROPS_FIELDS if k not in row or row[k] is None]
-    print(f"🔑 Missing keys: {missing_keys}")
-
-    fetched = fetch_missing_fields(player_id, game_id, team)
-    print(f"📦 Fetched fields: {fetched}")
-
-    try:
-        player_id = int(player_id) if player_id not in (None, "", np.nan) else None
-    except Exception:
-        pass
-    try:
-        game_id = int(game_id) if game_id not in (None, "", np.nan) else None
-    except Exception:
-        pass
-    if team not in (None, "", np.nan):
-        team = str(team)
+    Returns: (X, y_or_None)
+    """
+    # ── normalize input to a one-row DataFrame
+    if isinstance(data, dict):
+        df = pd.DataFrame([data])
+    elif isinstance(data, pd.DataFrame):
+        df = data.copy()
     else:
-        team = None
+        df = pd.DataFrame(data)
 
-    for key in missing_keys:
-        if key in fetched and fetched[key] is not None:
-            row[key] = fetched[key]
+    if df.empty:
+        if debug: print("⚠️ build_feature_vector: empty input")
+        return pd.DataFrame(), None
 
-    print(f"✅ Row after merge: { {k: row.get(k) for k in MODEL_TRAINING_PROPS_FIELDS} }")
+    # Use a dict row for easy scalar access & mutation
+    row = df.iloc[0].to_dict()
 
+    # ── pull scalars
+    player_id = _as_scalar(row.get("player_id"))
+    game_id   = _as_scalar(row.get("game_id"))
+    team      = _as_scalar(row.get("team"))
+    
+    # coerce types for DB queries
+    try:
+        player_id = int(player_id) if not _is_missing(player_id) else None
+    except Exception:
+        pass
+    try:
+        game_id = int(game_id) if not _is_missing(game_id) else None
+    except Exception:
+        pass
+    team = str(team) if not _is_missing(team) else None
 
-    # Load YAML spec for strict feature auditing
-    feature_spec = load_feature_spec().get("features", {})
+    # basic presence
+    missing_basic = []
+    if _is_missing(player_id): missing_basic.append("player_id")
+    if _is_missing(game_id):   missing_basic.append("game_id")
+    if _is_missing(team):      missing_basic.append("team")
 
-    # Start with the row itself
-    feature_data = dict(row)
+    # extended required fields
+    try:
+        req_fields = list(MODEL_TRAINING_PROPS_FIELDS)
+    except NameError:
+        req_fields = ["player_id", "game_id", "team"]
 
-    # ───── Join BvP Stats ─────
-    bvp_resp = (
-        supabase.table("bvp_stats")
-        .select("*")
-        .eq("batter_id", player_id)
-        .eq("game_id", game_id)
-        .execute()
-    )
-    bvp = bvp_resp.data[0] if bvp_resp.data else {}
+    missing_keys = [k for k in req_fields if _is_missing(row.get(k))]
+    if debug:
+        print(f"🔑 Missing keys: {missing_keys}")
 
-    for field in feature_spec:
-        if field.startswith("bvp_"):
-            feature_data[field] = bvp.get(field, None)
+    # ── fill from DB if anything is missing
+    if missing_basic or missing_keys:
+        try:
+            fetched = fetch_missing_fields(player_id, game_id, team)  # your existing helper
+        except Exception as e:
+            if debug: print(f"⚠️ fetch_missing_fields failed: {e}")
+            fetched = {}
 
-    # ───── Join Player Stats ─────
-    stats_resp = (
-        supabase.table("player_stats")
-        .select("*")
-        .eq("player_id", player_id)
-        .eq("game_id", game_id)
-        .execute()
-    )
-    stats = stats_resp.data[0] if stats_resp.data else {}
+        if debug:
+            print(f"📦 Fetched fields: {fetched}")
 
-    # ───── Join Player Derived Stats ─────
-    derived_resp = (
-        supabase.table("player_derived_stats")
-        .select("*")
-        .eq("player_id", player_id)
-        .eq("game_id", game_id)
-        .execute()
-    )
-    derived = derived_resp.data[0] if derived_resp.data else {}
+        # update core ids/team if the DB returns them
+        if fetched:
+            player_id = _as_scalar(fetched.get("player_id", player_id))
+            game_id   = _as_scalar(fetched.get("game_id", game_id))
+            team      = _as_scalar(fetched.get("team", team))
+            # write back to row
+            row["player_id"] = player_id
+            row["game_id"]   = game_id
+            row["team"]      = team
 
-    for field in feature_spec:
-        if field.startswith("d7_") or field.startswith("d15_") or field.startswith("d30_"):
-            feature_data[field] = derived.get(field, None)
+            # fill other missing fields the model expects
+            for key in missing_keys:
+                if key in fetched and fetched[key] is not None:
+                    row[key] = _as_scalar(fetched[key])
 
-    # ───── One-hot encode streak_type ─────
-    streak_type = feature_data.pop("streak_type", None)
-    for val in ["hot", "cold", "neutral"]:
-        feature_data[f"streak_type_{val}"] = int(streak_type == val)
+        # final safety: ensure ids/team are present
+        if any(_is_missing(v) for v in (player_id, game_id, team)):
+            if debug: print("🚫 Required ids/team still missing after fetch")
+            return pd.DataFrame(), None
+        # Rebuild single-row DataFrame for transformation
+        one = pd.DataFrame([row])
 
-    # ───── Fill in any remaining missing spec fields ─────
-    for field in feature_spec:
-        if field not in feature_data:
-            feature_data[field] = None
+    # ── delegate to your transformer
+    # it might be defined as transform_features(df) or transform_features(df, debug=..)
+    try:
+        from .transform_features import transform_features  # package import
+    except Exception:
+        from transform_features import transform_features  # direct import fallback
 
-    # ───── Diagnostic Logging (Optional) ─────
-    missing_fields = [f for f in feature_spec if feature_data.get(f) is None]
-    if missing_fields:
-       print(f"⚠️ Missing fields for player {player_id}, game {game_id}: {missing_fields}")
+    try:
+        out = transform_features(one, debug=debug)
+    except TypeError:
+        out = transform_features(one)
 
-    # ───── Final feature transformation and return ─────
-    vector = transform_features(feature_data)
-    return vector
+    # Normalize output to (X, y_or_None)
+    if isinstance(out, tuple) and len(out) >= 1:
+        X = out[0]
+        y = out[1] if len(out) > 1 else None
+    else:
+        X, y = out, None
+
+    return X, y
 
 if __name__ == "__main__":
     pass  # Safe no-op to satisfy the interpreter
