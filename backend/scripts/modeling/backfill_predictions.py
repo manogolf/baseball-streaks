@@ -30,6 +30,41 @@ from dotenv import load_dotenv
 import traceback
 from supabase import create_client
 
+
+_FEATURE_META = None
+
+def _load_feature_meta() -> dict:
+    """Load feature_metadata.json exactly once; hard-fail if missing/invalid."""
+    global _FEATURE_META
+    if _FEATURE_META is not None:
+        return _FEATURE_META
+    path = os.path.join(MODEL_DIR, "feature_metadata.json")
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"feature_metadata.json not found at {path}")
+    with open(path, "r") as f:
+        meta = json.load(f)
+    if not isinstance(meta, dict) or not meta:
+        raise ValueError("feature_metadata.json is empty or invalid")
+    _FEATURE_META = meta
+    return _FEATURE_META
+
+def _expected_columns_from_meta(prop_type: str) -> list[str]:
+    """
+    Return the exact training column list for this prop type from the JSON.
+    JSON may be:
+      { "rbis": [...], "hits": [...], ... }
+    or { "rbis": {"columns":[...]}, ... }
+    or { "columns":[...] }  (global fallback)
+    """
+    meta = _load_feature_meta()
+    v = meta.get(prop_type, meta.get("columns"))
+    if isinstance(v, dict):
+        v = v.get("columns")
+    if not v or not isinstance(v, list):
+        raise ValueError(f"No columns listed in feature_metadata.json for '{prop_type}'")
+    return list(v)
+
+
 def _enable_pandas_truthiness_compat():
     """
     Let legacy feature code use `if series:` / `if df:` safely.
@@ -233,15 +268,17 @@ def _load_build_feature_vector():
 # ──────────────────────────────────────────────────────────────────────────────
 # Prediction (blend RF + LR) — disk-only models
 # ──────────────────────────────────────────────────────────────────────────────
+_PRINTED_ALIGN = set()
+
 def predict(model_prop_type: str, row: dict) -> tuple[str, float]:
-    _enable_pandas_truthiness_compat()  # if you kept this shim
     build_feature_vector = _load_build_feature_vector()
     rf_model, lr_model = load_models(model_prop_type)
 
+    # Build features
     row = to_plain_scalars(row)
     X, _ = build_feature_vector(pd.DataFrame([row]))
 
-    # 🔧 extra safety (handles dict/Series/ndarray)
+    # Coerce X -> DataFrame (handles dict/Series/ndarray)
     if isinstance(X, pd.DataFrame):
         pass
     elif isinstance(X, pd.Series):
@@ -253,9 +290,35 @@ def predict(model_prop_type: str, row: dict) -> tuple[str, float]:
     else:
         X = pd.DataFrame([X])
 
+    # 🔒 Strict alignment to feature_metadata.json (no model/YAML fallback)
+    expected = _expected_columns_from_meta(model_prop_type)
+
+    # (Optional one-time log for visibility)
+    if model_prop_type not in _PRINTED_ALIGN:
+        extra   = [c for c in X.columns if c not in expected]
+        missing = [c for c in expected   if c not in X.columns]
+        if extra or missing:
+            print(f"🧩 Aligning features for {model_prop_type} — "
+                  f"missing:{len(missing)} extra:{len(extra)} "
+                  f"(X:{len(X.columns)} → {len(expected)})")
+        _PRINTED_ALIGN.add(model_prop_type)
+
+    # Drop extras, add missing (0), and order exactly like training
+    X = X.reindex(columns=expected, fill_value=0)
+
+    # numeric safety
+    for c in X.columns:
+        if X[c].dtype == object:
+            try:
+                X[c] = pd.to_numeric(X[c], errors="coerce")
+            except Exception:
+                pass
+    X = X.replace([np.inf, -np.inf], 0).fillna(0)
+
     if X.empty:
         raise ValueError(f"No usable features for prediction: {row.get('player_name')}")
 
+    # Score
     rf_prob = float(rf_model.predict_proba(X)[0][1])
     lr_prob = float(lr_model.predict_proba(X)[0][1])
     avg_prob = (rf_prob + lr_prob) / 2.0

@@ -2,23 +2,52 @@ import pandas as pd
 import numpy as np
 from supabase import create_client
 import os
+import json
 from dotenv import load_dotenv
 import yaml
 from pathlib import Path
 from backend.scripts.modeling.transform_features import transform_features
 
 
+FEATURE_META_PATH = os.getenv("FEATURE_META_PATH", "/var/data/models/feature_metadata.json")
+
 def _is_missing(v) -> bool:
-    # catches None, "", whitespace-only, and NaN of any flavor
-    if v is None:
-        return True
-    if isinstance(v, str) and v.strip() == "":
-        return True
+    if v is None: return True
+    if isinstance(v, str) and v.strip() == "": return True
     try:
-        import pandas as _pd
-        return bool(_pd.isna(v))
+        return bool(pd.isna(v))
     except Exception:
         return False
+
+def expected_feature_columns(prop_type: str | None):
+    """Return canonical feature list (YAML first, then JSON), or None."""
+    # Try YAML (your existing spec)
+    try:
+        spec = load_feature_spec()
+        if isinstance(spec, dict):
+            if prop_type and prop_type in spec:
+                v = spec[prop_type]
+                if isinstance(v, dict) and "columns" in v and isinstance(v["columns"], list):
+                    return list(v["columns"])
+            if "columns" in spec and isinstance(spec["columns"], list):
+                return list(spec["columns"])
+    except Exception:
+        pass
+    # Try JSON metadata bundled with models
+    try:
+        if os.path.exists(FEATURE_META_PATH):
+            with open(FEATURE_META_PATH, "r") as f:
+                meta = json.load(f)
+            if isinstance(meta, dict):
+                if prop_type and prop_type in meta:
+                    v = meta[prop_type]
+                    if isinstance(v, dict) and "columns" in v: return list(v["columns"])
+                    if isinstance(v, list): return list(v)
+                if "columns" in meta and isinstance(meta["columns"], list):
+                    return list(meta["columns"])
+    except Exception:
+        pass
+    return None
 
 
 def _as_scalar(v):
@@ -178,12 +207,11 @@ def build_feature_vector(data, debug: bool = False):
 
     # Normalize output to (X, y_or_None)
     if isinstance(out, tuple) and len(out) >= 1:
-        X = out[0]
-        y = out[1] if len(out) > 1 else None
+        X = out[0]; y = out[1] if len(out) > 1 else None
     else:
         X, y = out, None
 
-    # 🔧 Coerce X to a 1-row DataFrame no matter what transform_features returned
+    # Coerce X to a 1-row DataFrame (handles dict/Series/ndarray)
     if isinstance(X, pd.DataFrame):
         pass
     elif isinstance(X, pd.Series):
@@ -193,11 +221,16 @@ def build_feature_vector(data, debug: bool = False):
     elif isinstance(X, np.ndarray):
         X = pd.DataFrame([X]) if X.ndim == 1 else pd.DataFrame(X)
     else:
-        # last resort: wrap single object
         X = pd.DataFrame([X])
 
-    # guard
-    if X is None or getattr(X, "empty", True):
+    # numeric safety + NaNs/inf -> 0
+    for c in X.columns:
+        if X[c].dtype == object:
+            try: X[c] = pd.to_numeric(X[c], errors="coerce")
+            except Exception: pass
+    X = X.replace([np.inf, -np.inf], 0).fillna(0)
+
+    if getattr(X, "empty", True):
         return pd.DataFrame(), y
 
     return X, y
