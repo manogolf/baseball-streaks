@@ -70,6 +70,7 @@ def _scalarize(x):
         return _scalarize(x[0])
     return x
 
+
 def _normalize_row(row) -> dict:
     if hasattr(row, "to_dict"):
         row = row.to_dict()
@@ -89,29 +90,58 @@ def _normalize_row(row) -> dict:
             out[k] = _scalarize(out[k])
     return out
 
+
+def to_plain_scalars(d: dict) -> dict:
+    """
+    Force-convert any pandas/NumPy/list scalars to plain Python scalars.
+    Guaranteed: no pd.Series/pd.DataFrame/np.generic/list-of-1 remain.
+    """
+    s = pd.DataFrame([d]).iloc[0]  # coerce then unwrap
+    out = {}
+    for k, v in s.items():
+        if isinstance(v, pd.Series):
+            out[k] = v.iloc[0] if not v.empty else None
+        elif isinstance(v, pd.DataFrame):
+            out[k] = v.iloc[0, 0] if not v.empty else None
+        elif isinstance(v, (list, tuple)) and len(v) == 1:
+            out[k] = v[0]
+        elif isinstance(v, np.generic):
+            out[k] = v.item()
+        else:
+            out[k] = v
+    return out
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Model I/O (disk-only) + cache
 # ──────────────────────────────────────────────────────────────────────────────
 def model_type_for(db_type: str) -> str:
     return PROP_TYPE_ALIASES.get(db_type, db_type)
 
+
 def _model_filename(model_prop_type: str, kind: str) -> str:
     return f"{model_prop_type}_{'random_forest' if kind == 'rf' else 'logistic_regression'}.pkl"
+
 
 def _model_path(model_prop_type: str, kind: str) -> str:
     folder = os.path.join(MODEL_DIR, model_prop_type)
     Path(folder).mkdir(parents=True, exist_ok=True)
     return os.path.join(folder, _model_filename(model_prop_type, kind))
 
+
 def models_available(model_prop_type: str) -> tuple[bool, list[str]]:
     missing = []
     rf_path = _model_path(model_prop_type, "rf")
     lr_path = _model_path(model_prop_type, "lr")
-    if not os.path.exists(rf_path): missing.append(rf_path)
-    if not os.path.exists(lr_path): missing.append(lr_path)
+    if not os.path.exists(rf_path):
+        missing.append(rf_path)
+    if not os.path.exists(lr_path):
+        missing.append(lr_path)
     return (len(missing) == 0, missing)
 
+
 _MODEL_CACHE: dict[str, tuple[object, object]] = {}
+
 
 def load_models(model_prop_type: str):
     if model_prop_type in _MODEL_CACHE:
@@ -123,6 +153,7 @@ def load_models(model_prop_type: str):
     lr = joblib.load(_model_path(model_prop_type, "lr"))
     _MODEL_CACHE[model_prop_type] = (rf, lr)
     return rf, lr
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Robust, lazy import of build_feature_vector
@@ -167,30 +198,42 @@ def _load_build_feature_vector():
         "local imports inside it (e.g., transform_features) are resolvable."
     )
 
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Prediction (blend RF + LR) — disk-only models
 # ──────────────────────────────────────────────────────────────────────────────
 def predict(model_prop_type: str, row: dict) -> tuple[str, float]:
-    # Lazy-load here so the script never dies before printing diagnostics
     build_feature_vector = _load_build_feature_vector()
-
     rf_model, lr_model = load_models(model_prop_type)
+
+    row = to_plain_scalars(row)  # ensure pure scalars
     X, _ = build_feature_vector(pd.DataFrame([row]))
     if X.empty:
         raise ValueError(f"No usable features for prediction: {row.get('player_name')}")
+
     rf_prob = float(rf_model.predict_proba(X)[0][1])
     lr_prob = float(lr_model.predict_proba(X)[0][1])
     avg_prob = (rf_prob + lr_prob) / 2.0
     pred = "over" if avg_prob >= 0.5 else "under"
     return pred, avg_prob
 
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Summary tracking & printout
 # ──────────────────────────────────────────────────────────────────────────────
-SUMMARY = defaultdict(lambda: {
-    "batches": 0, "fetched": 0, "attempted": 0, "updated": 0,
-    "skipped": 0, "no_features": 0, "model_errors": 0, "errors": 0,
-})
+SUMMARY = defaultdict(
+    lambda: {
+        "batches": 0,
+        "fetched": 0,
+        "attempted": 0,
+        "updated": 0,
+        "skipped": 0,
+        "no_features": 0,
+        "model_errors": 0,
+        "errors": 0,
+    }
+)
+
 
 def print_summary(summary: dict, started_at: float) -> None:
     elapsed = perf_counter() - started_at
@@ -201,14 +244,32 @@ def print_summary(summary: dict, started_at: float) -> None:
     hdr = f"{'prop_type':20} {'batches':7} {'fetched':7} {'attempt':8} {'updated':8} {'skipped':8} {'no_feat':7} {'model_err':9} {'errors':7}"
     print(hdr)
     print("-" * 72)
-    totals = {k: 0 for k in ["batches","fetched","attempted","updated","skipped","no_features","model_errors","errors"]}
+    totals = {
+        k: 0
+        for k in [
+            "batches",
+            "fetched",
+            "attempted",
+            "updated",
+            "skipped",
+            "no_features",
+            "model_errors",
+            "errors",
+        ]
+    }
     for ptype in sorted(summary.keys()):
         m = summary[ptype]
-        print(f"{ptype:20} {m['batches']:7d} {m['fetched']:7d} {m['attempted']:8d} {m['updated']:8d} {m['skipped']:8d} {m['no_features']:7d} {m['model_errors']:9d} {m['errors']:7d}")
-        for k in totals: totals[k] += m[k]
+        print(
+            f"{ptype:20} {m['batches']:7d} {m['fetched']:7d} {m['attempted']:8d} {m['updated']:8d} {m['skipped']:8d} {m['no_features']:7d} {m['model_errors']:9d} {m['errors']:7d}"
+        )
+        for k in totals:
+            totals[k] += m[k]
     print("-" * 72)
-    print(f"{'TOTAL':20} {totals['batches']:7d} {totals['fetched']:7d} {totals['attempted']:8d} {totals['updated']:8d} {totals['skipped']:8d} {totals['no_features']:7d} {totals['model_errors']:9d} {totals['errors']:7d}")
+    print(
+        f"{'TOTAL':20} {totals['batches']:7d} {totals['fetched']:7d} {totals['attempted']:8d} {totals['updated']:8d} {totals['skipped']:8d} {totals['no_features']:7d} {totals['model_errors']:9d} {totals['errors']:7d}"
+    )
     print("=" * 72 + "\n")
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Batch processing
@@ -237,9 +298,11 @@ def process_batch(db_prop_type: str, model_prop_type: str, batch_size: int = BAT
     for row in rows:
         SUMMARY[db_prop_type]["attempted"] += 1
         try:
-            row_dict = _normalize_row(row)
+            row_dict = to_plain_scalars(_normalize_row(row))
 
-            pid = row_dict.get('player_id'); gid = row_dict.get('game_id'); team = row_dict.get('team')
+            pid = str(row_dict.get("player_id"))
+            gid = str(row_dict.get("game_id"))
+            team = str(row_dict.get("team"))
             print(f"🔍 Fetching missing fields for player_id={pid}, game_id={gid}, team={team}")
 
             prediction, prob = predict(model_prop_type, row_dict)
@@ -251,12 +314,14 @@ def process_batch(db_prop_type: str, model_prop_type: str, batch_size: int = BAT
             was_correct = (prediction == outcome) if isinstance(outcome, str) and outcome else None
             timestamp = datetime.now(timezone.utc).isoformat()
 
-            supabase.table("model_training_props").update({
-                "predicted_outcome": prediction,
-                "confidence_score": float(prob),
-                "was_correct": was_correct,
-                "prediction_timestamp": timestamp
-            }).eq("id", row_dict["id"]).execute()
+            supabase.table("model_training_props").update(
+                {
+                    "predicted_outcome": prediction,
+                    "confidence_score": float(prob),
+                    "was_correct": was_correct,
+                    "prediction_timestamp": timestamp,
+                }
+            ).eq("id", row_dict["id"]).execute()
 
             print(f"✅ {row_dict.get('player_name')} → {prediction} ({prob:.3f}) | Correct? {was_correct}")
             updates += 1
@@ -266,7 +331,9 @@ def process_batch(db_prop_type: str, model_prop_type: str, batch_size: int = BAT
             msg = str(e).lower()
             if "no usable features" in msg:
                 SUMMARY[db_prop_type]["no_features"] += 1
-            elif "model" in msg and ("missing" in msg or "no such file" in msg or "file not found" in msg or "invalid load key" in msg):
+            elif "model" in msg and (
+                "missing" in msg or "no such file" in msg or "file not found" in msg or "invalid load key" in msg
+            ):
                 SUMMARY[db_prop_type]["model_errors"] += 1
             else:
                 SUMMARY[db_prop_type]["errors"] += 1
@@ -274,18 +341,20 @@ def process_batch(db_prop_type: str, model_prop_type: str, batch_size: int = BAT
 
     return updates
 
+
 def fetch_pending_prop_types() -> list[str]:
     resp = (
         supabase.table("model_training_props")
-        .select("prop_type")
+        .select("prop_type")  # Supabase v2 client: no distinct= here
         .eq("prop_source", "mlb_api")
-        .eq("status", "resolved")           # finalized games only
-        .is_("predicted_outcome", None)     # needs backfill
+        .eq("status", "resolved")  # finalized games only
+        .is_("predicted_outcome", None)  # needs backfill
         .limit(2000)
         .execute()
     )
     rows = resp.data or []
     return sorted({r.get("prop_type") for r in rows if r.get("prop_type")})
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Entrypoint
@@ -293,13 +362,9 @@ def fetch_pending_prop_types() -> list[str]:
 def main():
     started_at = perf_counter()
 
-    # Print an early banner + env so you can see it even if later imports fail
+    # Early banner + env
     print("📆 Starting batch prediction loop")
-    print(json.dumps({
-        "model_dir": MODEL_DIR,
-        "batch_size": BATCH_SIZE,
-        "prop_types_env": ENV_PROP_TYPES,
-    }, indent=2))
+    print(json.dumps({"model_dir": MODEL_DIR, "batch_size": BATCH_SIZE, "prop_types_env": ENV_PROP_TYPES}, indent=2))
 
     db_prop_types = ENV_PROP_TYPES or fetch_pending_prop_types()
     if not db_prop_types:
@@ -311,8 +376,10 @@ def main():
     for db_pt in db_prop_types:
         mt = model_type_for(db_pt)
         ok, missing = models_available(mt)
-        if ok: print(f"  • {db_pt} (model: {mt}): OK")
-        else:  print(f"  • {db_pt} (model: {mt}): MISSING ({'; '.join(missing)})")
+        if ok:
+            print(f"  • {db_pt} (model: {mt}): OK")
+        else:
+            print(f"  • {db_pt} (model: {mt}): MISSING ({'; '.join(missing)})")
 
     for db_pt in db_prop_types:
         mt = model_type_for(db_pt)
@@ -333,6 +400,7 @@ def main():
 
     print("✅ All prop types processed.")
     print_summary(SUMMARY, started_at)
+
 
 if __name__ == "__main__":
     main()
