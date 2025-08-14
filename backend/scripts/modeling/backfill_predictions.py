@@ -371,9 +371,12 @@ def predict(model_prop_type: str, row: dict) -> tuple[str, float]:
 
     # Build features
     row = to_plain_scalars(row)
-    X, _ = build_feature_vector(pd.DataFrame([row]))
+    bfv_out = build_feature_vector(pd.DataFrame([row]))
+    X = bfv_out[0] if isinstance(bfv_out, tuple) else bfv_out
+    if X is None:
+        raise ValueError("build_feature_vector returned None")
 
-    # Coerce X -> DataFrame (handles dict/Series/ndarray)
+    # Coerce X -> DataFrame (handles dict/Series/ndarray) — single block
     if isinstance(X, pd.DataFrame):
         pass
     elif isinstance(X, pd.Series):
@@ -410,8 +413,7 @@ def predict(model_prop_type: str, row: dict) -> tuple[str, float]:
         print(f"   ↳ nonzero cols — RF:{nnz_rf}/{X_rf.shape[1]}  LR:{nnz_lr}/{X_lr.shape[1]}")
         _DEBUG_NNZ[model_prop_type] += 1
 
-
-    if X.empty:
+    if X_rf.empty or X_lr.empty:
         raise ValueError(f"No usable features for prediction: {row.get('player_name')}")
 
     # Score

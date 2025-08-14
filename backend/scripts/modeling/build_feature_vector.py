@@ -205,17 +205,22 @@ def build_feature_vector(data, debug: bool = False):
     else:
         X, y = out, None
 
+    # Coerce to a one-row DataFrame no matter what came back
+    X = _as_one_row_df(X) if X is not None else pd.DataFrame()
+
     # ⛑️ Fallback: if transformer returns empty or all zeros, use the raw row
-    try:
-        X = _as_one_row_df(X)   # <-- use helper instead of pd.DataFrame(X)
-    except Exception:
-        X = pd.DataFrame()
+    def _is_all_zero(df):
+        try:
+            return bool((df.fillna(0) == 0).to_numpy().all())
+        except Exception:
+            return False
 
     if X.empty or _is_all_zero(X):
         if debug: print("🛟 Fallback to raw row features (pre-alignment)")
         X = one.copy()
 
-        return X, y
+    # FINAL: always return a tuple
+    return X, y
 
 if __name__ == "__main__":
     pass  # Safe no-op to satisfy the interpreter
