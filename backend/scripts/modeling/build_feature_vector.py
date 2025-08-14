@@ -19,6 +19,22 @@ def _is_missing(v) -> bool:
     except Exception:
         return False
 
+def _as_one_row_df(X):
+    """Coerce X into a single-row DataFrame safely."""
+    if isinstance(X, pd.DataFrame):
+        return X
+    if isinstance(X, pd.Series):
+        return X.to_frame().T
+    if isinstance(X, dict):
+        return pd.DataFrame([X])        # <-- key change for dict of scalars
+    if isinstance(X, np.ndarray):
+        return pd.DataFrame([X]) if X.ndim == 1 else pd.DataFrame(X)
+    if X is None:
+        return pd.DataFrame()
+    # last resort: wrap once
+    return pd.DataFrame([X])
+
+
 def expected_feature_columns(prop_type: str | None):
     """Return canonical feature list (YAML first, then JSON), or None."""
     # Try YAML (your existing spec)
@@ -189,15 +205,17 @@ def build_feature_vector(data, debug: bool = False):
     else:
         X, y = out, None
 
-    # ⛑️ Fallback: if transformer returns empty or all zeros, use the raw row;
-    # the caller will align to the model's schema and coerce numerics.
-    if not isinstance(X, pd.DataFrame):
-        X = pd.DataFrame(X) if X is not None else pd.DataFrame()
+    # ⛑️ Fallback: if transformer returns empty or all zeros, use the raw row
+    try:
+        X = _as_one_row_df(X)   # <-- use helper instead of pd.DataFrame(X)
+    except Exception:
+        X = pd.DataFrame()
+
     if X.empty or _is_all_zero(X):
         if debug: print("🛟 Fallback to raw row features (pre-alignment)")
         X = one.copy()
 
-    return X, y
+        return X, y
 
 if __name__ == "__main__":
     pass  # Safe no-op to satisfy the interpreter
