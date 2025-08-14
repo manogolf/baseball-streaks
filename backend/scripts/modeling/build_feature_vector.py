@@ -78,6 +78,17 @@ def _as_scalar(v):
         return v.item()
     return v
 
+def _is_all_zero(df: pd.DataFrame) -> bool:
+    """
+    True if all numeric values are zero after coercion; avoids .fillna(...) warning.
+    """
+    try:
+        num = df.apply(pd.to_numeric, errors="coerce")
+        arr = np.nan_to_num(num.to_numpy(copy=False), nan=0.0, posinf=0.0, neginf=0.0)
+        return not np.any(arr)  # all zeros → True
+    except Exception:
+        return False
+
 # Load environment variables
 load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -187,12 +198,6 @@ def build_feature_vector(data, debug: bool = False):
     except Exception:
         from transform_features import transform_features   # local fallback
 
-    def _is_all_zero(df):
-        try:
-            return bool((df.fillna(0) == 0).to_numpy().all())
-        except Exception:
-            return False
-
     try:
         out = transform_features(one, debug=debug)
     except TypeError:
@@ -208,13 +213,7 @@ def build_feature_vector(data, debug: bool = False):
     # Coerce to a one-row DataFrame no matter what came back
     X = _as_one_row_df(X) if X is not None else pd.DataFrame()
 
-    # ⛑️ Fallback: if transformer returns empty or all zeros, use the raw row
-    def _is_all_zero(df):
-        try:
-            return bool((df.fillna(0) == 0).to_numpy().all())
-        except Exception:
-            return False
-
+    # ⛑️ Fallback: if transformer returns empty or numerically all zeros, use the raw row
     if X.empty or _is_all_zero(X):
         if debug: print("🛟 Fallback to raw row features (pre-alignment)")
         X = one.copy()
