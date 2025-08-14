@@ -105,6 +105,24 @@ async function processDate(gameDate) {
       const allPlays = liveData?.liveData?.plays?.allPlays || [];
       const allPlayers = await fetchBoxscoreStatsForGame(gameId);
 
+      if (!liveData?.gameData?.teams) {
+        console.warn(`⚠️ liveData missing teams for game ${gameId}`);
+        continue;
+      }
+
+      // define per-game team cache
+      const homeTeam = liveData.gameData.teams.home ?? {};
+      const awayTeam = liveData.gameData.teams.away ?? {};
+      const TEAM = {
+        home: {
+          id: homeTeam.id ?? homeTeam.teamId ?? null,
+          abbr: homeTeam.abbreviation ?? homeTeam.teamCode ?? null,
+        },
+        away: {
+          id: awayTeam.id ?? awayTeam.teamId ?? null,
+          abbr: awayTeam.abbreviation ?? awayTeam.teamCode ?? null,
+        },
+      };
       if (!Array.isArray(allPlayers)) {
         console.error(
           `❌ allPlayers for game ${gameId} is not an array:`,
@@ -146,13 +164,13 @@ async function processDate(gameDate) {
           );
         }
       }
-
-      // Filter players we want to evaluate
+      // Build the player list we actually want to process
       const players = allPlayers.filter((p) => {
         const { batting = {}, pitching = {} } = p.stats || {};
         const hasBat = Object.keys(batting).length > 0;
+        const hasPitch = Object.keys(pitching).length > 0;
         const position = positionMap.get(Number(p.id));
-        const isPitch = isPitcher(position);
+        const isPitch = isPitcher(position) || hasPitch; // include pitchers with stats
         return hasBat || isPitch;
       });
 
@@ -162,25 +180,53 @@ async function processDate(gameDate) {
       let inserted = 0;
 
       for (const pl of players) {
-        const { id: player_id, fullName, teamAbbr: team, isHome, stats } = pl;
+        const {
+          id: player_id,
+          fullName,
+          teamAbbr: teamAbbrRaw,
+          isHome,
+          stats,
+        } = pl;
+
+        // position lookup for pitcher/batter flags
         const position = positionMap.get(Number(player_id)) || null;
-        const isPitch = isPitcher(position);
-        const hasBat = stats?.batting && Object.keys(stats.batting).length > 0;
+
+        // derive team ids/abbrs from per-game TEAM cache
+        const teamId = isHome ? TEAM.home.id : TEAM.away.id;
+        const opponentId = isHome ? TEAM.away.id : TEAM.home.id;
+        const teamAbbr =
+          (isHome ? TEAM.home.abbr : TEAM.away.abbr) ?? teamAbbrRaw ?? null;
+        const opponentAbbr = isHome ? TEAM.away.abbr : TEAM.home.abbr;
+
+        // keep opponent_encoded for back-compat (prefer IDs when present)
+        const opponent_encoded =
+          opponentId != null
+            ? String(opponentId)
+            : opponentAbbr
+            ? getTeamIdFromAbbr(opponentAbbr)
+            : null;
+
+        const hasBat = !!(
+          stats?.batting && Object.keys(stats.batting).length > 0
+        );
+        const hasPitch = !!(
+          stats?.pitching && Object.keys(stats.pitching).length > 0
+        );
+        const isPitch = isPitcher(position) || hasPitch;
         const isBatterOnly = hasBat && !isPitch;
         const isPitcherOnly = isPitch && !hasBat;
         const isTwoWayPlayer = hasBat && isPitch;
 
-        const opponentTeam = isHome
-          ? allPlayers.find((p) => !p.isHome)
-          : allPlayers.find((p) => p.isHome);
-        const opponent = opponentTeam?.teamAbbr || null;
-        const opponent_encoded = getTeamIdFromAbbr(opponent);
-        const contextKey = `${gameId}_${team}`;
-        let contextFields;
+        // cache game context by (game, teamAbbr)
+        const contextKey = `${gameId}_${teamAbbr}`;
+        let contextFields = teamContextCache.get(contextKey);
+        if (!contextFields) {
+          contextFields = await getGameContextFields(gameId, teamAbbr);
+          teamContextCache.set(contextKey, contextFields);
+        }
 
-        // Focused logs per player — only once, clean and readable
         forceLog(
-          `🔍 ${fullName} (${player_id}) | ${team} vs ${opponent} (${
+          `🔍 ${fullName} (${player_id}) | ${teamAbbr} vs ${opponentAbbr} (${
             isHome ? "home" : "away"
           })`
         );
@@ -194,32 +240,46 @@ async function processDate(gameDate) {
             .join(", ")}`
         );
 
-        if (teamContextCache.has(contextKey)) {
-          contextFields = teamContextCache.get(contextKey);
-        } else {
-          contextFields = await getGameContextFields(gameId, team);
-          teamContextCache.set(contextKey, contextFields);
-        }
-
-        const now = new Date().toISOString();
-
         console.log(
           "📦 Full stats object for",
           fullName,
           JSON.stringify(stats, null, 2)
         );
 
+        // Build eligible prop types from actual stat presence
         let eligiblePropTypes = [];
-        if (isBatterOnly || isTwoWayPlayer)
-          eligiblePropTypes.push(...BATTER_PROP_TYPES);
-        if (isPitcherOnly || isTwoWayPlayer)
-          eligiblePropTypes.push(...PITCHER_PROP_TYPES);
+        if (hasBat) eligiblePropTypes.push(...BATTER_PROP_TYPES);
+        if (isPitch) eligiblePropTypes.push(...PITCHER_PROP_TYPES);
+        eligiblePropTypes = [...new Set(eligiblePropTypes)]; // de-dupe
 
         forceLog(`🔁 eligiblePropTypes: ${JSON.stringify(eligiblePropTypes)}`);
 
+        // Optional diagnostics for pitchers with numeric stats
+        if ((isPitcherOnly || isTwoWayPlayer) && verbose) {
+          const seen = [];
+          for (const pType of PITCHER_PROP_TYPES) {
+            const v = extractStatForPropType(stats, pType);
+            if (Number.isFinite(v)) seen.push(pType);
+          }
+          if (seen.length === 0) {
+            console.warn(
+              `⚠️ No pitcher stats extracted for ${fullName} (${player_id}). ` +
+                `pitching keys: ${Object.keys(stats?.pitching || {}).join(",")}`
+            );
+          } else {
+            console.log(
+              `✅ Pitcher props with numeric values: ${seen.join(", ")}`
+            );
+          }
+        }
+
         for (const propType of eligiblePropTypes) {
-          if (isBatterOnly && isBatterProp(propType)) {
-            if (!shouldInclude(player_id, gameId, propType)) continue;
+          // ratio sampling applies to ALL batter props (two-way included)
+          if (
+            isBatterProp(propType) &&
+            !shouldInclude(player_id, gameId, propType)
+          ) {
+            continue;
           }
 
           if (typeof propType !== "string") {
@@ -228,42 +288,32 @@ async function processDate(gameDate) {
           }
 
           forceLog(
-            `🔁 eligiblePropTypes: ${JSON.stringify(eligiblePropTypes)}`
-          );
-          forceLog(
             `🧪 Calling extractStatForPropType with: propType=${JSON.stringify(
               propType
             )} (${typeof propType})`
           );
 
           const result = extractStatForPropType(stats, propType);
-          console.log(
-            "🧪 [extractStat] raw propType:",
-            propType,
-            "| type:",
-            typeof propType
-          );
-
           forceLog(
             `🔍 Raw stat extraction for ${fullName} | ${propType} → ${result}`
           );
-          if (result == null || typeof result !== "number" || isNaN(result)) {
+
+          if (!Number.isFinite(result)) {
             forceLog(
               `🟡 No valid result for ${fullName} (${player_id}) | ${propType}`
             );
             continue;
           }
-          forceLog(
-            `🧪 Testing insert for ${fullName} | ${propType} | result=${result}`
-          );
 
-          let line;
-          if (result === 0) {
-            line = 0.5;
-          } else {
-            line = Math.random() < 0.5 ? result + 0.5 : result - 0.5;
-          }
+          // create a half-step line (avoid pushes)
+          let line =
+            result === 0
+              ? 0.5
+              : Math.random() < 0.5
+              ? result - 0.5
+              : result + 0.5;
           line = Math.round(line * 2) / 2;
+
           const over_under = Math.random() < 0.5 ? "over" : "under";
           const outcome = determineOutcome(result, line, over_under);
           if (!["win", "loss"].includes(outcome)) continue;
@@ -278,6 +328,7 @@ async function processDate(gameDate) {
           propTypeLosses[propType] =
             (propTypeLosses[propType] || 0) + (outcome === "loss" ? 1 : 0);
 
+          // streak + game time
           let streak, game_time;
           try {
             streak = await getStreaksForPlayer(
@@ -286,13 +337,6 @@ async function processDate(gameDate) {
               propType,
               "mlb_api"
             );
-            console.log(
-              "🧪 Calling getStreaksForPlayer with:",
-              player_id,
-              propType,
-              "mlb_api"
-            );
-
             game_time = await getGameStartTimeET(gameId);
           } catch (e) {
             console.warn(
@@ -300,14 +344,21 @@ async function processDate(gameDate) {
             );
             continue;
           }
-
           if (!game_time) continue;
-          const gameDateTimeET = toEasternDateTime(gameDate, game_time);
+          // Prefer full ISO-with-offset if provided by MLB; otherwise fall back
+          let gameDateTimeET;
+          if (typeof game_time === "string" && game_time.includes("T")) {
+            const dt = new Date(game_time); // ISO with offset → valid Date
+            if (!Number.isNaN(dt.getTime())) {
+              gameDateTimeET = dt;
+            }
+          }
+          if (!gameDateTimeET) {
+            // Legacy path: when game_time is just "HH:mm:ss" or similar
+            gameDateTimeET = toEasternDateTime(gameDate, game_time);
+          }
 
-          forceLog(
-            `📥 Checking existing MT row for ${fullName} (${player_id}) | ${gameId} | ${propType}`
-          );
-
+          // check existing
           const { data: existingRows, error: fetchErr } = await supabase
             .from("model_training_props")
             .select("id, prop_value, outcome")
@@ -320,15 +371,15 @@ async function processDate(gameDate) {
           const existing = existingRows?.[0];
           if (fetchErr || !Array.isArray(existingRows)) {
             const errMsg =
-              fetchErr?.message || typeof existingRows === "string"
+              fetchErr?.message ||
+              (typeof existingRows === "string"
                 ? existingRows.slice(0, 100)
-                : "Unknown Supabase error";
+                : "Unknown Supabase error");
             console.warn(
               `⚠️ Fetch error for ${fullName}, ${propType}: ${errMsg}`
             );
             continue;
           }
-
           if (
             existing &&
             existing.prop_value != null &&
@@ -339,15 +390,27 @@ async function processDate(gameDate) {
             );
             continue;
           }
-          if (!contextFields)
+          if (!contextFields) {
             forceLog(`⚠️ contextFields missing for ${team} in game ${gameId}`);
+          }
 
           const row = {
             id: crypto.randomUUID(),
             game_id: gameId,
             player_id: String(player_id),
             player_name: fullName,
-            team,
+
+            // display/back-compat
+            team: teamAbbr,
+            opponent: opponentAbbr,
+
+            // canonical ids used by MT
+            team_id: teamId != null ? String(teamId) : null,
+            opponent_team_id: opponentId != null ? String(opponentId) : null,
+
+            // legacy helper (safe to keep)
+            opponent_encoded,
+
             is_home: isHome ? 1 : 0,
             prop_type: propType,
             prop_value: result,
@@ -359,8 +422,7 @@ async function processDate(gameDate) {
             updated_at: now,
             prop_source: "mlb_api",
             was_correct,
-            opponent,
-            opponent_encoded,
+
             game_date: gameDate,
             ...contextFields,
             game_day_of_week: getDayOfWeekET(gameDateTimeET),
@@ -375,14 +437,8 @@ async function processDate(gameDate) {
             const { error } = await supabase
               .from("model_training_props")
               .upsert(row, {
-                onConflict: [
-                  "player_id",
-                  "game_id",
-                  "prop_type",
-                  "prop_source",
-                ],
-              });
-
+                onConflict: "player_id,game_id,prop_type,prop_source",
+              }); // v2 format
             if (!error) {
               inserted++;
               propTypeInsertCounts[propType] =
@@ -390,7 +446,6 @@ async function processDate(gameDate) {
               log(
                 `📊 Count updated for ${propType} (${propTypeInsertCounts[propType]} total)`
               );
-
               if (inserted % LOG_EVERY === 0)
                 log(`   ↳ ${inserted} rows so far for ${gameDate}…`);
             } else {
@@ -405,8 +460,8 @@ async function processDate(gameDate) {
               err
             );
           }
-        }
-      }
+        } // end for propType
+      } // end for players
 
       log(`✅ Game ${gameId} finished — ${inserted} rows inserted`);
       await sleep(SLEEP_MS);

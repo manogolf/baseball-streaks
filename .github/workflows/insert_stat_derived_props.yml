@@ -14,21 +14,21 @@ jobs:
         uses: actions/checkout@v3
 
       # ✅ Python Setup & Script
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
+      # - name: Set up Python
+      #  uses: actions/setup-python@v4
+      #  with:
+      #    python-version: "3.11"
 
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+      #- name: Install Python dependencies
+      #  run: |
+      #    python -m pip install --upgrade pip
+      #    pip install -r requirements.txt
 
-      - name: Run backfill_predictions.py
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: python backend/scripts/modeling/backfill_predictions.py
+      #- name: Run backfill_predictions.py
+      #  env:
+      #    SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      #    SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      #  run: python backend/scripts/modeling/backfill_predictions.py
 
       # ✅ Node.js Setup & Script
       - name: Set up Node.js

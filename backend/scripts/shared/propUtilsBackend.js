@@ -22,49 +22,98 @@ export const VALID_PROP_TYPES = [
   "triples",
 ];
 
-// Maps propType to appropriate stat in the stats object
+// backend/scripts/shared/propUtilsBackend.js
+
+// Convert innings pitched like "5.2" -> 5*3 + 2 = 17 outs
+function ipToOuts(ip) {
+  if (ip == null) return null;
+  const s = String(ip);
+  const [w, f = "0"] = s.split(".");
+  const whole = Number(w);
+  if (Number.isNaN(whole)) return null;
+  const frac = f === "1" ? 1 : f === "2" ? 2 : 0;
+  return whole * 3 + frac;
+}
+
+function num(x) {
+  if (x == null) return null;
+  const n = Number(x);
+  return Number.isFinite(n) ? n : null;
+}
+
+// Maps propType to appropriate stat in the nested stats object
 export function extractStatForPropType(stats, propType) {
   if (!stats || typeof stats !== "object") return null;
 
-  switch (propType) {
-    case "hits":
-      return stats.hits;
-    case "strikeouts_batting":
-      return stats.strikeOuts;
-    case "home_runs":
-      return stats.homeRuns;
-    case "rbis":
-      return stats.rbi;
-    case "runs":
-      return stats.runs;
-    case "total_bases":
-      return stats.totalBases;
-    case "walks":
-      return stats.baseOnBalls;
-    case "stolen_bases":
-      return stats.stolenBases;
-    case "singles":
-      return stats.singles;
-    case "doubles":
-      return stats.doubles;
-    case "triples":
-      return stats.triples;
+  // StatsAPI typically nests as stats.batting / stats.pitching
+  // Some pre-processing may also flatten keys; we handle both.
+  const b = stats.batting || stats.hitting || stats; // batting-ish
+  const p = stats.pitching || stats; // pitching-ish
 
+  switch (propType) {
+    // ── Batting props ───────────────────────────────────────────────
+    case "hits":
+      return num(b.hits);
+    case "strikeouts_batting":
+      // seen as strikeOuts (camelCase); fall back to common variants
+      return num(b.strikeOuts ?? b.strikeouts ?? b.strikeouts_batting);
+    case "home_runs":
+      return num(b.homeRuns ?? b.home_runs);
+    case "rbis":
+      return num(b.rbi ?? b.rbis);
+    case "runs":
+    case "runs_scored":
+      return num(b.runs);
+    case "walks":
+      return num(b.baseOnBalls ?? b.walks);
+    case "stolen_bases":
+      return num(b.stolenBases ?? b.stolen_bases);
+    case "doubles":
+      return num(b.doubles);
+    case "triples":
+      return num(b.triples);
+    case "total_bases":
+      // StatsAPI has totalBases for batting
+      return num(b.totalBases ?? b.total_bases);
+    case "singles": {
+      // derive if not provided
+      const H = num(b.hits) ?? 0;
+      const _2 = num(b.doubles) ?? 0;
+      const _3 = num(b.triples) ?? 0;
+      const HR = num(b.homeRuns ?? b.home_runs) ?? 0;
+      const sgl = H - _2 - _3 - HR;
+      return Number.isFinite(sgl) ? sgl : null;
+    }
+    case "hits_runs_rbis": {
+      const H = num(b.hits) ?? 0;
+      const R = num(b.runs) ?? 0;
+      const I = num(b.rbi ?? b.rbis) ?? 0;
+      return H + R + I;
+    }
+    case "runs_rbis": {
+      const R = num(b.runs) ?? 0;
+      const I = num(b.rbi ?? b.rbis) ?? 0;
+      return R + I;
+    }
+
+    // ── Pitching props ───────────────────────────────────────────────
     case "strikeouts_pitching":
-      return stats.strikeOuts;
+      return num(p.strikeOuts ?? p.strikeouts ?? p.strikeouts_pitching);
     case "outs_recorded":
     case "pitching_outs":
-      return stats.outs;
+      // Some feeds expose p.outs; others require IP -> outs
+      return num(p.outs) ?? ipToOuts(p.inningsPitched);
     case "earned_runs":
-      return stats.earnedRuns;
+      return num(p.earnedRuns ?? p.earned_runs);
     case "hits_allowed":
-      return stats.hits;
+      return num(p.hits ?? p.hits_allowed);
     case "walks_allowed":
-      return stats.baseOnBalls;
+      return num(p.baseOnBalls ?? p.walks_allowed ?? p.walks);
     case "pitch_count":
-      return stats.pitches;
+      // Seen as numberOfPitches / pitchesThrown depending on endpoint
+      return num(p.numberOfPitches ?? p.pitchesThrown ?? p.pitches);
     case "runs_allowed":
-      return stats.runs;
+      return num(p.runs);
 
     default:
       return null;
