@@ -87,10 +87,16 @@ async function runFullBackfill() {
   );
 }
 
+let inserted = 0;
+let updated = 0; // ← new
+let skipped = 0;
+let failed = 0;
+
 async function processGame(gameId) {
   console.log(`🎯 Target game: ${gameId}`);
 
   const liveFeed = await getLiveFeedFromGameID(gameId);
+  const allPlays = liveFeed?.liveData?.plays?.allPlays || [];
 
   const gameType = liveFeed?.gameData?.game?.type;
   if (gameType !== "R") {
@@ -100,19 +106,45 @@ async function processGame(gameId) {
     return;
   }
 
-  const homeStarterId =
-    liveFeed?.liveData?.boxscore?.teams?.home?.pitchers?.[0];
-  const awayStarterId =
-    liveFeed?.liveData?.boxscore?.teams?.away?.pitchers?.[0];
+  // ---- robust starter detection
+  const probableHome = liveFeed?.gameData?.probablePitchers?.home?.id ?? null;
+  const probableAway = liveFeed?.gameData?.probablePitchers?.away?.id ?? null;
+
+  const boxHomeFirst =
+    liveFeed?.liveData?.boxscore?.teams?.home?.pitchers?.[0] ?? null;
+  const boxAwayFirst =
+    liveFeed?.liveData?.boxscore?.teams?.away?.pitchers?.[0] ?? null;
+
+  // fallback via first-half-inning pitchers (top → home fields; bottom → away fields)
+  const firstTop = allPlays.find(
+    (p) => p.about?.inning === 1 && p.about?.halfInning === "top"
+  );
+  const firstBot = allPlays.find(
+    (p) => p.about?.inning === 1 && p.about?.halfInning === "bottom"
+  );
+  const topPitcher = firstTop?.matchup?.pitcher?.id ?? null; // home starter
+  const bottomPitcher = firstBot?.matchup?.pitcher?.id ?? null; // away starter
+
+  const homeStarterId = probableHome ?? boxHomeFirst ?? topPitcher ?? null;
+  const awayStarterId = probableAway ?? boxAwayFirst ?? bottomPitcher ?? null;
 
   if (!homeStarterId || !awayStarterId) {
-    console.warn(`⚠️ Missing starting pitcher data for game ${gameId}`);
-    return;
+    console.warn(
+      `⚠️ Missing starters for game ${gameId} (home=${homeStarterId}, away=${awayStarterId})`
+    );
+    // we can still proceed but many batters may resolve to null pitcher → skip
   }
 
-  const starters = new Set([homeStarterId, awayStarterId]);
+  // sets of which batters belong to which team (for default mapping)
+  const homeBatters = new Set(
+    liveFeed?.liveData?.boxscore?.teams?.home?.batters || []
+  );
+  const awayBatters = new Set(
+    liveFeed?.liveData?.boxscore?.teams?.away?.batters || []
+  );
 
-  const allPlays = liveFeed?.liveData?.plays?.allPlays || [];
+  const starters = new Set([homeStarterId, awayStarterId].filter(Boolean));
+
   console.log(`🎮 Loaded ${allPlays.length} plays`);
 
   const { data: rows, error } = await supabase
@@ -127,37 +159,41 @@ async function processGame(gameId) {
   }
 
   const bvpStatsCache = new Map();
-
-  let inserted = 0;
-  let skipped = 0;
-  let failed = 0;
+  let inserted = 0,
+    skipped = 0,
+    failed = 0;
 
   for (const row of rows) {
-    const batterId = parseInt(row.player_id);
+    const batterId = Number(row.player_id);
+    if (!Number.isFinite(batterId)) {
+      skipped++;
+      continue;
+    }
 
     if (!bvpStatsCache.has(batterId)) {
-      const matchup = allPlays.find(
+      // default opponent pitcher by team membership
+      const defaultPitcherId = homeBatters.has(batterId)
+        ? awayStarterId ?? null
+        : awayBatters.has(batterId)
+        ? homeStarterId ?? null
+        : null;
+
+      // try to find an actual PA vs a starter
+      const playVsStarter = allPlays.find(
         (p) =>
           p.matchup?.batter?.id === batterId &&
           starters.has(p.matchup?.pitcher?.id)
       );
 
-      const pitcherId = matchup?.matchup?.pitcher?.id || matchup?.pitcher?.id;
+      const pitcherId = playVsStarter?.matchup?.pitcher?.id ?? defaultPitcherId;
 
-      //      if (!pitcherId) {
-      //        console.warn(`⚠️ Could not find pitcher for batter ${batterId}`);
-      //        skipped++;
-      //        continue;
-      //      }
-
-      const stats = computeBvpStats(batterId, pitcherId, allPlays);
-      if (!stats) {
-        //        console.warn(`⚠️ No BvP stats found for batter ${batterId}`);
-        skipped++;
-        continue;
+      if (!pitcherId) {
+        // no way to resolve; cache a sentinel to avoid rework
+        bvpStatsCache.set(batterId, null);
+      } else {
+        const stats = computeBvpStats(batterId, pitcherId, allPlays);
+        bvpStatsCache.set(batterId, { pitcherId, stats });
       }
-
-      bvpStatsCache.set(batterId, { pitcherId, stats });
     }
 
     const cached = bvpStatsCache.get(batterId);
@@ -167,21 +203,46 @@ async function processGame(gameId) {
     }
 
     const { pitcherId, stats } = cached;
-    const upsertPayload = {
-      game_id: gameId,
-      batter_id: row.player_id,
-      pitcher_id: pitcherId,
+    // Option: insert zeros when no PAs occurred (toggle via env)
+    const INSERT_ZERO_ROWS = process.env.BVP_INSERT_ZEROS === "true";
+    if (!stats && !INSERT_ZERO_ROWS) {
+      skipped++;
+      continue;
+    }
+
+    // When stats are null and zero-rows are allowed, synthesize zeros
+    const effective = stats ?? {
+      pa: 0,
+      ab: 0,
+      hits: 0,
+      home_runs: 0,
+      strikeouts: 0,
+      walks: 0,
+      rbi: 0,
+      total_bases: 0,
     };
 
-    const { data: existingRows } = await supabase
+    // Check what’s already there
+    // 1) Preselect (you already have this, keep it)
+    const { data: existingRows, error: selErr } = await supabase
       .from("bvp_stats")
-      .select("bvp_plate_appearances")
+      .select(
+        "bvp_plate_appearances,bvp_at_bats,bvp_hits,bvp_home_runs,bvp_strikeouts,bvp_walks,bvp_rbi,bvp_total_bases"
+      )
       .eq("game_id", gameId)
-      .eq("batter_id", row.player_id)
-      .eq("pitcher_id", pitcherId)
+      .eq("batter_id", String(batterId))
+      .eq("pitcher_id", String(pitcherId))
       .limit(1);
 
+    const existed = (existingRows?.length ?? 0) > 0; // ← did it exist?
     const existing = existingRows?.[0] || {};
+
+    // 2) Build upsert payload with setIfMissing (unchanged)
+    const upsertPayload = {
+      game_id: gameId,
+      batter_id: String(batterId),
+      pitcher_id: String(pitcherId),
+    };
 
     setIfMissing(
       upsertPayload,
@@ -212,26 +273,103 @@ async function processGame(gameId) {
       existing.bvp_total_bases
     );
 
+    // 3) Track whether we actually changed anything (beyond the 3 key fields)
+    const changed = Object.keys(upsertPayload).length > 3;
+
+    // 4) Upsert + correct counters
     const { error: upsertError } = await supabase
       .from("bvp_stats")
       .upsert(upsertPayload, { onConflict: "game_id,batter_id,pitcher_id" });
 
-    //    if (upsertError) {
-    //      console.error(
-    //        `❌ Failed to upsert BvP for batter ${row.player_id}:`,
-    //        upsertError
-    //      );
-    //      failed++;
-    //    } else if (Object.keys(upsertPayload).length > 3) {
-    //      console.log`📦 Upserted (setIfMissing) BvP stats for batter ${row.player_id}`();
-    //      inserted++;
-    //    } else {
-    //     console.log(
-    //        `⚠️ Skipped upsert — no new BvP values for batter ${row.player_id}`
-    //      );
-    //      skipped++;
-    //    }
+    if (upsertError) {
+      console.error(
+        `❌ Failed to upsert BvP for batter ${row.player_id}:`,
+        upsertError
+      );
+      failed++;
+    } else {
+      if (!existed && changed) {
+        // brand-new row with values
+        console.log(`📦 Inserted BvP stats for batter ${row.player_id}`);
+        inserted++;
+      } else if (existed && changed) {
+        // existing row gained previously-missing fields
+        console.log(`🛠️ Updated BvP stats for batter ${row.player_id}`);
+        // either track an `updated++` counter, or count as skipped if you only want Inserted/Skipped/Failed
+        // updated++;
+        skipped++;
+      } else {
+        // nothing new to set
+        console.log(
+          `⚠️ Skipped — no new BvP values for batter ${row.player_id}`
+        );
+        skipped++;
+      }
+    }
+
+    setIfMissing(
+      upsertPayload,
+      "bvp_plate_appearances",
+      effective.pa,
+      existing.bvp_plate_appearances
+    );
+    setIfMissing(
+      upsertPayload,
+      "bvp_at_bats",
+      effective.ab,
+      existing.bvp_at_bats
+    );
+    setIfMissing(upsertPayload, "bvp_hits", effective.hits, existing.bvp_hits);
+    setIfMissing(
+      upsertPayload,
+      "bvp_home_runs",
+      effective.home_runs,
+      existing.bvp_home_runs
+    );
+    setIfMissing(
+      upsertPayload,
+      "bvp_strikeouts",
+      effective.strikeouts,
+      existing.bvp_strikeouts
+    );
+    setIfMissing(
+      upsertPayload,
+      "bvp_walks",
+      effective.walks,
+      existing.bvp_walks
+    );
+    setIfMissing(upsertPayload, "bvp_rbi", effective.rbi, existing.bvp_rbi);
+    setIfMissing(
+      upsertPayload,
+      "bvp_total_bases",
+      effective.total_bases,
+      existing.bvp_total_bases
+    );
+
+    const hasNewValues = Object.keys(upsertPayload).length > 3;
+
+    if (!hasNewValues) {
+      console.log(
+        `⚠️ Skipped upsert — no new BvP values for batter ${row.player_id}`
+      );
+      skipped++;
+      continue;
+    }
+
+    if (upsertError) {
+      console.error(
+        `❌ Failed to upsert BvP for batter ${row.player_id}:`,
+        upsertError
+      );
+      failed++;
+    } else {
+      console.log(
+        `📦 Upserted BvP for batter ${row.player_id} vs ${pitcherId}`
+      );
+      inserted++;
+    }
   }
+
   console.log(
     `✅ Game ${gameId} complete: Inserted=${inserted}, Skipped=${skipped}, Failed=${failed}`
   );
