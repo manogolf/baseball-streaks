@@ -56,30 +56,11 @@ import {
   fetchGameStatusById,
 } from "../../../src/shared/gameStatusUtils.js";
 
-// ───── Enhanced Logging ─────
-const originalConsole = {
-  log: console.log,
-  error: console.error,
-  warn: console.warn,
-};
-function logToFileAndConsole(level = "log", ...args) {
-  const method = originalConsole[level] ?? originalConsole.log;
-  const timestamp = new Date().toISOString();
-  const message = args
-    .map((arg) =>
-      typeof arg === "string" ? arg : JSON.stringify(arg, null, 2)
-    )
-    .join(" ");
-  fs.appendFileSync("update_log.txt", `[${timestamp}] ${message}\n`);
-  method(...args);
-}
-console.log = (...args) => logToFileAndConsole("log", ...args);
-console.error = (...args) => logToFileAndConsole("error", ...args);
-console.warn = (...args) => logToFileAndConsole("warn", ...args);
-
 // ───── Core Resolver ─────
 export async function updatePropStatus(prop) {
-  console.log(`📡 Checking prop: ${prop.player_name} - ${prop.prop_type}`);
+  if (process.env.VERBOSE === "1") {
+    console.log(`📡 Checking prop: ${prop.player_name} - ${prop.prop_type}`);
+  }
 
   const gameStatus = await fetchGameStatusById(prop.game_id);
   if (!isGameFinal(gameStatus)) {

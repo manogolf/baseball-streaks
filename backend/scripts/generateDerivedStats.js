@@ -15,7 +15,7 @@ import { supabase } from "./shared/supabaseBackend.js";
 import { getDerivedStats } from "./shared/getDerivedStats.js";
 import { parseArgs } from "node:util";
 
-const DEFAULT_LOOKBACK_DAYS = 21;
+const DEFAULT_LOOKBACK_DAYS = 7;
 const BATCH_SLEEP_MS = 50; // small delay between rows
 const DAY_SLEEP_MS = 300; // small delay between days
 

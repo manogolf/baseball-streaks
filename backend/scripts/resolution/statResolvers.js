@@ -7,6 +7,12 @@ import {
 } from "../shared/playerUtilsBackend.js";
 import { derivePropValue } from "./derivePropValue.js";
 
+/** Verbose toggle (quiet by default; set VERBOSE=1 to enable chatty logs) */
+const VERBOSE = process.env.VERBOSE === "1";
+const dbg = (...a) => {
+  if (VERBOSE) console.log(...a);
+};
+
 /**
  * Resolves a stat value using boxscore first, then allPlays as fallback.
  */
@@ -62,8 +68,8 @@ export async function resolveStatForPlayer(options) {
     pitcher_id,
   } = options;
 
-  // ✅ Default path for regular boxscore-resolvable props
-  console.log(
+  // Info banner → gated
+  dbg(
     `📡 Resolving stat for ${player_name} (${prop_type}) — Game ID: ${game_id}`
   );
 
@@ -82,20 +88,26 @@ export async function resolveStatForPlayer(options) {
 
   const rawStats = flattenPlayerBoxscore(boxscoreData);
 
-  if (rawStats === null) {
-    console.log(`📊 Raw stats for ${player_name} (${prop_type}): null`);
-  } else if (typeof rawStats === "object") {
-    const keys = Object.keys(rawStats);
-    console.log(`📊 Raw stats for ${player_name} (${prop_type}):`, rawStats);
-    console.log(
-      `🔬 Keys present in rawStats:`,
-      keys.length ? keys : "(empty object)"
-    );
-  } else {
-    console.log(
-      `❓ Unexpected rawStats type for ${player_name}:`,
-      typeof rawStats
-    );
+  // Big dumps → gated
+  if (VERBOSE) {
+    if (rawStats === null) {
+      console.log(`📊 Raw stats for ${player_name} (${prop_type}): null`);
+    } else if (typeof rawStats === "object") {
+      const keys = Object.keys(rawStats);
+      console.log(
+        `📊 Raw stats for ${player_name} (${prop_type}):`,
+        JSON.stringify(rawStats, null, 2)
+      );
+      console.log(
+        `🔬 Keys present in rawStats:`,
+        keys.length ? keys : "(empty object)"
+      );
+    } else {
+      console.log(
+        `❓ Unexpected rawStats type for ${player_name}:`,
+        typeof rawStats
+      );
+    }
   }
 
   if (rawStats && hasMeaningfulStats(rawStats)) {
@@ -108,7 +120,7 @@ export async function resolveStatForPlayer(options) {
         );
       }
 
-      console.log(`🎯 Extracted value from boxscore: ${extracted}`);
+      dbg(`🎯 Extracted value from boxscore: ${extracted}`);
 
       if (extracted != null) {
         return {
@@ -129,11 +141,11 @@ export async function resolveStatForPlayer(options) {
     );
   }
 
-  // fallback to live
+  // Fallback to live → info logs gated
   const liveResult = await getStatFromLiveFeed(game_id, player_id, prop_type);
 
-  console.log(`📺 Live fallback result for ${player_name}:`, liveResult);
-  console.log(
+  dbg(`📺 Live fallback result for ${player_name}:`, liveResult);
+  dbg(
     `🧪 Final result for ${player_name} (${prop_type}) → ${
       liveResult ?? "null"
     }`
