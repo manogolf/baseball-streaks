@@ -1,107 +1,283 @@
-# File: backend/scripts/model_trainer.py
+# backend/scripts/model_trainer.py
 """
-📄 Trains hybrid models (Logistic Regression + Random Forest) for each MLB prop type.
+Train and save per-prop models (LogReg + RandomForest) to the local filesystem.
 
-Key features:
---------------
-• Uses all available, resolved training rows from `model_training_props` table.
-• Logistic Regression model trained on full historical dataset for long-term signal.
-• Random Forest model trained on recent form (up to 50,000 rows, biased toward recent games).
-• User-added props are weighted 1000x more heavily than mlb_api props.
-• Only rows with complete core features are used (line, outcome, prop_value, etc).
-• Saves both models to local disk and uploads to Supabase Storage (`models` bucket).
+- Reads from: model_training_props (via Supabase API)
+- Target: outcome ('win'→1, 'loss'→0)
+- Features: numeric cols w/ sensible defaults; safe one-hots for small categoricals
+- Heavily weights user-added rows (prop_source = 'user_added')
+- Writes models to: /var/data/models/{latest,archive} (configurable via MODELS_DIR)
+
+Env:
+  SUPABASE_URL
+  SUPABASE_SERVICE_ROLE_KEY  (recommended) or SUPABASE_ANON_KEY
+  MODELS_DIR (optional, defaults to /var/data/models)
 """
 
-import os
+import os, io, json
+import numpy as np
 import pandas as pd
 import joblib
+
+from supabase import create_client, Client
+from datetime import datetime, timedelta
 from pathlib import Path
-from dotenv import load_dotenv
-from supabase import create_client
+
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.utils import compute_sample_weight
-from sklearn.model_selection import train_test_split
+from sklearn.calibration import CalibratedClassifierCV
+from sklearn.metrics import roc_auc_score
 
-from build_feature_vector import build_feature_vector_for_training
+# --------- Config ---------
+DEFAULT_DAYS_BACK = 365   # reduce if you want faster runs
+DEFAULT_ROW_LIMIT = 50_000
 
-# Load environment variables
-load_dotenv()
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-
-MODEL_DIR = "backend/models"
-Path(MODEL_DIR).mkdir(parents=True, exist_ok=True)
 PROP_TYPES = [
-    "hits", "runs", "rbis", "total_bases", "home_runs", "walks",
-    "strikeouts_batting", "stolen_bases", "doubles", "triples",
-    "hits_runs_rbis", "runs_rbis", "singles", "outs_recorded",
-    "strikeouts_pitching", "earned_runs", "hits_allowed", "walks_allowed"
+    "doubles","earned_runs","hits","hits_allowed","hits_runs_rbis","home_runs",
+    "outs_recorded","rbis","runs_rbis","runs_scored","singles","stolen_bases",
+    "strikeouts_batting","strikeouts_pitching","total_bases","triples","walks",
+    "walks_allowed",
 ]
 
-def fetch_training_data(prop_type):
-    response = supabase.table("model_training_props") \
-        .select("*") \
-        .eq("prop_type", prop_type) \
-        .not_.is_("outcome", "null") \
-        .not_.is_("line", "null") \
-        .not_.is_("prop_value", "null") \
-        .execute()
+# Local model dirs (Render defaults)
+MODELS_DIR = Path(os.environ.get("MODELS_DIR", "/var/data/models"))
+LATEST_DIR = MODELS_DIR / "latest"
+ARCHIVE_DIR = MODELS_DIR / "archive"
 
-    rows = response.data
-    return [row for row in rows if row.get("outcome") in ["win", "loss"]]
+def _atomic_write_bytes(path: Path, blob: bytes):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with open(tmp, "wb") as f:
+        f.write(blob)
+    os.replace(tmp, path)
 
-def train_models_for_prop(prop_type):
-    print(f"\n🚀 Training models for: {prop_type}")
-    rows = fetch_training_data(prop_type)
-    if not rows:
-        print("⚠️ No usable rows.")
-        return
+# Numeric features we expect to exist in model_training_props (guarded w/ fillna)
+NUMERIC_COLS = [
+    "line","prop_value","rolling_result_avg_7","line_diff",
+    "hit_streak","win_streak",
+    "is_home","is_pitcher",
+]
 
-    features, labels, weights = [], [], []
-    for row in rows:
-        vec = build_feature_vector_for_training(row)
-        if vec is None:
-            continue
-        features.append(vec)
-        labels.append(1 if row["outcome"] == "win" else 0)
-        weight = 1000.0 if row.get("prop_source") == "user_added" else 1.0
-        weights.append(weight)
+# Categorical features (kept small to avoid huge one-hot explosions)
+BASE_CAT_COLS = [
+    "time_of_day_bucket",   # e.g. morning/afternoon/night
+    "game_day_of_week",     # e.g. Mon/Tue
+]
 
-    if not features:
-        print("⚠️ No features extracted.")
-        return
+# Optional small-cardinality IDs (enable only if cardinality is reasonable)
+OPTIONAL_SMALL_CATS = [
+    # "team_id", "opponent_team_id",
+]
 
-    df = pd.DataFrame(features)
-    X = df.values
-    y = pd.Series(labels).values
-    sample_weights = pd.Series(weights).values
+CAT_COLS = BASE_CAT_COLS + OPTIONAL_SMALL_CATS
 
-    # Split into train/test for logistic
-    X_train, X_test, y_train, y_test, w_train, w_test = train_test_split(
-        X, y, sample_weights, test_size=0.2, random_state=42, stratify=y
+# sklearn 1.2+ uses sparse_output; older versions use sparse
+try:
+    _ = OneHotEncoder(sparse_output=True, handle_unknown="ignore")
+    _ONEHOT_KW = dict(sparse_output=True)
+except TypeError:
+    _ONEHOT_KW = dict(sparse=True)
+
+def _supabase_client() -> Client:
+    url = os.environ.get("SUPABASE_URL")
+    key = (
+        os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+        or os.environ.get("SUPABASE_ANON_KEY")
+    )
+    if not url or not key:
+        raise RuntimeError("Missing SUPABASE_URL or key (SERVICE_ROLE/ANON).")
+    return create_client(url, key)
+
+def fetch_training_rows(sb: Client, prop_type: str, days_back: int, limit: int):
+    since_date = (datetime.utcnow() - timedelta(days=days_back)).date().isoformat()
+
+    q = (
+        sb.table("model_training_props")
+        .select("*")
+        .eq("prop_type", prop_type)
+        .in_("status", ["win", "loss"])
+        .not_.is_("line", "null")
+        .not_.is_("prop_value", "null")
+        .gte("game_date", since_date)
+        .order("game_date", desc=True)
+        .limit(limit)
+    )
+    resp = q.execute()
+    rows = resp.data or []
+    rows = [r for r in rows if r.get("outcome") in ("win","loss")]
+    return pd.DataFrame(rows)
+
+def _prep_frame(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return df
+    df = df.copy()
+
+    # target
+    df["y"] = (df["outcome"] == "win").astype(int)
+
+    # coerce booleans/flags to numeric
+    for bcol in ("is_home","is_pitcher"):
+        if bcol in df.columns:
+            df[bcol] = pd.to_numeric(df[bcol], errors="coerce")
+
+    # ensure numeric cols exist
+    for col in NUMERIC_COLS:
+        if col not in df.columns:
+            df[col] = np.nan
+
+    # ensure categoricals exist as strings
+    for col in CAT_COLS:
+        if col not in df.columns:
+            df[col] = None
+        df[col] = df[col].astype("string")
+
+    # sample weights: user_added gets big boost
+    w = np.ones(len(df), dtype="float64")
+    if "prop_source" in df.columns:
+        w[df["prop_source"] == "user_added"] = 1000.0
+    df["sample_weight"] = w
+    return df
+
+def build_pipeline():
+    num_transform = Pipeline(
+        steps=[("imputer", SimpleImputer(strategy="median"))]
+    )
+    cat_transform = Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="most_frequent")),
+            ("onehot", OneHotEncoder(handle_unknown="ignore", **_ONEHOT_KW)),
+        ]
+    )
+    pre = ColumnTransformer(
+        transformers=[
+            ("num", num_transform, NUMERIC_COLS),
+            ("cat", cat_transform, CAT_COLS),
+        ],
+        remainder="drop",
+        sparse_threshold=0.3,
     )
 
-    # Logistic Regression: long-term full-history model
-    log_reg = LogisticRegression(max_iter=1000)
-    log_reg.fit(X_train, y_train, sample_weight=w_train)
+    lr = LogisticRegression(max_iter=1000)  # solver default OK
+    rf = RandomForestClassifier(
+        n_estimators=300,
+        max_depth=None,
+        n_jobs=-1,
+        random_state=42,
+    )
 
-    joblib.dump(log_reg, os.path.join(MODEL_DIR, f"{prop_type}_logreg.pkl"))
-    print("✅ Logistic model trained and saved")
+    lr_cal = CalibratedClassifierCV(lr, method="isotonic", cv=3)
 
-    # Random Forest: short-term form (keep recent only)
-    recent_limit = min(50000, len(X))
-    rf = RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1)
-    rf.fit(X[:recent_limit], y[:recent_limit], sample_weight=sample_weights[:recent_limit])
+    pipe_lr = Pipeline([("pre", pre), ("clf", lr_cal)])
+    pipe_rf = Pipeline([("pre", pre), ("clf", rf)])
+    return pipe_lr, pipe_rf
 
-    joblib.dump(rf, os.path.join(MODEL_DIR, f"{prop_type}_model.pkl"))
-    print("✅ Random Forest model trained and saved")
+def _simple_holdout_split(df: pd.DataFrame, frac=0.2, seed=42):
+    df = df.sample(frac=1.0, random_state=seed)
+    n = len(df)
+    n_val = max(1, int(n * frac))
+    return df.iloc[n_val:], df.iloc[:n_val]
 
-def main():
-    for prop in PROP_TYPES:
-        train_models_for_prop(prop)
-    print("🎯 All models trained.")
+def train_models_for_prop(
+    prop_type: str, *, days_back=DEFAULT_DAYS_BACK, limit=DEFAULT_ROW_LIMIT, quiet=True
+):
+    sb = _supabase_client()
+    df = fetch_training_rows(sb, prop_type, days_back, limit)
 
-if __name__ == "__main__":
-    main()
+    if df.empty:
+        if not quiet:
+            print(f"⏭️  {prop_type}: no training rows.")
+        return None
+
+    df = _prep_frame(df)
+    if df["y"].nunique() < 2:
+        if not quiet:
+            print(f"⏭️  {prop_type}: target has a single class; skipping.")
+        return None
+
+    train_df, val_df = _simple_holdout_split(df, frac=0.2)
+    X_tr, y_tr, w_tr = train_df[NUMERIC_COLS + CAT_COLS], train_df["y"], train_df["sample_weight"]
+    X_v, y_v, w_v = val_df[NUMERIC_COLS + CAT_COLS], val_df["y"], val_df["sample_weight"]
+
+    pipe_lr, pipe_rf = build_pipeline()
+
+    pipe_lr.fit(X_tr, y_tr, clf__sample_weight=w_tr)
+    pipe_rf.fit(X_tr, y_tr, clf__sample_weight=w_tr)
+
+    try:
+        p_lr = pipe_lr.predict_proba(X_v)[:, 1]
+        auc_lr = roc_auc_score(y_v, p_lr, sample_weight=w_v)
+    except Exception:
+        auc_lr = np.nan
+    try:
+        p_rf = pipe_rf.predict_proba(X_v)[:, 1]
+        auc_rf = roc_auc_score(y_v, p_rf, sample_weight=w_v)
+    except Exception:
+        auc_rf = np.nan
+
+    if not quiet:
+        print(f"📈 {prop_type}  AUC — LR: {auc_lr:.3f}  RF: {auc_rf:.3f}")
+
+    best_model = pipe_rf if (auc_rf >= (auc_lr if not np.isnan(auc_lr) else -1)) else pipe_lr
+
+    payload = {
+        "best": best_model,
+        "lr": pipe_lr,
+        "rf": pipe_rf,
+        "meta": {
+            "prop_type": prop_type,
+            "trained_at": datetime.utcnow().isoformat(),
+            "days_back": days_back,
+            "limit": limit,
+            "auc_lr": float(auc_lr) if not np.isnan(auc_lr) else None,
+            "auc_rf": float(auc_rf) if not np.isnan(auc_rf) else None,
+            "features_num": NUMERIC_COLS,
+            "features_cat": CAT_COLS,
+        },
+    }
+    model_blob = io.BytesIO()
+    joblib.dump(payload, model_blob, compress=3)  # smaller writes
+    model_bytes = model_blob.getvalue()
+
+    ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    latest_path  = LATEST_DIR / f"{prop_type}.joblib"
+    archive_path = ARCHIVE_DIR / prop_type / f"{prop_type}-{ts}.joblib"
+
+    _atomic_write_bytes(latest_path, model_bytes)
+    _atomic_write_bytes(archive_path, model_bytes)
+
+    # maintain a simple index for hot-loaders
+    index_path = LATEST_DIR / "MODEL_INDEX.json"
+    index = {}
+    if index_path.exists():
+        try:
+            index = json.loads(index_path.read_text())
+            if not isinstance(index, dict):
+                index = {}
+        except Exception:
+            index = {}
+    index[prop_type] = {
+        "prop_type": prop_type,
+        "trained_at": datetime.utcnow().isoformat(),
+        "file": latest_path.name,
+        "auc_lr": float(auc_lr) if not np.isnan(auc_lr) else None,
+        "auc_rf": float(auc_rf) if not np.isnan(auc_rf) else None,
+        "rows": int(len(df)),
+    }
+    _atomic_write_bytes(index_path, json.dumps(index, indent=2).encode("utf-8"))
+
+    if not quiet:
+        print(f"✅ {prop_type}: wrote latest → {latest_path}")
+        print(f"📦 archived copy → {archive_path}")
+
+    return {
+        "prop_type": prop_type,
+        "auc_lr": auc_lr,
+        "auc_rf": auc_rf,
+        "latest_path": str(latest_path),
+        "archive_path": str(archive_path),
+        "rows": int(len(df)),
+    }

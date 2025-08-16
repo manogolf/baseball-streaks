@@ -27,6 +27,30 @@ import { getTeamIdFromAbbr } from "../../shared/teamNameMap.js";
 import { extractStatForPropType } from "./shared/propUtilsBackend.js";
 import crypto from "node:crypto";
 
+// ---- logging controls ----
+const ARGS = process.argv.slice(2);
+const QUIET = ARGS.includes("--quiet") || process.env.QUIET === "1"; // cron-friendly
+const VERBOSE =
+  !QUIET && (ARGS.includes("--verbose") || process.env.VERBOSE === "1");
+const DEBUG = !QUIET && (ARGS.includes("--debug") || process.env.DEBUG === "1");
+
+// chatty (only with --verbose and not --quiet)
+const log = (...a) => {
+  if (VERBOSE) console.log(...a);
+};
+// deep dumps (only with --debug and not --quiet)
+const dbg = (...a) => {
+  if (DEBUG) console.log(...a);
+};
+// warnings visible unless --quiet
+const warn = (...a) => {
+  if (!QUIET) console.warn(...a);
+};
+// always show (final summaries etc.)
+const forceLog = (...a) => console.log(...a);
+// always errors
+const error = (...a) => console.error(...a);
+
 console.log(
   "BATTER_PROP_TYPES:",
   BATTER_PROP_TYPES.map((p) => typeof p)
@@ -35,14 +59,6 @@ console.log(
   "PITCHER_PROP_TYPES:",
   PITCHER_PROP_TYPES.map((p) => typeof p)
 );
-
-const verbose = process.argv.includes("--verbose");
-const log = (...args) => {
-  if (verbose) {
-    console.log(...args);
-  }
-};
-const forceLog = (...args) => console.log(...args);
 
 const DAYS_AGO = 2;
 const today = new Date();
@@ -151,15 +167,15 @@ async function processDate(gameDate) {
 
       // 🔍 Diagnostic print of all players' stat keys
       // Log a summary of player stat availability before filtering
-      console.log(`📦 Fetched ${allPlayers.length} players for game ${gameId}`);
+      dbg(`📦 Fetched ${allPlayers.length} players for game ${gameId}`);
       for (const p of allPlayers) {
         const batKeys = Object.keys(p.stats?.batting || []).join(", ");
         const pitchKeys = Object.keys(p.stats?.pitching || []).join(", ");
 
         if (!batKeys && !pitchKeys) {
-          console.warn(`⚠️ No stats found for ${p.fullName} (${p.id})`);
+          if (DEBUG) warn(`⚠️ No stats found for ${p.fullName} (${p.id})`);
         } else {
-          forceLog(
+          dbg(
             `📊 ${p.fullName} (${p.id}) → Batting: [${batKeys}] | Pitching: [${pitchKeys}]`
           );
         }
@@ -225,12 +241,12 @@ async function processDate(gameDate) {
           teamContextCache.set(contextKey, contextFields);
         }
 
-        forceLog(
+        dbg(
           `🔍 ${fullName} (${player_id}) | ${teamAbbr} vs ${opponentAbbr} (${
             isHome ? "home" : "away"
           })`
         );
-        forceLog(
+        dbg(
           `📌 Position: ${position} | Pitcher: ${isPitch} | Batter: ${hasBat} | Role: ${[
             isBatterOnly && "batter",
             isPitcherOnly && "pitcher",
@@ -240,7 +256,7 @@ async function processDate(gameDate) {
             .join(", ")}`
         );
 
-        console.log(
+        dbg(
           "📦 Full stats object for",
           fullName,
           JSON.stringify(stats, null, 2)
@@ -252,24 +268,22 @@ async function processDate(gameDate) {
         if (isPitch) eligiblePropTypes.push(...PITCHER_PROP_TYPES);
         eligiblePropTypes = [...new Set(eligiblePropTypes)]; // de-dupe
 
-        forceLog(`🔁 eligiblePropTypes: ${JSON.stringify(eligiblePropTypes)}`);
+        dbg(`🔁 eligiblePropTypes: ${JSON.stringify(eligiblePropTypes)}`);
 
         // Optional diagnostics for pitchers with numeric stats
-        if ((isPitcherOnly || isTwoWayPlayer) && verbose) {
+        if ((isPitcherOnly || isTwoWayPlayer) && DEBUG) {
           const seen = [];
           for (const pType of PITCHER_PROP_TYPES) {
             const v = extractStatForPropType(stats, pType);
             if (Number.isFinite(v)) seen.push(pType);
           }
           if (seen.length === 0) {
-            console.warn(
+            warn(
               `⚠️ No pitcher stats extracted for ${fullName} (${player_id}). ` +
                 `pitching keys: ${Object.keys(stats?.pitching || {}).join(",")}`
             );
           } else {
-            console.log(
-              `✅ Pitcher props with numeric values: ${seen.join(", ")}`
-            );
+            log(`✅ Pitcher props with numeric values: ${seen.join(", ")}`);
           }
         }
 
@@ -287,19 +301,19 @@ async function processDate(gameDate) {
             continue;
           }
 
-          forceLog(
+          dbg(
             `🧪 Calling extractStatForPropType with: propType=${JSON.stringify(
               propType
             )} (${typeof propType})`
           );
 
           const result = extractStatForPropType(stats, propType);
-          forceLog(
+          dbg(
             `🔍 Raw stat extraction for ${fullName} | ${propType} → ${result}`
           );
 
           if (!Number.isFinite(result)) {
-            forceLog(
+            dbg(
               `🟡 No valid result for ${fullName} (${player_id}) | ${propType}`
             );
             continue;
@@ -339,9 +353,7 @@ async function processDate(gameDate) {
             );
             game_time = await getGameStartTimeET(gameId);
           } catch (e) {
-            console.warn(
-              `⚠️ Error fetching streak/time for ${fullName}, ${propType}`
-            );
+            warn(`⚠️ Error fetching streak/time for ${fullName}, ${propType}`);
             continue;
           }
           if (!game_time) continue;
@@ -375,9 +387,7 @@ async function processDate(gameDate) {
               (typeof existingRows === "string"
                 ? existingRows.slice(0, 100)
                 : "Unknown Supabase error");
-            console.warn(
-              `⚠️ Fetch error for ${fullName}, ${propType}: ${errMsg}`
-            );
+            warn(`⚠️ Fetch error for ${fullName}, ${propType}: ${errMsg}`);
             continue;
           }
           if (
@@ -385,14 +395,16 @@ async function processDate(gameDate) {
             existing.prop_value != null &&
             existing.outcome != null
           ) {
-            forceLog(
+            dbg(
               `📭 Existing row found: prop_value=${existing.prop_value}, outcome=${existing.outcome}`
             );
             continue;
           }
           if (!contextFields) {
-            forceLog(`⚠️ contextFields missing for ${team} in game ${gameId}`);
+            dbg(`⚠️ contextFields missing for ${team} in game ${gameId}`);
           }
+
+          const now = new Date().toISOString();
 
           const row = {
             id: crypto.randomUUID(),

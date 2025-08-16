@@ -1,11 +1,11 @@
 # backend/app/services/model_registry.py
 
-import os, json, tempfile, threading, requests
+import os, json, threading, requests
 from typing import Any, List, Dict, Optional
 from pathlib import Path
 from joblib import load as joblib_load
 
-# ── Optional Supabase client (initialized only if env vars exist) ──────────────
+# ── Optional Supabase client (only if env vars exist) ─────────────────────────
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 _supabase = None
@@ -17,9 +17,16 @@ if SUPABASE_URL and SUPABASE_KEY:
         _supabase = None  # don’t crash if the lib/env isn’t available
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-MODEL_DIR = Path(os.getenv("MODEL_DIR", "/var/data/models")).resolve()
-_REPO_FEATURE_METADATA_PATH = Path(__file__).resolve().parents[3] / "backend" / "scripts" / "modeling" / "feature_metadata.json"
-# If your repo layout differs, adjust the ^ path; disk copy takes precedence anyway.
+MODELS_DIR = Path(
+    os.getenv("MODELS_DIR") or os.getenv("MODEL_DIR") or "/var/data/models"
+).resolve()
+MODEL_DIR = MODELS_DIR  # back-compat alias
+
+# Repo fallback for legacy metadata (disk copy takes precedence)
+_REPO_FEATURE_METADATA_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "backend" / "scripts" / "modeling" / "feature_metadata.json"
+)
 
 # ── Caches ────────────────────────────────────────────────────────────────────
 _lock = threading.Lock()
@@ -45,6 +52,7 @@ def _canonical_map() -> Dict[str, str]:
         "runs+rbi":"runs_rbis","runs rbis":"runs_rbis","runs rbi":"runs_rbis",
         "h+r+rbi":"hits_runs_rbis","hrr":"hits_runs_rbis","hrrr":"hits_runs_rbis",
     }
+    # allow both canonical names and common aliases (case-insensitive)
     _CANON = {**{k: k for k in canon}, **{k.lower(): v for k, v in aliases.items()}}
     return _CANON
 
@@ -57,30 +65,69 @@ def canonicalize_prop_type(s: str) -> str:
         return key
     raise ValueError(f"Unknown prop_type '{s}'")
 
-# ── Feature metadata (disk-first, fallback to repo) ────────────────────────────
+# ── Feature metadata (disk-first, then joblib meta, then repo file) ───────────
+def _latest_index_path() -> Path:
+    return MODELS_DIR / "latest" / "MODEL_INDEX.json"
+
 def _feature_metadata_path() -> Path:
-    disk_meta = MODEL_DIR / "feature_metadata.json"
+    disk_meta = MODELS_DIR / "feature_metadata.json"
     return disk_meta if disk_meta.exists() else _REPO_FEATURE_METADATA_PATH
 
 def load_feature_metadata() -> Dict[str, Any]:
+    """Legacy/global feature metadata fallback."""
     global _FEATURE_META
     if _FEATURE_META is not None:
         return _FEATURE_META
     meta_path = _feature_metadata_path()
-    with open(meta_path, "r") as f:
-        _FEATURE_META = json.load(f)
+    if meta_path.exists():
+        with open(meta_path, "r") as f:
+            _FEATURE_META = json.load(f)
+    else:
+        _FEATURE_META = {}
     return _FEATURE_META
 
 def get_expected_features(prop_type: str, prefer: str = "random_forest") -> List[str]:
-    meta = load_feature_metadata().get(prop_type)
-    if not meta:
-        raise ValueError(f"No feature metadata for prop_type '{prop_type}'")
-    feats = meta.get(prefer) or meta.get("logistic_regression")
-    if not feats:
-        raise ValueError(f"No feature list for prop_type '{prop_type}'")
-    return feats
+    prop = canonicalize_prop_type(prop_type)
 
-# ── Download from Supabase (used only if disk-miss and client available) ──────
+    # 1) Try latest/MODEL_INDEX.json (written by trainer)
+    idx_path = _latest_index_path()
+    if idx_path.exists():
+        try:
+            idx = json.loads(idx_path.read_text())
+            entry = idx.get(prop)
+            if entry:
+                num = entry.get("features_num") or []
+                cat = entry.get("features_cat") or []
+                if num or cat:
+                    return list(num) + list(cat)
+        except Exception:
+            pass
+
+    # 2) Try reading meta from the model blob
+    for p in _disk_candidates(prop, prefer):
+        if p.exists():
+            try:
+                obj = joblib_load(p)
+                if isinstance(obj, dict):
+                    meta = obj.get("meta") or {}
+                    num = meta.get("features_num") or []
+                    cat = meta.get("features_cat") or []
+                    if num or cat:
+                        return list(num) + list(cat)
+            except Exception:
+                pass
+
+    # 3) Legacy feature_metadata.json
+    meta = load_feature_metadata().get(prop)
+    if meta:
+        feats = meta.get(prefer) or meta.get("logistic_regression")
+        if feats:
+            return feats
+
+    # 4) Last resort: empty (caller will 0-fill)
+    return []
+
+# ── Supabase fallback download (only if disk-miss) ────────────────────────────
 def _download_from_supabase(bucket: str, path: str) -> bytes:
     if not _supabase:
         raise RuntimeError("Supabase client not available for fallback download.")
@@ -90,33 +137,33 @@ def _download_from_supabase(bucket: str, path: str) -> bytes:
     r.raise_for_status()
     return r.content
 
-# ---- Filename candidates (prefer uncompressed) --------------------------------
-LR_SUFFIX_CANDIDATES = [
-    "logistic_regression.pkl",
-    "log_reg.pkl",
-    "logistic_regression.joblib",
-    "log_reg.joblib",
-    "logistic_regression_compressed.pkl",
-    "log_reg_compressed.pkl",
-]
+# Optional pin to a specific snapshot (e.g., MODEL_TAG=20250813T200000Z)
+MODEL_TAG = os.getenv("MODEL_TAG")
 
-RF_SUFFIX_CANDIDATES = [
-    "random_forest.pkl",
-    "random_forest.joblib",
-    "random_forest_compressed.pkl",
-]
+# ── Disk search order (single definition) ─────────────────────────────────────
+def _disk_candidates(prop: str, algo: str) -> List[Path]:
+    """
+    Search order (disk-first):
+      1) If MODEL_TAG: /var/data/models/archive/<prop>/<prop>-<TAG>.joblib
+      2) /var/data/models/latest/<prop>.joblib
+      3) /var/data/models/<prop>/latest.joblib
+      4) /var/data/models/<prop>/<algo>.joblib
+      5) Legacy PKL names under /var/data/models/<prop>/:
+           - <prop>_<algo>.pkl
+           - <algo>.pkl
+    """
+    base = MODELS_DIR
+    if MODEL_TAG:
+        return [(base / "archive" / prop / f"{prop}-{MODEL_TAG}.joblib").resolve()]
+    return [
+        (base / "latest" / f"{prop}.joblib").resolve(),
+        (base / prop / "latest.joblib").resolve(),
+        (base / prop / f"{algo}.joblib").resolve(),
+        (base / prop / f"{prop}_{algo}.pkl").resolve(),
+        (base / prop / f"{algo}.pkl").resolve(),
+    ]
 
-# ---- Filename candidates (only uncompressed .pkl) ----------------------------
-def _model_file_candidates(prop_type: str, algo: str) -> list[Path]:
-    if algo == "logistic_regression":
-        names = [f"{prop_type}_logistic_regression.pkl"]
-    elif algo == "random_forest":
-        names = [f"{prop_type}_random_forest.pkl"]
-    else:
-        names = [f"{prop_type}_{algo}.pkl"]
-    return [(MODEL_DIR / prop_type / n).resolve() for n in names]
-
-def load_model(prop_type: str, algo: str) -> Any:
+def load_model(prop_type: str, algo: str):
     key = (prop_type, algo)
     if key in _MODEL_CACHE:
         return _MODEL_CACHE[key]
@@ -125,34 +172,38 @@ def load_model(prop_type: str, algo: str) -> Any:
         if key in _MODEL_CACHE:
             return _MODEL_CACHE[key]
 
-        tried: list[str] = []
+        tried: List[str] = []
 
-        # 1) Disk-first: exact .pkl names only
-        for p in _model_file_candidates(prop_type, algo):
+        # 1) Disk-first
+        for p in _disk_candidates(prop_type, algo):
             tried.append(str(p))
             if p.exists():
-                model = joblib_load(str(p))
-                _MODEL_CACHE[key] = model
-                return model
+                m = joblib_load(str(p))
+                _MODEL_CACHE[key] = m
+                return m
 
-        # 2) Optional Supabase fallback with the *same* filenames
+        # 2) Optional Supabase fallback (mirror same relative paths)
         if _supabase:
-            last_err: Exception | None = None
-            for p in _model_file_candidates(prop_type, algo):
-                rel = f"{prop_type}/{p.name}"  # e.g., home_runs/home_runs_random_forest.pkl
+            last_err: Optional[Exception] = None
+            for p in _disk_candidates(prop_type, algo):
+                try:
+                    rel = p.relative_to(MODELS_DIR).as_posix()
+                except ValueError:
+                    rel = f"{prop_type}/{p.name}"  # conservative fallback
                 tried.append(f"supabase://models/{rel}")
                 try:
                     blob = _download_from_supabase("models", rel)
                     p.parent.mkdir(parents=True, exist_ok=True)
                     with open(p, "wb") as f:
                         f.write(blob)
-                    model = joblib_load(str(p))
-                    _MODEL_CACHE[key] = model
-                    return model
+                    m = joblib_load(str(p))
+                    _MODEL_CACHE[key] = m
+                    return m
                 except Exception as e:
                     last_err = e
                     continue
 
-        # Nothing worked → raise with what we tried
         details = "; ".join(tried) or "(no paths attempted)"
-        raise RuntimeError(f"Model not found for {prop_type}/{algo}. Tried: {details}")
+        raise RuntimeError(
+            f"Model not found for {prop_type}/{algo}. Tried: {details}"
+        )

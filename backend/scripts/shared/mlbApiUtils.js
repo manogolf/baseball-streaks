@@ -53,8 +53,8 @@ export async function getGameContextFields(gameId, teamAbbr) {
   }
 
   const normalizedOpponentAbbr = normalizeTeamAbbreviation(opponentAbbr);
-  console.log("🏷️ Original opponentAbbr:", opponentAbbr);
-  console.log("🎯 Normalized opponentAbbr:", normalizedOpponentAbbr);
+  // console.log("🏷️ Original opponentAbbr:", opponentAbbr);
+  // console.log("🎯 Normalized opponentAbbr:", normalizedOpponentAbbr);
 
   const teamInfo = getTeamInfoByAbbr(normalizedOpponentAbbr);
   console.log("🔬 teamInfo returned:", teamInfo);
