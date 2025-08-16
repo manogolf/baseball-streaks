@@ -1,29 +1,30 @@
 /**
- * 📄 File: backend/scripts/generateDerivedStats.js
+ * backend/scripts/generateDerivedStats.js
  *
- * Populates the `player_derived_stats` table (d7d15d30) with derived stat features for recently played games.
+ * Populates `player_derived_stats` with derived features for recently played games.
+ * - Pulls (player_id, game_id, game_date) from model_training_props
+ * - Builds per-player history (<= game_date)
+ * - Computes features via getDerivedStats(...)
+ * - Upserts into player_derived_stats on (player_id, game_date)
  *
- * It works by:
- * - Fetching unique (player_id, game_date, game_id) rows from `model_training_props`
- * - Preloading 30 days of boxscores into a cache
- * - Computing derived stats using `getDerivedStats(...)`
- * - Writing/upserting derived features to Supabase, bucketed for parallelism
- *
- * Features:
- * - Supports optional --bucket=1/8 arguments for distributed runs
- * - Suppresses logs unless --verbose is passed
- * - Includes fetch timeout protection and Supabase error escalation
- *
- * Intended to be run daily via cron to ensure fresh derived stats are available for modeling.
+ * CLI:
+ *   node backend/scripts/generateDerivedStats.js --start=YYYY-MM-DD --end=YYYY-MM-DD --lookback=21 --verbose
  */
-
-//  backend/scripts/generateDerivedStats.js
 
 import { supabase } from "./shared/supabaseBackend.js";
 import { getDerivedStats } from "./shared/getDerivedStats.js";
 import { parseArgs } from "node:util";
 
-const DEFAULT_LOOKBACK_DAYS = 2; // ← Customize this if you want
+const DEFAULT_LOOKBACK_DAYS = 21;
+const BATCH_SLEEP_MS = 50; // small delay between rows
+const DAY_SLEEP_MS = 300; // small delay between days
+
+let totalInserted = 0;
+let totalUpdated = 0;
+let totalSkipped = 0;
+let totalFailed = 0;
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function getDateRangeFromLookback(days) {
   const end = new Date();
@@ -34,15 +35,43 @@ function getDateRangeFromLookback(days) {
     end: end.toISOString().slice(0, 10),
   };
 }
-const BATCH_SIZE = 500;
 
-let inserted = 0;
-let skipped = 0;
-let failed = 0;
+/**
+ * Upsert a single row and report inserted vs updated vs skipped.
+ * Assumes UNIQUE(player_id, game_date) exists on player_derived_stats.
+ */
+async function upsertWithReport(tableName, row, verbose = false) {
+  const { data: exist, error: existErr } = await supabase
+    .from(tableName)
+    .select("id")
+    .eq("player_id", row.player_id)
+    .eq("game_date", row.game_date)
+    .limit(1);
 
-const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+  const existed = (exist?.length ?? 0) > 0;
+  if (existErr && verbose) {
+    console.warn(
+      "⚠️ Precheck failed; proceeding with upsert:",
+      existErr.message || existErr
+    );
+  }
 
-async function getPlayerGameHistoryByDate(gameDate) {
+  const { error: upsertError } = await supabase
+    .from(tableName)
+    .upsert(row, { onConflict: "player_id,game_date", returning: "minimal" });
+
+  if (upsertError) {
+    console.error(
+      `❌ Upsert failed for player_id=${row.player_id}, game_date=${row.game_date} (game_id=${row.game_id}):`,
+      upsertError.message || upsertError
+    );
+    return "failed";
+  }
+  return existed ? "updated" : "inserted";
+}
+
+/** Build a history map: player_id (string) -> array of MT rows up to gameDate */
+async function getPlayerGameHistoryByDate(gameDate, verbose = false) {
   const { data, error } = await supabase
     .from("model_training_props")
     .select("player_id, game_id, game_date, prop_type, prop_value")
@@ -52,60 +81,25 @@ async function getPlayerGameHistoryByDate(gameDate) {
     console.error("❌ Failed to load player history:", error);
     return new Map();
   }
-  console.log(`🧪 Querying MT history for game_date <= '${gameDate}'`);
-
-  console.log(
-    `🧪 Loaded ${data.length} history rows for gameDate <= ${gameDate}`
-  ); // ✅ ADD THIS
-
-  const historyMap = new Map();
-  for (const row of data) {
-    const pid = String(row.player_id);
-    if (!historyMap.has(pid)) historyMap.set(pid, []);
-    historyMap.get(pid).push(row);
-  }
-  return historyMap;
-}
-
-async function setIfMissing(row, tableName) {
-  const { player_id, game_id } = row;
-  if (!player_id || !game_id) {
-    console.warn(`⚠️ Missing player_id or game_id for upsert`);
-    return "skipped";
-  }
-
-  const { data, error } = await supabase
-    .from(tableName)
-    .select("id")
-    .eq("player_id", player_id)
-    .eq("game_id", game_id)
-    .maybeSingle();
-
-  if (error && error.code !== "PGRST116") {
-    console.error(`❌ Supabase error on check:`, error.message);
-    return "skipped";
-  }
-
-  if (data) {
-    return "skipped"; // row already exists
-  }
-
-  const { error: insertError } = await supabase.from(tableName).insert(row);
-
-  if (insertError) {
-    console.error(
-      `❌ Insert failed for ${player_id} on ${game_id}:`,
-      insertError.message
+  if (verbose) {
+    console.log(
+      `🧪 Loaded ${data.length} history rows for game_date <= ${gameDate}`
     );
-    return "skipped";
   }
 
-  return "inserted";
+  const map = new Map();
+  for (const r of data) {
+    const pid = String(r.player_id);
+    if (!map.has(pid)) map.set(pid, []);
+    map.get(pid).push(r);
+  }
+  return map;
 }
 
-async function processDay(gameDate) {
-  console.log(`\n📅 Processing date: ${gameDate}`);
+async function processDay(gameDate, verbose = false) {
+  if (verbose) console.log(`\n📅 Processing: ${gameDate}`);
 
+  // Pull distinct (player_id, game_id, game_date) for that day
   const { data, error } = await supabase
     .from("model_training_props")
     .select("player_id, game_id, game_date")
@@ -113,21 +107,27 @@ async function processDay(gameDate) {
 
   if (error) {
     console.error(`❌ Supabase error on ${gameDate}:`, error);
-    failed++;
+    totalFailed++;
     return;
   }
 
   const uniquePairs = Array.from(
     new Map(
-      data.map((row) => [`${row.player_id}_${row.game_id}`, row])
+      (data || []).map((r) => [`${r.player_id}_${r.game_id}`, r])
     ).values()
   );
 
-  const playerGameHistory = await getPlayerGameHistoryByDate(gameDate);
-  console.log(
-    `🧪 Loaded history map for ${gameDate} → players:`,
-    playerGameHistory.size
-  );
+  const historyMap = await getPlayerGameHistoryByDate(gameDate, verbose);
+  if (verbose) {
+    console.log(
+      `🧪 History map for ${gameDate} → players=${historyMap.size}, pairs=${uniquePairs.length}`
+    );
+  }
+
+  let dayInserted = 0;
+  let dayUpdated = 0;
+  let daySkipped = 0;
+  let dayFailed = 0;
 
   for (const { player_id, game_id, game_date } of uniquePairs) {
     try {
@@ -135,62 +135,108 @@ async function processDay(gameDate) {
         player_id,
         game_date,
         game_id,
-        playerGameHistory,
+        historyMap,
         supabase,
-        "history"
+        "history" // sourceMode; OK to keep or drop if your impl ignores it
       );
 
       if (!stats || Object.keys(stats).length === 0) {
-        skipped++;
+        daySkipped++;
         continue;
       }
 
-      const status = await setIfMissing(
-        {
-          player_id,
-          game_id,
-          game_date,
-          ...stats,
-        },
-        "player_derived_stats"
+      const row = {
+        player_id,
+        game_id,
+        game_date,
+        ...stats,
+      };
+
+      const status = await upsertWithReport(
+        "player_derived_stats",
+        row,
+        verbose
       );
 
       if (status === "inserted") {
-        inserted++;
+        dayInserted++;
+      } else if (status === "updated") {
+        dayUpdated++;
+      } else if (status === "failed") {
+        dayFailed++;
       } else {
-        skipped++;
+        daySkipped++;
       }
     } catch (err) {
-      console.error(`❌ Error for ${player_id} on ${game_id}:`, err.message);
-      failed++;
+      console.error(
+        `❌ Error computing stats for ${player_id} on ${game_id}:`,
+        err.message || err
+      );
+      dayFailed++;
     }
 
-    await delay(50); // ✅ ← Add delay after each player-game pair
+    await sleep(BATCH_SLEEP_MS);
   }
 
+  totalInserted += dayInserted;
+  totalUpdated += dayUpdated;
+  totalSkipped += daySkipped;
+  totalFailed += dayFailed;
+
   console.log(
-    `✅ ${gameDate} complete: Inserted=${inserted}, Skipped=${skipped}, Failed=${failed}`
+    `✅ ${gameDate} → inserted=${dayInserted}, updated=${dayUpdated}, skipped=${daySkipped}, failed=${dayFailed}`
   );
 }
 
-async function runBackfill(startDate, endDate) {
-  let current = new Date(startDate);
-  const end = new Date(endDate);
+async function runBackfill({ start, end, lookback, verbose }) {
+  let startDate = start;
+  let endDate = end;
 
-  while (current <= end) {
-    const iso = current.toISOString().slice(0, 10);
-    await processDay(iso);
-    current.setDate(current.getDate() + 1);
-    await delay(1000);
+  if (!startDate || !endDate) {
+    const rng = getDateRangeFromLookback(lookback ?? DEFAULT_LOOKBACK_DAYS);
+    startDate = startDate || rng.start;
+    endDate = endDate || rng.end;
   }
 
-  console.log("\n🏁 Derived stats backfill complete.");
-  console.log("📈 Total inserted:", inserted);
-  console.log("🟡 Total skipped:", skipped);
-  console.log("❌ Total errors:", failed);
+  console.log(
+    `🚀 Derived-stats backfill: ${startDate} → ${endDate} (lookback=${
+      lookback ?? DEFAULT_LOOKBACK_DAYS
+    })`
+  );
+
+  let d = new Date(startDate);
+  const endD = new Date(endDate);
+
+  while (d <= endD) {
+    const iso = d.toISOString().slice(0, 10);
+    await processDay(iso, verbose);
+    d.setDate(d.getDate() + 1);
+    await sleep(DAY_SLEEP_MS);
+  }
+
+  console.log("\n🏁 Done.");
+  console.log(
+    `📈 Totals — inserted=${totalInserted}, updated=${totalUpdated}, skipped=${totalSkipped}, failed=${totalFailed}`
+  );
 }
-// 🎬 Kick it off (no CLI args, fixed lookback)
+
+/* ─────────────────────────── CLI ─────────────────────────── */
+
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const { start, end } = getDateRangeFromLookback(DEFAULT_LOOKBACK_DAYS);
-  runBackfill(start, end);
+  const {
+    values: { start, end, lookback, verbose },
+  } = parseArgs({
+    options: {
+      start: { type: "string" },
+      end: { type: "string" },
+      lookback: { type: "string" },
+      verbose: { type: "boolean", default: false },
+    },
+  });
+
+  const lb = lookback != null ? Number(lookback) : undefined;
+  runBackfill({ start, end, lookback: lb, verbose: !!verbose }).catch((e) => {
+    console.error("❌ Top-level failure:", e);
+    process.exitCode = 1;
+  });
 }
