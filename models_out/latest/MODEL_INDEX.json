@@ -25,7 +25,7 @@
   },
   "hits": {
     "prop_type": "hits",
-    "trained_at": "2025-08-17T01:27:17.857358",
+    "trained_at": "2025-08-17T02:25:09.761665",
     "file": "hits.joblib",
     "auc_lr": null,
     "auc_rf": null,

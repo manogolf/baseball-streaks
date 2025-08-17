@@ -57,3 +57,7 @@ models/*.pkl
 models/
 *.pkl
 build/
+
+# .gitignore
+models_out/
+backend/.env.train
