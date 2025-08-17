@@ -8,40 +8,42 @@ import time
 import subprocess
 from typing import Any, Dict
 from pathlib import Path
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, AliasChoices
 from pydantic.config import ConfigDict
-from app.security.commit_token import mint_commit_token
+
+from backend.app.security.commit_token import mint_commit_token
+from backend.app.services.model_registry import canonicalize_prop_type as _canon_func
 
 router = APIRouter()
 
 # Choose backend: set PREDICT_MODE=subprocess to force subprocess
 FORCE_SUBPROC = os.getenv("PREDICT_MODE", "").lower() == "subprocess"
 
-# Try to import your real predictor module (preferred path)
-_predict_mod = None
+# Prefer in-process Python module; fall back to subprocess when forced/unavailable
 try:
-    # expects: backend/scripts/prediction/make_prediction.py
-    from backend.scripts.prediction import make_prediction as _predict_mod  # type: ignore
+    from backend.scripts.prediction.make_prediction import predict as _predict
 except Exception:
-    _predict_mod = None
+    _predict = None  # subprocess path will be used
 
-# Optional canonicalizers
-_canon_func = None
-try:
-    from app.prop_utils import get_canonical_model_name as _canon_func  # returns canonical or None
-except Exception:
+# ---- helpers -----------------------------------------------------------------
+
+def _extract_prob(d) -> float:
+    """Return a 0–1 probability from whatever the predictor returns."""
+    if not isinstance(d, dict):
+        return 0.5
+    p = d.get("probability") or d.get("probability_over") or d.get("prob")
     try:
-        from app.services.model_registry import canonicalize_prop_type as _canon_func  # raises on bad input
-    except Exception:
-        _canon_func = None
-
+        p = float(p)
+    except (TypeError, ValueError):
+        return 0.5
+    return max(0.0, min(1.0, p))
 
 class PredictInput(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     prop_type: str = Field(validation_alias=AliasChoices("prop_type", "propType"))
     features: Dict[str, Any] = Field(default_factory=dict)
-
 
 def _canonicalize_prop(name: str) -> str:
     if _canon_func is None:
@@ -52,20 +54,10 @@ def _canonicalize_prop(name: str) -> str:
     except Exception:
         return str(name)
 
-
 def _call_predict_module(prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Call in-process predictor. Supports either predict() or make_prediction().
-    Must return a dict with a probability field.
-    """
-    if _predict_mod is None:
-        raise RuntimeError("predict module not importable")
-    if hasattr(_predict_mod, "predict"):
-        return _predict_mod.predict(prop_type=prop_type, features=features)  # type: ignore[attr-defined]
-    if hasattr(_predict_mod, "make_prediction"):
-        return _predict_mod.make_prediction(prop_type=prop_type, features=features)  # type: ignore[attr-defined]
-    raise RuntimeError("No callable predict()/make_prediction() in module")
-
+    if _predict is None:
+        raise RuntimeError("predict() function not importable")
+    return _predict(prop_type=prop_type, features=features)
 
 def _call_predict_subprocess(prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     payload = json.dumps({"prop_type": prop_type, "features": features})
@@ -105,6 +97,8 @@ def _call_predict_subprocess(prop_type: str, features: Dict[str, Any]) -> Dict[s
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"invalid JSON from predictor: {e}")
 
+# ---- route -------------------------------------------------------------------
+
 @router.post("/predict")
 async def predict(req: Request):
     # Parse + validate request
@@ -133,7 +127,7 @@ async def predict(req: Request):
     used_model, backend = False, None
     t0 = time.time()
     try:
-        if not FORCE_SUBPROC and _predict_mod is not None:
+        if not FORCE_SUBPROC and _predict is not None:
             out = _call_predict_module(canonical, features_for_model)
             used_model, backend = True, "module"
         else:
@@ -141,21 +135,14 @@ async def predict(req: Request):
             used_model, backend = True, "subprocess"
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         # Fallback stub so UI flow can continue (should be rare)
-        out = {"prob": 0.5, "stub": True}
+        out = {"probability_over": 0.5, "stub": True}
         used_model, backend = False, None
     dt_ms = int((time.time() - t0) * 1000)
 
-    # Prefer explicit P(over) from model; otherwise normalize common fields.
-    try:
-        if "probability_over" in out:
-            p_over = float(out["probability_over"])
-        else:
-            p_over = float(_normalize_prob(out))
-        p_over = max(0.0, min(1.0, p_over))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"predictor did not return prob: {e}")
+    # Normalize whatever we got back into a single probability
+    p_over = _extract_prob(out)
 
     # Pick direction based on user input; be direction-agnostic in the model.
     direction = (features.get("over_under") or "over").lower()

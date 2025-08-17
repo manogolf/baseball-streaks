@@ -4,13 +4,13 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, List, Dict, Any
 import unicodedata, difflib
 
-from app.services.supabase_queries import (
+from backend.app.services.supabase_queries import (
     players_all,
     player_lookup,
     players_search,
     players_by_team,
 )
-from app.prop_utils import get_latest_team_for_player
+from backend.app.prop_utils import get_latest_team_for_player
 from backend.scripts.shared.supabase_utils import supabase
 
 router = APIRouter()

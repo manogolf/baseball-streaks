@@ -11,23 +11,23 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # ---- Routers (import the APIRouter objects directly) ----
-from app.routes.api.player_profile import router as player_profile_router
-from app.routes.api.prepare_prop import router as prepare_router
-from app.routes.api.predict import router as predict_router
-from app.routes.api.model_metrics import router as model_metrics_router
-from app.routes.api.user_vs_model_accuracy import router as user_vs_model_accuracy_router
-from app.routes.api.user_vs_model_accuracy_weekly import router as user_vs_model_weekly_router
-from app.routes.api.model_accuracy_weekly import router as model_accuracy_weekly_router
-from app.routes.api.player_list import router as player_list_router
-from app.routes.api.players import router as players_router
-from app.routes.api.props import router as props_router
+from backend.app.routes.api.player_profile import router as player_profile_router
+from backend.app.routes.api.prepare_prop import router as prepare_router
+from backend.app.routes.api.predict import router as predict_router
+from backend.app.routes.api.model_metrics import router as model_metrics_router
+from backend.app.routes.api.user_vs_model_accuracy import router as user_vs_model_accuracy_router
+from backend.app.routes.api.user_vs_model_accuracy_weekly import router as user_vs_model_weekly_router
+from backend.app.routes.api.model_accuracy_weekly import router as model_accuracy_weekly_router
+from backend.app.routes.api.player_list import router as player_list_router
+from backend.app.routes.api.players import router as players_router
+from backend.app.routes.api.props import router as props_router
 # If you have a games endpoint that exposes `router`, import it like this:
 # from app.routes.api.games import router as games_router
 
-from app.services.model_registry import load_model
+from backend.app.services.model_registry import load_model
 
 # --- verify players router at startup ---
-import app.routes.api.players as players_mod
+import backend.app.routes.api.players as players_mod
 print("players.py file:", players_mod.__file__)
 print("players routes:", [r.path for r in players_router.routes])
 

@@ -7,20 +7,16 @@ from typing import Dict, Any, List, Optional
 import numpy as np
 import pandas as pd
 
+from backend.app.services.model_registry import (
+    canonicalize_prop_type,
+    load_model,
+    get_expected_features,
+)
+
 # Make sure the repo root is on sys.path (…/project/src)
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
-
-# Try both package layouts
-try:
-    from app.services.model_registry import (
-        canonicalize_prop_type, load_model, get_expected_features
-    )
-except ModuleNotFoundError:
-    from backend.app.services.model_registry import (
-        canonicalize_prop_type, load_model, get_expected_features
-    )
 
 def _vectorize(features: Dict[str, Any], feature_list: List[str]) -> pd.DataFrame:
     """1-row DataFrame with columns EXACTLY matching training order; missing -> 0."""

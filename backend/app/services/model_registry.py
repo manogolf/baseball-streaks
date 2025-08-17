@@ -1,266 +1,227 @@
-# backend/scripts/model_trainer.py
-"""
-Train and write per-prop models to disk (MODELS_DIR).
-- Reads: model_training_props (Supabase)
-- Target: outcome ('win'→1, 'loss'→0)
-- Features: safe numeric + small categorical
-- Heavily weights user_added rows
-- Writes: MODELS_DIR/latest/<prop>.joblib and MODELS_DIR/archive/<prop>/<prop>-<ts>.joblib
-"""
+# backend/app/services/model_registry.py
 
-import io, os, json, time
+import os, json, threading, requests
+from typing import Any, List, Dict, Optional
 from pathlib import Path
-from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+from joblib import load as joblib_load
+from typing import Any
 
-import numpy as np
-import pandas as pd
-import joblib
-
-from supabase import create_client, Client
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.impute import SimpleImputer
-from sklearn.pipeline import Pipeline
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.calibration import CalibratedClassifierCV
-from sklearn.metrics import roc_auc_score
-from sklearn.utils.validation import check_is_fitted
-
-# ---------- Config ----------
-DEFAULT_DAYS_BACK = 365
-DEFAULT_ROW_LIMIT = 50_000
-
-PROP_TYPES = [
-    "doubles","earned_runs","hits","hits_allowed","hits_runs_rbis","home_runs",
-    "outs_recorded","rbis","runs_rbis","runs_scored","singles","stolen_bases",
-    "strikeouts_batting","strikeouts_pitching","total_bases","triples","walks",
-    "walks_allowed",
-]
-
-# Where to write models (local or Render disk)
-MODELS_DIR = Path(os.environ.get("MODELS_DIR", "./models_out")).resolve()
-LATEST_DIR = MODELS_DIR / "latest"
-ARCHIVE_DIR = MODELS_DIR / "archive"
-
-# Numeric features we’d like to use (we’ll keep only those that actually exist & have data)
-NUMERIC_COLS = [
-    "line","prop_value","rolling_result_avg_7","line_diff",
-    "hit_streak","win_streak","is_home","is_pitcher",
-]
-
-# Small-cardinality categoricals
-CAT_COLS = [
-    "time_of_day_bucket",   # e.g., morning/afternoon/night
-    "game_day_of_week",     # e.g., Mon/Tue
-    # add tiny IDs only if cardinality is small:
-    # "team_id", "opponent_team_id",
-]
-
-# ---------- Supabase ----------
-def _supabase_client() -> Client:
-    url = os.environ.get("SUPABASE_URL")
-    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_ANON_KEY")
-    if not url or not key:
-        raise RuntimeError("Missing SUPABASE_URL or key (SERVICE_ROLE/ANON).")
-    return create_client(url, key)
-
-def fetch_training_rows(sb: Client, prop_type: str, days_back: int, limit: int) -> pd.DataFrame:
-    since = (datetime.utcnow() - timedelta(days=days_back)).date().isoformat()
-    q = (
-        sb.table("model_training_props")
-        .select("*")
-        .eq("prop_type", prop_type)
-        .in_("status", ["win","loss"])
-        .not_.is_("prop_value", "null")
-        .gte("game_date", since)
-        .order("game_date", desc=True)
-        .limit(limit)
-    )
-    rows = (q.execute().data or [])
-    rows = [r for r in rows if r.get("outcome") in ("win","loss")]  # extra guard
-    return pd.DataFrame(rows)
-
-# ---------- Build pipelines with chosen cols ----------
-def build_pipeline(num_cols: List[str], cat_cols: List[str]) -> tuple[Pipeline, Pipeline]:
-    num_transform = Pipeline([("imputer", SimpleImputer(strategy="median"))])
-    cat_transform = Pipeline([
-        ("imputer", SimpleImputer(strategy="most_frequent")),
-        ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=True)),
-    ])
-    pre = ColumnTransformer(
-        transformers=[
-            ("num", num_transform, num_cols),
-            ("cat", cat_transform, cat_cols),
-        ],
-        remainder="drop",
-        sparse_threshold=0.3,
-    )
-
-    # Base learners
-    lr = LogisticRegression(max_iter=2000, n_jobs=None)
-    rf = RandomForestClassifier(
-        n_estimators=300,
-        max_depth=None,
-        n_jobs=-1,
-        random_state=42,
-    )
-
-    # LR calibration (fallback to plain LR if calibration fails due to tiny data)
+# ── Optional Supabase client (only if env vars exist) ─────────────────────────
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+_supabase = None
+if SUPABASE_URL and SUPABASE_KEY:
     try:
-        lr_cal = CalibratedClassifierCV(lr, method="isotonic", cv=3)
-        pipe_lr = Pipeline([("pre", pre), ("clf", lr_cal)])
+        from supabase import create_client
+        _supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
     except Exception:
-        pipe_lr = Pipeline([("pre", pre), ("clf", lr)])
+        _supabase = None  # don’t crash if the lib/env isn’t available
 
-    pipe_rf = Pipeline([("pre", pre), ("clf", rf)])
-    return pipe_lr, pipe_rf
+# ── Paths ─────────────────────────────────────────────────────────────────────
+MODELS_DIR = Path(
+    os.getenv("MODELS_DIR") or os.getenv("MODEL_DIR") or "/var/data/models"
+).resolve()
+MODEL_DIR = MODELS_DIR  # back-compat alias
 
-# ---------- Train one prop ----------
-def train_models_for_prop(
-    prop_type: str,
-    *,
-    days_back: int = DEFAULT_DAYS_BACK,
-    limit: int = DEFAULT_ROW_LIMIT,
-    quiet: bool = True,
-) -> Optional[Dict[str, Any]]:
-    sb = _supabase_client()
-    df = fetch_training_rows(sb, prop_type, days_back, limit)
+# Repo fallback for legacy metadata (disk copy takes precedence)
+_REPO_FEATURE_METADATA_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "backend" / "scripts" / "modeling" / "feature_metadata.json"
+)
 
-    if df.empty or "outcome" not in df.columns:
-        if not quiet:
-            print(f"⏭️  {prop_type}: no training rows.")
-        return None
+# ── Caches ────────────────────────────────────────────────────────────────────
+_lock = threading.Lock()
+_MODEL_CACHE: Dict[tuple[str, str], Any] = {}     # (prop_type, algo) -> model
+_FEATURE_META: Optional[Dict[str, Any]] = None
+_CANON: Optional[Dict[str, str]] = None
 
-    df = df.copy()
-    df["y"] = (df["outcome"] == "win").astype(int)
+# ── Canonicalization ──────────────────────────────────────────────────────────
+def _canonical_map() -> Dict[str, str]:
+    global _CANON
+    if _CANON is not None:
+        return _CANON
+    canon = {
+        "hits":"hits","singles":"singles","doubles":"doubles","triples":"triples",
+        "home_runs":"home_runs","rbis":"rbis","runs_scored":"runs_scored","walks":"walks",
+        "strikeouts_batting":"strikeouts_batting","total_bases":"total_bases","stolen_bases":"stolen_bases",
+        "hits_runs_rbis":"hits_runs_rbis","runs_rbis":"runs_rbis",
+        "strikeouts_pitching":"strikeouts_pitching","walks_allowed":"walks_allowed",
+        "earned_runs":"earned_runs","hits_allowed":"hits_allowed","outs_recorded":"outs_recorded",
+    }
+    aliases = {
+        "hr":"home_runs","home run":"home_runs",
+        "runs+rbi":"runs_rbis","runs rbis":"runs_rbis","runs rbi":"runs_rbis",
+        "h+r+rbi":"hits_runs_rbis","hrr":"hits_runs_rbis","hrrr":"hits_runs_rbis",
+    }
+    # allow both canonical names and common aliases (case-insensitive)
+    _CANON = {**{k: k for k in canon}, **{k.lower(): v for k, v in aliases.items()}}
+    return _CANON
 
-    # booleans to numeric-ish (if present)
-    for b in ("is_home","is_pitcher"):
-        if b in df.columns:
-            df[b] = df[b].astype(float)
+def canonicalize_prop_type(s: str) -> str:
+    key = (s or "").strip().lower()
+    m = _canonical_map()
+    if key in m:
+        return m[key]
+    if key in m.values():
+        return key
+    raise ValueError(f"Unknown prop_type '{s}'")
 
-    # Choose only columns that exist; keep numeric that have at least one non-null
-    num_used = [c for c in NUMERIC_COLS if c in df.columns and pd.Series(df[c]).notna().any()]
-    cat_used = [c for c in CAT_COLS if c in df.columns]
+# ── Feature metadata (disk-first, then joblib meta, then repo file) ───────────
+def _latest_index_path() -> Path:
+    return MODELS_DIR / "latest" / "MODEL_INDEX.json"
 
-    if not num_used and not cat_used:
-        if not quiet:
-            print(f"⏭️  {prop_type}: zero usable features; skipping.")
-        return None
+def _feature_metadata_path() -> Path:
+    disk_meta = MODELS_DIR / "feature_metadata.json"
+    return disk_meta if disk_meta.exists() else _REPO_FEATURE_METADATA_PATH
 
-    pipe_lr, pipe_rf = build_pipeline(num_used, cat_used)
+def load_feature_metadata() -> Dict[str, Any]:
+    """Legacy/global feature metadata fallback."""
+    global _FEATURE_META
+    if _FEATURE_META is not None:
+        return _FEATURE_META
+    meta_path = _feature_metadata_path()
+    if meta_path.exists():
+        with open(meta_path, "r") as f:
+            _FEATURE_META = json.load(f)
+    else:
+        _FEATURE_META = {}
+    return _FEATURE_META
 
-    # Split holdout
-    df = df.sample(frac=1.0, random_state=42)
-    n_val = max(1, int(len(df) * 0.2))
-    train_df, val_df = df.iloc[n_val:], df.iloc[:n_val]
+def get_expected_features(prop_type: str, prefer: str = "random_forest") -> List[str]:
+    prop = canonicalize_prop_type(prop_type)
 
-    X_tr = train_df[num_used + cat_used] if (num_used or cat_used) else train_df[[]]
-    y_tr = train_df["y"].to_numpy()
-    X_v  =  val_df[num_used + cat_used] if (num_used or cat_used) else  val_df[[]]
-    y_v  =  val_df["y"].to_numpy()
-
-    # weights (boost user_added heavily)
-    w_tr = np.ones(len(train_df), dtype="float64")
-    if "prop_source" in train_df.columns:
-        w_tr[train_df["prop_source"].values == "user_added"] = 1000.0
-    w_v = np.ones(len(val_df), dtype="float64")
-
-    # --- FIT (this is the part your saved models were missing) ---
-    pipe_lr.fit(X_tr, y_tr, **({"clf__sample_weight": w_tr} if "clf__sample_weight" in pipe_lr.get_params() else {}))
-    pipe_rf.fit(X_tr, y_tr, clf__sample_weight=w_tr)
-
-    # Verify fitted
-    for name, m in (("lr", pipe_lr), ("rf", pipe_rf)):
+    # 1) Try latest/MODEL_INDEX.json (written by trainer)
+    idx_path = _latest_index_path()
+    if idx_path.exists():
         try:
-            check_is_fitted(m)
-        except Exception as e:
-            raise RuntimeError(f"{prop_type}: model {name} failed to fit: {e}")
-
-    # Validate (may be NaN if y_v single-class)
-    def _auc(m):
-        try:
-            p = m.predict_proba(X_v)[:, 1]
-            return float(roc_auc_score(y_v, p, sample_weight=w_v))
+            idx = json.loads(idx_path.read_text())
+            entry = idx.get(prop)
+            if entry:
+                num = entry.get("features_num") or []
+                cat = entry.get("features_cat") or []
+                if num or cat:
+                    return list(num) + list(cat)
         except Exception:
-            return None
+            pass
 
-    auc_lr = _auc(pipe_lr)
-    auc_rf = _auc(pipe_rf)
+    # 2) Try reading meta from the model blob
+    for p in _disk_candidates(prop, prefer):
+        if p.exists():
+            try:
+                obj = joblib_load(p)
+                if isinstance(obj, dict):
+                    meta = obj.get("meta") or {}
+                    num = meta.get("features_num") or []
+                    cat = meta.get("features_cat") or []
+                    if num or cat:
+                        return list(num) + list(cat)
+            except Exception:
+                pass
 
-    if not quiet:
-        print(f"📈 {prop_type}  AUC — LR: {auc_lr if auc_lr is not None else '—'}  RF: {auc_rf if auc_rf is not None else '—'}")
+    # 3) Legacy feature_metadata.json
+    meta = load_feature_metadata().get(prop)
+    if meta:
+        feats = meta.get(prefer) or meta.get("logistic_regression")
+        if feats:
+            return feats
 
-    # Pick best for convenience
-    best_model = pipe_rf if ((auc_rf or -1) >= (auc_lr or -1)) else pipe_lr
+    # 4) Last resort: empty (caller will 0-fill)
+    return []
 
-    # Payload
-    payload = {
-        "best": best_model,
-        "lr": pipe_lr,
-        "rf": pipe_rf,
-        "meta": {
-            "prop_type": prop_type,
-            "trained_at": datetime.utcnow().isoformat(),
-            "days_back": days_back,
-            "limit": limit,
-            "auc_lr": auc_lr,
-            "auc_rf": auc_rf,
-            "features_num": num_used,
-            "features_cat": cat_used,
-        },
-    }
+# ── Supabase fallback download (only if disk-miss) ────────────────────────────
+def _download_from_supabase(bucket: str, path: str) -> bytes:
+    if not _supabase:
+        raise RuntimeError("Supabase client not available for fallback download.")
+    res = _supabase.storage.from_(bucket).create_signed_url(path, 3600)
+    url = res["signedURL"]
+    r = requests.get(url, timeout=60)
+    r.raise_for_status()
+    return r.content
 
-    # Write latest + archive
-    ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-    (LATEST_DIR).mkdir(parents=True, exist_ok=True)
-    (ARCHIVE_DIR / prop_type).mkdir(parents=True, exist_ok=True)
+# Optional pin to a specific snapshot (e.g., MODEL_TAG=20250813T200000Z)
+MODEL_TAG = os.getenv("MODEL_TAG")
 
-    latest_path  = (LATEST_DIR / f"{prop_type}.joblib").resolve()
-    archive_path = (ARCHIVE_DIR / prop_type / f"{prop_type}-{ts}.joblib").resolve()
+# ── Disk search order (single definition) ─────────────────────────────────────
+def _disk_candidates(prop: str, algo: str) -> List[Path]:
+    """
+    Search order (disk-first):
+      1) If MODEL_TAG: /var/data/models/archive/<prop>/<prop>-<TAG>.joblib
+      2) /var/data/models/latest/<prop>.joblib
+      3) /var/data/models/<prop>/latest.joblib
+      4) /var/data/models/<prop>/<algo>.joblib
+      5) Legacy PKL names under /var/data/models/<prop>/:
+           - <prop>_<algo>.pkl
+           - <algo>.pkl
+    """
+    base = MODELS_DIR
+    if MODEL_TAG:
+        return [(base / "archive" / prop / f"{prop}-{MODEL_TAG}.joblib").resolve()]
+    return [
+        (base / "latest" / f"{prop}.joblib").resolve(),
+        (base / prop / "latest.joblib").resolve(),
+        (base / prop / f"{algo}.joblib").resolve(),
+        (base / prop / f"{prop}_{algo}.pkl").resolve(),
+        (base / prop / f"{algo}.pkl").resolve(),
+    ]
 
-    buf = io.BytesIO()
-    joblib.dump(payload, buf, compress=3)
-    blob = buf.getvalue()
 
-    # atomic writes
-    def _atomic_write(path: Path, data: bytes):
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(path.suffix + ".tmp")
-        with open(tmp, "wb") as f:
-            f.write(data)
-        os.replace(tmp, path)
+def _unwrap_model(obj: Any, algo: str):
+    """Return an estimator from a loaded joblib object."""
+    # already an estimator?
+    if hasattr(obj, "predict") or hasattr(obj, "predict_proba"):
+        return obj
+    if isinstance(obj, dict):
+        if algo == "random_forest" and obj.get("rf") is not None:
+            return obj["rf"]
+        if algo == "logistic_regression" and obj.get("lr") is not None:
+            return obj["lr"]
+        if obj.get("best") is not None:
+            return obj["best"]
+    return None
 
-    _atomic_write(latest_path, blob)
-    _atomic_write(archive_path, blob)
+def load_model(prop_type: str, algo: str):
+    key = (prop_type, algo)
+    if key in _MODEL_CACHE:
+        return _MODEL_CACHE[key]
 
-    # Update index
-    index_path = (LATEST_DIR / "MODEL_INDEX.json").resolve()
-    index = {}
-    if index_path.exists():
-        try:
-            index = json.loads(index_path.read_text())
-        except Exception:
-            index = {}
-    index[prop_type] = {
-        "prop_type": prop_type,
-        "trained_at": datetime.utcnow().isoformat(),
-        "file": latest_path.name,
-        "auc_lr": auc_lr,
-        "auc_rf": auc_rf,
-        "rows": int(len(df)),
-        "features_num": num_used,
-        "features_cat": cat_used,
-    }
-    index_path.write_text(json.dumps(index, indent=2))
+    with _lock:
+        if key in _MODEL_CACHE:
+            return _MODEL_CACHE[key]
 
-    return {
-        "prop_type": prop_type,
-        "auc_lr": auc_lr,
-        "auc_rf": auc_rf,
-        "latest_path": str(latest_path),
-        "archive_path": str(archive_path),
-        "rows": int(len(df)),
-    }
+        tried: List[str] = []
+
+        # 1) Disk-first
+        for p in _disk_candidates(prop_type, algo):
+            tried.append(str(p))
+            if p.exists():
+                obj = joblib_load(str(p))
+                model = _unwrap_model(obj, algo)
+                if model is not None:
+                    _MODEL_CACHE[key] = model
+                    return model
+
+        # 2) Optional Supabase fallback
+        if _supabase:
+            last_err: Optional[Exception] = None
+            for p in _disk_candidates(prop_type, algo):
+                try:
+                    rel = p.relative_to(MODELS_DIR).as_posix()
+                except ValueError:
+                    rel = f"{prop_type}/{p.name}"
+                tried.append(f"supabase://models/{rel}")
+                try:
+                    blob = _download_from_supabase("models", rel)
+                    p.parent.mkdir(parents=True, exist_ok=True)
+                    with open(p, "wb") as f:
+                        f.write(blob)
+                    obj = joblib_load(str(p))
+                    model = _unwrap_model(obj, algo)
+                    if model is not None:
+                        _MODEL_CACHE[key] = model
+                        return model
+                except Exception as e:
+                    last_err = e
+                    continue
+
+        details = "; ".join(tried) or "(no paths attempted)"
+        raise RuntimeError(f"Model not found for {prop_type}/{algo}. Tried: {details}")

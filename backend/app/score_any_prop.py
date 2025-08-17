@@ -7,7 +7,7 @@ import sys
 # Ensure the current directory is on the path for local imports
 sys.path.append(os.path.dirname(__file__))
 
-from app.prop_utils import get_canonical_model_name
+from backend.app.prop_utils import get_canonical_model_name
 
 # Get absolute path to project root (2 levels up from score_any_prop.py)
 MODEL_DIR = pathlib.Path(__file__).resolve().parent.parent / "models"

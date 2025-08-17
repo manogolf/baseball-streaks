@@ -4,7 +4,7 @@ from typing import Dict, Optional
 from datetime import datetime
 
 # If you need team abbreviation normalization / id helpers later:
-# from app.services.team_map import normalize_abbr, abbr_to_team_id
+# from backend.app.services.team_map import normalize_abbr, abbr_to_team_id
 
 def enrich_game_context(team_id: int, game_date_iso: str) -> Dict:
     """

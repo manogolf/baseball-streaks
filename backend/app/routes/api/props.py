@@ -5,8 +5,8 @@ from typing import Dict, Any, Optional
 import traceback
 
 from backend.scripts.shared.supabase_utils import supabase
-from app.security.commit_token import verify_commit_token
-from app.prop_utils import get_team_abbr_from_team_id, get_latest_team_for_player
+from backend.app.security.commit_token import verify_commit_token
+from backend.app.prop_utils import get_team_abbr_from_team_id, get_latest_team_for_player
 
 try:
     from postgrest.exceptions import APIError as PostgrestAPIError

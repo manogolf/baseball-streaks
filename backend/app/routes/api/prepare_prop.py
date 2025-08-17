@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field, AliasChoices
 from typing import Optional, Dict, Any
 
 from backend.scripts.shared.enrich_game_context import enrich_game_context
-from app.prop_utils import (
+from backend.app.prop_utils import (
     get_player_id_by_name,
     get_latest_team_for_player,
     get_team_abbr_from_team_id,           # ✅ add
