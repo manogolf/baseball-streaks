@@ -4,6 +4,7 @@ import os, json, threading, requests
 from typing import Any, List, Dict, Optional
 from pathlib import Path
 from joblib import load as joblib_load
+from typing import Any
 
 # ── Optional Supabase client (only if env vars exist) ─────────────────────────
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -163,6 +164,23 @@ def _disk_candidates(prop: str, algo: str) -> List[Path]:
         (base / prop / f"{algo}.pkl").resolve(),
     ]
 
+# add near top with other imports
+from typing import Any
+
+def _unwrap_model(obj: Any, algo: str):
+    """Return an estimator from a loaded joblib object."""
+    # already an estimator?
+    if hasattr(obj, "predict") or hasattr(obj, "predict_proba"):
+        return obj
+    if isinstance(obj, dict):
+        if algo == "random_forest" and obj.get("rf") is not None:
+            return obj["rf"]
+        if algo == "logistic_regression" and obj.get("lr") is not None:
+            return obj["lr"]
+        if obj.get("best") is not None:
+            return obj["best"]
+    return None
+
 def load_model(prop_type: str, algo: str):
     key = (prop_type, algo)
     if key in _MODEL_CACHE:
@@ -178,32 +196,34 @@ def load_model(prop_type: str, algo: str):
         for p in _disk_candidates(prop_type, algo):
             tried.append(str(p))
             if p.exists():
-                m = joblib_load(str(p))
-                _MODEL_CACHE[key] = m
-                return m
+                obj = joblib_load(str(p))
+                model = _unwrap_model(obj, algo)
+                if model is not None:
+                    _MODEL_CACHE[key] = model
+                    return model
 
-        # 2) Optional Supabase fallback (mirror same relative paths)
+        # 2) Optional Supabase fallback
         if _supabase:
             last_err: Optional[Exception] = None
             for p in _disk_candidates(prop_type, algo):
                 try:
                     rel = p.relative_to(MODELS_DIR).as_posix()
                 except ValueError:
-                    rel = f"{prop_type}/{p.name}"  # conservative fallback
+                    rel = f"{prop_type}/{p.name}"
                 tried.append(f"supabase://models/{rel}")
                 try:
                     blob = _download_from_supabase("models", rel)
                     p.parent.mkdir(parents=True, exist_ok=True)
                     with open(p, "wb") as f:
                         f.write(blob)
-                    m = joblib_load(str(p))
-                    _MODEL_CACHE[key] = m
-                    return m
+                    obj = joblib_load(str(p))
+                    model = _unwrap_model(obj, algo)
+                    if model is not None:
+                        _MODEL_CACHE[key] = model
+                        return model
                 except Exception as e:
                     last_err = e
                     continue
 
         details = "; ".join(tried) or "(no paths attempted)"
-        raise RuntimeError(
-            f"Model not found for {prop_type}/{algo}. Tried: {details}"
-        )
+        raise RuntimeError(f"Model not found for {prop_type}/{algo}. Tried: {details}")
