@@ -4,7 +4,6 @@ import os, json, threading, requests
 from typing import Any, List, Dict, Optional
 from pathlib import Path
 from joblib import load as joblib_load
-from typing import Any
 
 # ── Optional Supabase client (only if env vars exist) ─────────────────────────
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -21,7 +20,6 @@ if SUPABASE_URL and SUPABASE_KEY:
 MODELS_DIR = Path(
     os.getenv("MODELS_DIR") or os.getenv("MODEL_DIR") or "/var/data/models"
 ).resolve()
-MODEL_DIR = MODELS_DIR  # back-compat alias
 
 # Repo fallback for legacy metadata (disk copy takes precedence)
 _REPO_FEATURE_METADATA_PATH = (
@@ -31,7 +29,7 @@ _REPO_FEATURE_METADATA_PATH = (
 
 # ── Caches ────────────────────────────────────────────────────────────────────
 _lock = threading.Lock()
-_MODEL_CACHE: Dict[tuple[str, str], Any] = {}     # (prop_type, algo) -> model
+_MODEL_CACHE: Dict[tuple[str, str], Any] = {}     # (prop_type, algo) -> fitted Pipeline
 _FEATURE_META: Optional[Dict[str, Any]] = None
 _CANON: Optional[Dict[str, str]] = None
 
@@ -53,7 +51,6 @@ def _canonical_map() -> Dict[str, str]:
         "runs+rbi":"runs_rbis","runs rbis":"runs_rbis","runs rbi":"runs_rbis",
         "h+r+rbi":"hits_runs_rbis","hrr":"hits_runs_rbis","hrrr":"hits_runs_rbis",
     }
-    # allow both canonical names and common aliases (case-insensitive)
     _CANON = {**{k: k for k in canon}, **{k.lower(): v for k, v in aliases.items()}}
     return _CANON
 
@@ -104,11 +101,11 @@ def get_expected_features(prop_type: str, prefer: str = "random_forest") -> List
         except Exception:
             pass
 
-    # 2) Try reading meta from the model blob
+    # 2) Try reading meta from the model blob (any disk candidate)
     for p in _disk_candidates(prop, prefer):
         if p.exists():
             try:
-                obj = joblib_load(p)
+                obj = joblib_load(str(p))
                 if isinstance(obj, dict):
                     meta = obj.get("meta") or {}
                     num = meta.get("features_num") or []
@@ -118,7 +115,7 @@ def get_expected_features(prop_type: str, prefer: str = "random_forest") -> List
             except Exception:
                 pass
 
-    # 3) Legacy feature_metadata.json
+    # 3) Legacy feature_metadata.json in repo
     meta = load_feature_metadata().get(prop)
     if meta:
         feats = meta.get(prefer) or meta.get("logistic_regression")
@@ -164,7 +161,7 @@ def _disk_candidates(prop: str, algo: str) -> List[Path]:
         (base / prop / f"{algo}.pkl").resolve(),
     ]
 
-
+# ── Unwrap + fitness checks ───────────────────────────────────────────────────
 def _unwrap_model(obj: Any, algo: str):
     """Return an estimator from a loaded joblib object."""
     # already an estimator?
@@ -178,6 +175,16 @@ def _unwrap_model(obj: Any, algo: str):
         if obj.get("best") is not None:
             return obj["best"]
     return None
+
+def _looks_fitted(pipeline) -> bool:
+    """Heuristic: final estimator has learned attributes."""
+    try:
+        clf = getattr(pipeline, "named_steps", {}).get("clf", None)
+        if clf is None:
+            return False
+        return any(hasattr(clf, attr) for attr in ("classes_", "n_features_in_"))
+    except Exception:
+        return False
 
 def load_model(prop_type: str, algo: str):
     key = (prop_type, algo)
@@ -196,9 +203,10 @@ def load_model(prop_type: str, algo: str):
             if p.exists():
                 obj = joblib_load(str(p))
                 model = _unwrap_model(obj, algo)
-                if model is not None:
+                if model is not None and _looks_fitted(model):
                     _MODEL_CACHE[key] = model
                     return model
+                # keep looking if file exists but model is unfitted/invalid
 
         # 2) Optional Supabase fallback
         if _supabase:
@@ -216,7 +224,7 @@ def load_model(prop_type: str, algo: str):
                         f.write(blob)
                     obj = joblib_load(str(p))
                     model = _unwrap_model(obj, algo)
-                    if model is not None:
+                    if model is not None and _looks_fitted(model):
                         _MODEL_CACHE[key] = model
                         return model
                 except Exception as e:
@@ -224,4 +232,4 @@ def load_model(prop_type: str, algo: str):
                     continue
 
         details = "; ".join(tried) or "(no paths attempted)"
-        raise RuntimeError(f"Model not found for {prop_type}/{algo}. Tried: {details}")
+        raise RuntimeError(f"Model not found or unfitted for {prop_type}/{algo}. Tried: {details}")
