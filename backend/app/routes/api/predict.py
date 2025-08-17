@@ -128,17 +128,15 @@ async def predict(req: Request):
     used_model, backend = False, None
     t0 = time.time()
     try:
-        if FORCE_SUBPROC:
-            out = _call_predict_subprocess(canonical, features_for_model)
-            backend = "subprocess"
-        else:
+        if not FORCE_SUBPROC and _predict is not None:
             out = _call_predict_module(canonical, features_for_model)
-            backend = "module"
-        used_model = True
+            used_model, backend = True, "module"
+        else:
+            out = _call_predict_subprocess(canonical, features_for_model)
+            used_model, backend = True, "subprocess"
     except HTTPException:
         raise
     except Exception:
-        # Fallback stub so UI flow can continue
         out = {"prob": 0.5, "stub": True}
         used_model, backend = False, None
     dt_ms = int((time.time() - t0) * 1000)

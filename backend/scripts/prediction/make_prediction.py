@@ -29,17 +29,18 @@ def _vectorize(features: Dict[str, Any], feature_list: List[str]) -> pd.DataFram
             vals.append(0.0)
     return pd.DataFrame([vals], columns=feature_list)
 
-def _p(model, X: pd.DataFrame) -> Optional[float]:
+def _p(model, X) -> Optional[float]:
     if model is None:
         return None
-    if hasattr(model, "predict_proba"):
-        return float(model.predict_proba(X)[0][1])
-    if hasattr(model, "predict"):
-        y = model.predict(X)
-        try:
+    try:
+        if hasattr(model, "predict_proba"):
+            proba = model.predict_proba(X)
+            return float(proba[0][1])
+        if hasattr(model, "predict"):
+            y = model.predict(X)
             return float(np.ravel(y)[0])
-        except Exception:
-            return None
+    except Exception:
+        return None
     return None
 
 def _blend(a: Optional[float], b: Optional[float]) -> float:
