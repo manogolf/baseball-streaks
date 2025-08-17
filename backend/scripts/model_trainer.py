@@ -32,6 +32,17 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.metrics import roc_auc_score
 
+# load .env for Python
+from pathlib import Path
+try:
+    from dotenv import load_dotenv
+    for p in (Path.cwd() / ".env", Path(__file__).resolve().parents[2] / ".env"):
+        if p.exists():
+            load_dotenv(p, override=False)
+except Exception:
+    pass  # keep going if python-dotenv isn't installed
+
+
 # --------- Config ---------
 DEFAULT_DAYS_BACK = 365   # reduce if you want faster runs
 DEFAULT_ROW_LIMIT = 50_000
@@ -99,16 +110,18 @@ def fetch_training_rows(sb: Client, prop_type: str, days_back: int, limit: int):
         sb.table("model_training_props")
         .select("*")
         .eq("prop_type", prop_type)
-        .in_("status", ["win", "loss"])
+        # .in_("status", ["win", "loss"])          # ← REMOVE this
         .not_.is_("line", "null")
         .not_.is_("prop_value", "null")
         .gte("game_date", since_date)
         .order("game_date", desc=True)
         .limit(limit)
     )
+
     resp = q.execute()
     rows = resp.data or []
-    rows = [r for r in rows if r.get("outcome") in ("win","loss")]
+    # Keep only fully graded rows:
+    rows = [r for r in rows if r.get("outcome") in ("win", "loss")]
     return pd.DataFrame(rows)
 
 def _prep_frame(df: pd.DataFrame) -> pd.DataFrame:
@@ -142,39 +155,44 @@ def _prep_frame(df: pd.DataFrame) -> pd.DataFrame:
     df["sample_weight"] = w
     return df
 
-def build_pipeline():
+def build_pipeline(num_cols=None, cat_cols=None):
+    """Return (pipe_lr, pipe_rf) using the provided feature lists."""
+    num_cols = num_cols if num_cols is not None else NUMERIC_COLS
+    cat_cols = cat_cols if cat_cols is not None else CAT_COLS
+
     num_transform = Pipeline(
-        steps=[("imputer", SimpleImputer(strategy="median"))]
+        steps=[
+            ("imputer", SimpleImputer(strategy="median")),
+        ]
     )
     cat_transform = Pipeline(
         steps=[
             ("imputer", SimpleImputer(strategy="most_frequent")),
-            ("onehot", OneHotEncoder(handle_unknown="ignore", **_ONEHOT_KW)),
+            ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=True)),
         ]
     )
+
     pre = ColumnTransformer(
         transformers=[
-            ("num", num_transform, NUMERIC_COLS),
-            ("cat", cat_transform, CAT_COLS),
+            ("num", num_transform, num_cols),
+            ("cat", cat_transform, cat_cols),
         ],
         remainder="drop",
         sparse_threshold=0.3,
     )
 
-    lr = LogisticRegression(max_iter=1000)  # solver default OK
+    lr = LogisticRegression(max_iter=1000, n_jobs=None)
     rf = RandomForestClassifier(
         n_estimators=300,
         max_depth=None,
         n_jobs=-1,
         random_state=42,
     )
-
     lr_cal = CalibratedClassifierCV(lr, method="isotonic", cv=3)
 
     pipe_lr = Pipeline([("pre", pre), ("clf", lr_cal)])
     pipe_rf = Pipeline([("pre", pre), ("clf", rf)])
     return pipe_lr, pipe_rf
-
 def _simple_holdout_split(df: pd.DataFrame, frac=0.2, seed=42):
     df = df.sample(frac=1.0, random_state=seed)
     n = len(df)
@@ -198,14 +216,17 @@ def train_models_for_prop(
             print(f"⏭️  {prop_type}: target has a single class; skipping.")
         return None
 
+    # pick only columns that exist; keep numeric with at least one non-null
+    num_used = [c for c in NUMERIC_COLS if c in df.columns and df[c].notna().any()]
+    cat_used = [c for c in CAT_COLS if c in df.columns]
+
+    # split once
     train_df, val_df = _simple_holdout_split(df, frac=0.2)
-    X_tr, y_tr, w_tr = train_df[NUMERIC_COLS + CAT_COLS], train_df["y"], train_df["sample_weight"]
-    X_v, y_v, w_v = val_df[NUMERIC_COLS + CAT_COLS], val_df["y"], val_df["sample_weight"]
+    X_tr, y_tr, w_tr = train_df[num_used + cat_used], train_df["y"], train_df["sample_weight"]
+    X_v,  y_v,  w_v  =  val_df[num_used + cat_used],  val_df["y"],  val_df["sample_weight"]
 
-    pipe_lr, pipe_rf = build_pipeline()
-
-    pipe_lr.fit(X_tr, y_tr, clf__sample_weight=w_tr)
-    pipe_rf.fit(X_tr, y_tr, clf__sample_weight=w_tr)
+    # build pipelines using the chosen columns
+    pipe_lr, pipe_rf = build_pipeline(num_used, cat_used)
 
     try:
         p_lr = pipe_lr.predict_proba(X_v)[:, 1]
@@ -234,8 +255,8 @@ def train_models_for_prop(
             "limit": limit,
             "auc_lr": float(auc_lr) if not np.isnan(auc_lr) else None,
             "auc_rf": float(auc_rf) if not np.isnan(auc_rf) else None,
-            "features_num": NUMERIC_COLS,
-            "features_cat": CAT_COLS,
+            "features_num": num_used,   # ← use the pruned lists
+            "features_cat": cat_used,   # ← use the pruned lists
         },
     }
     model_blob = io.BytesIO()
