@@ -15,6 +15,7 @@ from pydantic.config import ConfigDict
 
 from backend.app.security.commit_token import mint_commit_token
 from backend.app.services.model_registry import canonicalize_prop_type as _canon_func
+from backend.scripts.prediction.make_prediction import predict as _predict
 
 router = APIRouter()
 
@@ -56,7 +57,7 @@ def _canonicalize_prop(name: str) -> str:
 
 def _call_predict_module(prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     if _predict is None:
-        raise RuntimeError("predict() function not importable")
+        raise RuntimeError("predict function not importable")
     return _predict(prop_type=prop_type, features=features)
 
 def _call_predict_subprocess(prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
@@ -127,22 +128,25 @@ async def predict(req: Request):
     used_model, backend = False, None
     t0 = time.time()
     try:
-        if not FORCE_SUBPROC and _predict is not None:
-            out = _call_predict_module(canonical, features_for_model)
-            used_model, backend = True, "module"
-        else:
+        if FORCE_SUBPROC:
             out = _call_predict_subprocess(canonical, features_for_model)
-            used_model, backend = True, "subprocess"
+            backend = "subprocess"
+        else:
+            out = _call_predict_module(canonical, features_for_model)
+            backend = "module"
+        used_model = True
     except HTTPException:
         raise
     except Exception:
-        # Fallback stub so UI flow can continue (should be rare)
-        out = {"probability_over": 0.5, "stub": True}
+        # Fallback stub so UI flow can continue
+        out = {"prob": 0.5, "stub": True}
         used_model, backend = False, None
     dt_ms = int((time.time() - t0) * 1000)
 
     # Normalize whatever we got back into a single probability
     p_over = _extract_prob(out)
+    # clamp (just in case)
+    p_over = max(0.0, min(1.0, p_over))
 
     # Pick direction based on user input; be direction-agnostic in the model.
     direction = (features.get("over_under") or "over").lower()
