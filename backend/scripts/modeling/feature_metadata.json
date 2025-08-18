@@ -50,6 +50,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ],
@@ -103,6 +104,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ]
@@ -158,6 +160,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ],
@@ -211,6 +214,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ]
@@ -266,6 +270,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line_diff"
     ],
     "logistic_regression": [
@@ -318,6 +323,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line_diff"
     ]
   },
@@ -371,6 +377,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ],
@@ -423,6 +430,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ]
@@ -477,6 +485,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line_diff"
     ],
     "logistic_regression": [
@@ -528,6 +537,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line_diff"
     ]
   },
@@ -582,6 +592,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ],
@@ -635,6 +646,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ]
@@ -690,6 +702,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ],
@@ -743,6 +756,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ]
@@ -798,6 +812,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ],
@@ -851,6 +866,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ]
@@ -906,6 +922,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ],
@@ -959,6 +976,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ]
@@ -1012,6 +1030,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ],
@@ -1063,6 +1082,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ]
@@ -1113,6 +1133,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line_diff"
     ],
     "logistic_regression": [
@@ -1160,6 +1181,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line_diff"
     ]
   },
@@ -1211,6 +1233,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ],
@@ -1261,6 +1284,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ]
@@ -1312,6 +1336,7 @@
       "bvp_at_bats",
       "bvp_strikeouts",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ],
@@ -1361,6 +1386,7 @@
       "bvp_at_bats",
       "bvp_strikeouts",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ]
@@ -1410,6 +1436,7 @@
       "bvp_at_bats",
       "bvp_strikeouts",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ],
@@ -1457,6 +1484,7 @@
       "bvp_at_bats",
       "bvp_strikeouts",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ]
@@ -1496,6 +1524,7 @@
       "bvp_at_bats",
       "bvp_strikeouts",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ],
@@ -1533,6 +1562,7 @@
       "bvp_at_bats",
       "bvp_strikeouts",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ]
@@ -1582,6 +1612,7 @@
       "bvp_at_bats",
       "bvp_strikeouts",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ],
@@ -1629,6 +1660,7 @@
       "bvp_at_bats",
       "bvp_strikeouts",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ]
@@ -1684,6 +1716,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ],
@@ -1737,6 +1770,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ]
@@ -1792,6 +1826,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ],
@@ -1845,6 +1880,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
+      "bvp_total_bases",
       "line",
       "line_diff"
     ]
