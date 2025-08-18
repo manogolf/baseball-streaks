@@ -14,23 +14,24 @@ from pydantic import BaseModel, Field, AliasChoices
 from pydantic.config import ConfigDict
 
 from backend.app.security.commit_token import mint_commit_token
-from backend.app.services.model_registry import canonicalize_prop_type as _canon_func
-from backend.scripts.prediction.make_prediction import predict as _predict
+from backend.app.services.model_registry import (
+    canonicalize_prop_type as _canon_func,
+    get_expected_features as _expected_features,
+)
 
 router = APIRouter()
 
 # Choose backend: set PREDICT_MODE=subprocess to force subprocess
 FORCE_SUBPROC = os.getenv("PREDICT_MODE", "").lower() == "subprocess"
 
-# Prefer in-process Python module; fall back to subprocess when forced/unavailable
+# Prefer in-process module; fall back to subprocess when forced/unavailable
 try:
     from backend.scripts.prediction.make_prediction import predict as _predict
 except Exception:
     _predict = None  # subprocess path will be used
 
-# ---- helpers -----------------------------------------------------------------
 
-def _extract_prob(d) -> float:
+def _extract_prob(d: Any) -> float:
     """Return a 0–1 probability from whatever the predictor returns."""
     if not isinstance(d, dict):
         return 0.5
@@ -41,10 +42,12 @@ def _extract_prob(d) -> float:
         return 0.5
     return max(0.0, min(1.0, p))
 
+
 class PredictInput(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     prop_type: str = Field(validation_alias=AliasChoices("prop_type", "propType"))
     features: Dict[str, Any] = Field(default_factory=dict)
+
 
 def _canonicalize_prop(name: str) -> str:
     if _canon_func is None:
@@ -55,10 +58,12 @@ def _canonicalize_prop(name: str) -> str:
     except Exception:
         return str(name)
 
+
 def _call_predict_module(prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     if _predict is None:
         raise RuntimeError("predict function not importable")
     return _predict(prop_type=prop_type, features=features)
+
 
 def _call_predict_subprocess(prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     payload = json.dumps({"prop_type": prop_type, "features": features})
@@ -98,7 +103,6 @@ def _call_predict_subprocess(prop_type: str, features: Dict[str, Any]) -> Dict[s
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"invalid JSON from predictor: {e}")
 
-# ---- route -------------------------------------------------------------------
 
 @router.post("/predict")
 async def predict(req: Request):
@@ -120,7 +124,7 @@ async def predict(req: Request):
 
     canonical = _canonicalize_prop(inp.prop_type)
 
-    # Build a features copy for the model: DO NOT include over_under (direction)
+    # For the model call, strip direction (model is direction-agnostic)
     features_for_model = dict(features)
     features_for_model.pop("over_under", None)
 
@@ -143,14 +147,22 @@ async def predict(req: Request):
 
     # Normalize whatever we got back into a single probability
     p_over = _extract_prob(out)
-    # clamp (just in case)
+
+    # Clamp (just in case)
     p_over = max(0.0, min(1.0, p_over))
 
-    # Pick direction based on user input; be direction-agnostic in the model.
+    # Direction from user input; model returns P(over)
     direction = (features.get("over_under") or "over").lower()
     prob = p_over if direction == "over" else (1.0 - p_over)
 
     model_tag = out.get("model") or out.get("model_name") or out.get("algo")
+
+    # Small debug/meta block to validate feature wiring
+    try:
+        expected = _expected_features(canonical, prefer="random_forest")
+        expected_count = len(expected or [])
+    except Exception:
+        expected_count = None
 
     meta = {
         "used_model": used_model,
@@ -158,6 +170,7 @@ async def predict(req: Request):
         "model": model_tag,
         "stub": not used_model or bool(out.get("stub")),
         "features_count": len(features),
+        "expected_feature_count": expected_count,  # <- should be ~50 if wired right
         "elapsed_ms": dt_ms,
         "direction": direction,
         "p_over": p_over,

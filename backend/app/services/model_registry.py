@@ -1,7 +1,21 @@
 # backend/app/services/model_registry.py
 
+"""
+Model registry utilities:
+- Load fitted models from disk (with optional Supabase fallback).
+- Resolve expected features for vectorization (repo JSON first).
+- Canonicalize prop types.
+
+Feature order preference (highest → lowest):
+  1) Repo JSON (backend/scripts/modeling/feature_metadata.json or *_backup.json)
+  2) Model meta inside joblib ("features_num"+"features_cat")
+  3) latest/MODEL_INDEX.json (written by trainer)
+"""
+
+from __future__ import annotations
+
 import os, json, threading, requests
-from typing import Any, List, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
 from joblib import load as joblib_load
 
@@ -17,19 +31,22 @@ if SUPABASE_URL and SUPABASE_KEY:
         _supabase = None  # don’t crash if the lib/env isn’t available
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-MODELS_DIR = Path(
-    os.getenv("MODELS_DIR") or os.getenv("MODEL_DIR") or "/var/data/models"
-).resolve()
+MODELS_DIR = Path(os.getenv("MODELS_DIR") or os.getenv("MODEL_DIR") or "/var/data/models").resolve()
+MODEL_DIR = MODELS_DIR  # back-compat alias
 
-# Repo fallback for legacy metadata (disk copy takes precedence)
-_REPO_FEATURE_METADATA_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "backend" / "scripts" / "modeling" / "feature_metadata.json"
-)
+# Feature spec (repo JSON first; disk-deployed copy allowed)
+_FEATURE_JSON_CANDIDATES: List[Path] = [
+    MODELS_DIR / "feature_metadata.json",  # if you deploy the file to the Render disk
+    Path(__file__).resolve().parents[3] / "backend" / "scripts" / "modeling" / "feature_metadata.json",
+    Path(__file__).resolve().parents[3] / "backend" / "scripts" / "modeling" / "feature_metadata_backup.json",
+]
+
+def _latest_index_path() -> Path:
+    return MODELS_DIR / "latest" / "MODEL_INDEX.json"
 
 # ── Caches ────────────────────────────────────────────────────────────────────
 _lock = threading.Lock()
-_MODEL_CACHE: Dict[tuple[str, str], Any] = {}     # (prop_type, algo) -> fitted Pipeline
+_MODEL_CACHE: Dict[Tuple[str, str], Any] = {}     # (prop_type, algo) -> fitted Pipeline
 _FEATURE_META: Optional[Dict[str, Any]] = None
 _CANON: Optional[Dict[str, str]] = None
 
@@ -57,51 +74,30 @@ def _canonical_map() -> Dict[str, str]:
 def canonicalize_prop_type(s: str) -> str:
     key = (s or "").strip().lower()
     m = _canonical_map()
-    if key in m:
+    if key in m:            # alias → canonical
         return m[key]
-    if key in m.values():
+    if key in m.values():   # already canonical
         return key
     raise ValueError(f"Unknown prop_type '{s}'")
 
-# ── Feature metadata (disk-first, then joblib meta, then repo file) ───────────
-def _latest_index_path() -> Path:
-    return MODELS_DIR / "latest" / "MODEL_INDEX.json"
-
-def _feature_metadata_path() -> Path:
-    disk_meta = MODELS_DIR / "feature_metadata.json"
-    return disk_meta if disk_meta.exists() else _REPO_FEATURE_METADATA_PATH
-
-def load_feature_metadata() -> Dict[str, Any]:
-    """Legacy/global feature metadata fallback."""
+# ── Feature metadata (repo JSON → model meta → index) ─────────────────────────
+def _load_feature_metadata_repo() -> Dict[str, Any]:
+    """Load the first available feature_metadata*.json from known locations."""
     global _FEATURE_META
     if _FEATURE_META is not None:
         return _FEATURE_META
-    meta_path = _feature_metadata_path()
-    if meta_path.exists():
-        with open(meta_path, "r") as f:
-            _FEATURE_META = json.load(f)
-    else:
-        _FEATURE_META = {}
+    for p in _FEATURE_JSON_CANDIDATES:
+        try:
+            if p.exists():
+                _FEATURE_META = json.loads(p.read_text())
+                return _FEATURE_META
+        except Exception:
+            continue
+    _FEATURE_META = {}
     return _FEATURE_META
 
-def get_expected_features(prop_type: str, prefer: str = "random_forest") -> List[str]:
-    prop = canonicalize_prop_type(prop_type)
-
-    # 1) Try latest/MODEL_INDEX.json (written by trainer)
-    idx_path = _latest_index_path()
-    if idx_path.exists():
-        try:
-            idx = json.loads(idx_path.read_text())
-            entry = idx.get(prop)
-            if entry:
-                num = entry.get("features_num") or []
-                cat = entry.get("features_cat") or []
-                if num or cat:
-                    return list(num) + list(cat)
-        except Exception:
-            pass
-
-    # 2) Try reading meta from the model blob (any disk candidate)
+def _features_from_model_meta(prop: str, prefer: str) -> List[str]:
+    """Try reading features from the joblib payload's meta."""
     for p in _disk_candidates(prop, prefer):
         if p.exists():
             try:
@@ -111,18 +107,52 @@ def get_expected_features(prop_type: str, prefer: str = "random_forest") -> List
                     num = meta.get("features_num") or []
                     cat = meta.get("features_cat") or []
                     if num or cat:
-                        return list(num) + list(cat)
+                        return list(dict.fromkeys(list(num) + list(cat)))
             except Exception:
-                pass
+                continue
+    return []
 
-    # 3) Legacy feature_metadata.json in repo
-    meta = load_feature_metadata().get(prop)
-    if meta:
-        feats = meta.get(prefer) or meta.get("logistic_regression")
-        if feats:
-            return feats
+def _features_from_index(prop: str) -> List[str]:
+    idx_path = _latest_index_path()
+    if idx_path.exists():
+        try:
+            idx = json.loads(idx_path.read_text())
+            entry = idx.get(prop)
+            if entry:
+                num = entry.get("features_num") or []
+                cat = entry.get("features_cat") or []
+                if num or cat:
+                    return list(dict.fromkeys(list(num) + list(cat)))
+        except Exception:
+            pass
+    return []
 
-    # 4) Last resort: empty (caller will 0-fill)
+def get_expected_features(prop_type: str, prefer: str = "random_forest") -> List[str]:
+    """Return ordered feature list used by prediction vectorizer."""
+    prop = canonicalize_prop_type(prop_type)
+
+    # 1) Repo JSON (source of truth)
+    repo = _load_feature_metadata_repo().get(prop)
+    if repo:
+        # accept multiple common keys
+        for key in (prefer, "rf" if prefer == "random_forest" else None, "logistic_regression", "lr", "features"):
+            if not key:
+                continue
+            feats = repo.get(key)
+            if feats:
+                return list(dict.fromkeys(list(feats)))
+
+    # 2) Model meta inside joblib
+    feats = _features_from_model_meta(prop, prefer)
+    if feats:
+        return feats
+
+    # 3) MODEL_INDEX.json (written by trainer)
+    feats = _features_from_index(prop)
+    if feats:
+        return feats
+
+    # 4) Last resort: empty → caller should 0-fill
     return []
 
 # ── Supabase fallback download (only if disk-miss) ────────────────────────────
@@ -138,17 +168,16 @@ def _download_from_supabase(bucket: str, path: str) -> bytes:
 # Optional pin to a specific snapshot (e.g., MODEL_TAG=20250813T200000Z)
 MODEL_TAG = os.getenv("MODEL_TAG")
 
-# ── Disk search order (single definition) ─────────────────────────────────────
+# ── Disk search order (pinned → latest → legacy) ──────────────────────────────
 def _disk_candidates(prop: str, algo: str) -> List[Path]:
     """
-    Search order (disk-first):
-      1) If MODEL_TAG: /var/data/models/archive/<prop>/<prop>-<TAG>.joblib
-      2) /var/data/models/latest/<prop>.joblib
-      3) /var/data/models/<prop>/latest.joblib
-      4) /var/data/models/<prop>/<algo>.joblib
-      5) Legacy PKL names under /var/data/models/<prop>/:
-           - <prop>_<algo>.pkl
-           - <algo>.pkl
+    1) If MODEL_TAG: /var/data/models/archive/<prop>/<prop>-<TAG>.joblib
+    2) /var/data/models/latest/<prop>.joblib
+    3) /var/data/models/<prop>/latest.joblib
+    4) /var/data/models/<prop>/<algo>.joblib
+    5) Legacy PKL under /var/data/models/<prop>/:
+         - <prop>_<algo>.pkl
+         - <algo>.pkl
     """
     base = MODELS_DIR
     if MODEL_TAG:
@@ -161,7 +190,7 @@ def _disk_candidates(prop: str, algo: str) -> List[Path]:
         (base / prop / f"{algo}.pkl").resolve(),
     ]
 
-# ── Unwrap + fitness checks ───────────────────────────────────────────────────
+# ── Unwrap + fitted check ─────────────────────────────────────────────────────
 def _unwrap_model(obj: Any, algo: str):
     """Return an estimator from a loaded joblib object."""
     # already an estimator?
@@ -177,7 +206,7 @@ def _unwrap_model(obj: Any, algo: str):
     return None
 
 def _looks_fitted(pipeline) -> bool:
-    """Heuristic: final estimator has learned attributes."""
+    """Heuristic: estimator has learned attributes."""
     try:
         clf = getattr(pipeline, "named_steps", {}).get("clf", None)
         if clf is None:
@@ -186,6 +215,7 @@ def _looks_fitted(pipeline) -> bool:
     except Exception:
         return False
 
+# ── Public: load_model ────────────────────────────────────────────────────────
 def load_model(prop_type: str, algo: str):
     key = (prop_type, algo)
     if key in _MODEL_CACHE:
@@ -206,9 +236,9 @@ def load_model(prop_type: str, algo: str):
                 if model is not None and _looks_fitted(model):
                     _MODEL_CACHE[key] = model
                     return model
-                # keep looking if file exists but model is unfitted/invalid
+                # else keep searching
 
-        # 2) Optional Supabase fallback
+        # 2) Optional Supabase fallback (mirror same relative paths)
         if _supabase:
             last_err: Optional[Exception] = None
             for p in _disk_candidates(prop_type, algo):
