@@ -63,9 +63,9 @@ ARCHIVE_DIR = MODELS_DIR / "archive"
 
 # Feature spec JSON (same sources your registry uses)
 FEATURE_JSON_CANDIDATES = [
-    Path(os.environ["FEATURE_JSON"]) if os.environ.get("FEATURE_JSON") else None,
-    Path(__file__).resolve().parents[2] / "scripts" / "modeling" / "feature_metadata.json",
-    Path(__file__).resolve().parents[2] / "scripts" / "modeling" / "feature_metadata_backup.json",
+    Path(os.environ["FEATURE_JSON"]) if os.getenv("FEATURE_JSON") else None,
+    Path(__file__).resolve().parents[2] / "backend" / "scripts" / "modeling" / "feature_metadata.json",
+    Path(__file__).resolve().parents[2] / "backend" / "scripts" / "modeling" / "feature_metadata_backup.json",
 ]
 FEATURE_JSON_CANDIDATES = [p for p in FEATURE_JSON_CANDIDATES if p]
 
@@ -76,6 +76,13 @@ try:
 except TypeError:
     _ONEHOT_KW = dict(sparse=True, handle_unknown="ignore")
 
+def _debug_feature_paths():
+    print("Feature JSON search paths:")
+    for p in FEATURE_JSON_CANDIDATES:
+        print(" -", p, "✓" if p.exists() else "✗")
+
+# before first use of load_feature_spec():
+_debug_feature_paths()
 
 # ---- Utilities ---------------------------------------------------------------
 def _atomic_write_bytes(path: Path, blob: bytes):
