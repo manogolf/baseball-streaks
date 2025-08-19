@@ -35,16 +35,9 @@ features:
     description: Start time of game (ET)
 
   # ────────── Streaks ──────────
-  streak_type_hot:
-    type: numeric
-    required: false
-
-  streak_type_cold:
-    type: numeric
-    required: false
-
-  streak_type_neutral:
-    type: numeric
+  streak_type:
+    type: categorical
+    categories: [hot, cold, neutral]
     required: false
 
   streak_count:

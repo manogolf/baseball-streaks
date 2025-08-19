@@ -1,8 +1,7 @@
 {
   "hits": {
     "random_forest": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -55,8 +54,7 @@
       "line_diff"
     ],
     "logistic_regression": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -111,8 +109,7 @@
   },
   "singles": {
     "random_forest": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -165,8 +162,7 @@
       "line_diff"
     ],
     "logistic_regression": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -221,8 +217,7 @@
   },
   "doubles": {
     "random_forest": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -274,8 +269,7 @@
       "line_diff"
     ],
     "logistic_regression": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -329,7 +323,7 @@
   },
   "triples": {
     "random_forest": [
-      "streak_type_hot",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -382,7 +376,7 @@
       "line_diff"
     ],
     "logistic_regression": [
-      "streak_type_hot",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -437,7 +431,7 @@
   },
   "home_runs": {
     "random_forest": [
-      "streak_type_hot",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -489,7 +483,7 @@
       "line_diff"
     ],
     "logistic_regression": [
-      "streak_type_hot",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -543,8 +537,7 @@
   },
   "total_bases": {
     "random_forest": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -597,8 +590,7 @@
       "line_diff"
     ],
     "logistic_regression": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -653,8 +645,7 @@
   },
   "rbis": {
     "random_forest": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -707,8 +698,7 @@
       "line_diff"
     ],
     "logistic_regression": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -763,8 +753,7 @@
   },
   "runs_scored": {
     "random_forest": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -817,8 +806,7 @@
       "line_diff"
     ],
     "logistic_regression": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -873,8 +861,7 @@
   },
   "strikeouts_batting": {
     "random_forest": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -927,8 +914,7 @@
       "line_diff"
     ],
     "logistic_regression": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -983,8 +969,7 @@
   },
   "walks": {
     "random_forest": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "rolling_result_avg_7",
       "d7_hits",
@@ -1035,8 +1020,7 @@
       "line_diff"
     ],
     "logistic_regression": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "rolling_result_avg_7",
       "d7_hits",
@@ -1089,8 +1073,7 @@
   },
   "stolen_bases": {
     "random_forest": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "rolling_result_avg_7",
       "d7_hits",
@@ -1137,8 +1120,7 @@
       "line_diff"
     ],
     "logistic_regression": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "rolling_result_avg_7",
       "d7_hits",
@@ -1187,8 +1169,7 @@
   },
   "strikeouts_pitching": {
     "random_forest": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -1238,8 +1219,7 @@
       "line_diff"
     ],
     "logistic_regression": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -1291,8 +1271,7 @@
   },
   "walks_allowed": {
     "random_forest": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -1341,8 +1320,7 @@
       "line_diff"
     ],
     "logistic_regression": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -1393,8 +1371,7 @@
   },
   "earned_runs": {
     "random_forest": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "rolling_result_avg_7",
       "d7_hits",
@@ -1441,8 +1418,7 @@
       "line_diff"
     ],
     "logistic_regression": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "rolling_result_avg_7",
       "d7_hits",
@@ -1491,8 +1467,7 @@
   },
   "outs_recorded": {
     "random_forest": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -1529,8 +1504,7 @@
       "line_diff"
     ],
     "logistic_regression": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -1569,8 +1543,7 @@
   },
   "hits_allowed": {
     "random_forest": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "rolling_result_avg_7",
       "d7_hits",
@@ -1617,8 +1590,7 @@
       "line_diff"
     ],
     "logistic_regression": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "rolling_result_avg_7",
       "d7_hits",
@@ -1667,8 +1639,7 @@
   },
   "hits_runs_rbis": {
     "random_forest": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -1721,8 +1692,7 @@
       "line_diff"
     ],
     "logistic_regression": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -1777,8 +1747,7 @@
   },
   "runs_rbis": {
     "random_forest": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
@@ -1831,8 +1800,7 @@
       "line_diff"
     ],
     "logistic_regression": [
-      "streak_type_hot",
-      "streak_type_cold",
+      "streak_type",
       "streak_count",
       "hit_streak",
       "win_streak",
