@@ -117,7 +117,7 @@ def _chunked(xs: List[Any], n: int) -> List[List[Any]]:
 
 # ---- Data access -------------------------------------------------------------
 def _fetch_from_view(sb: Client, prop_type: str, days_back: int, limit: int, cols: List[str]) -> Optional[pd.DataFrame]:
-    """Try consolidated view first (joined + de-duplicated features)."""    
+    """Try consolidated feature view first (joined, de-duped, backfills applied)."""
     since_date = (datetime.utcnow() - timedelta(days=days_back)).date().isoformat()
     base_cols = [
         "player_id","game_id","game_date","prop_type",
@@ -138,6 +138,7 @@ def _fetch_from_view(sb: Client, prop_type: str, days_back: int, limit: int, col
               .execute()
         )    
         rows = resp.data or []
+        print(f"[trainer] source=view:{FEATURE_VIEW} prop={prop_type} rows={len(rows)}")
         return pd.DataFrame(rows)
     except Exception:
         return None  # fallback path will handle
@@ -183,12 +184,13 @@ def _fetch_base_and_merge(sb: Client, prop_type: str, days_back: int, limit: int
 
     derived_frames: List[pd.DataFrame] = []
     for chunk in _chunked(game_ids, 1000):
+# Select * to avoid requesting non-existent columns (e.g., streak_type)
         r = (
             sb.table("player_derived_stats")
-            .select(",".join(["player_id","game_id"] + feat_cols_needed))
-            .in_("game_id", chunk)
-            .execute()
-        )
+              .select("*")
+              .in_("game_id", chunk)
+              .execute()
+        )        
         part = r.data or []
         if part:
             derived_frames.append(pd.DataFrame(part))
@@ -198,14 +200,15 @@ def _fetch_base_and_merge(sb: Client, prop_type: str, days_back: int, limit: int
     else:
         derived = pd.DataFrame(columns=["player_id","game_id"] + feat_cols_needed)
 
-    df = df.merge(derived, on=["player_id","game_id"], how="left", suffixes=("","_der"))
+        df = df.merge(derived, on=["player_id","game_id"], how="left", suffixes=("","_der"))
 
-    # ensure all requested features exist
-    for f in feat_cols:
-        if f not in df.columns:
-            df[f] = np.nan
+        # ensure all requested features exist
+        for f in feat_cols:
+            if f not in df.columns:
+                df[f] = np.nan
 
-    return df
+        print(f"[trainer] source=fallback:base+merge prop={prop_type} rows={len(df)}")
+        return df
 
 
 def fetch_training_rows(sb: Client, prop_type: str, days_back: int, limit: int, feat_cols: List[str]) -> pd.DataFrame:
