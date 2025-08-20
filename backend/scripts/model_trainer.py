@@ -84,6 +84,9 @@ def _debug_feature_paths():
 # before first use of load_feature_spec():
 _debug_feature_paths()
 
+# Single source of truth for the training view (public schema via PostgREST)
+FEATURE_VIEW = os.environ.get("FEATURE_VIEW", "training_features_for_model_v2")
+
 # ---- Utilities ---------------------------------------------------------------
 def _atomic_write_bytes(path: Path, blob: bytes):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -114,25 +117,26 @@ def _chunked(xs: List[Any], n: int) -> List[List[Any]]:
 
 # ---- Data access -------------------------------------------------------------
 def _fetch_from_view(sb: Client, prop_type: str, days_back: int, limit: int, cols: List[str]) -> Optional[pd.DataFrame]:
-    """Try training_examples_v1 first (fast, already joined)."""
+    """Try consolidated view first (joined + de-duplicated features)."""    
     since_date = (datetime.utcnow() - timedelta(days=days_back)).date().isoformat()
     base_cols = [
-        "player_id","game_id","game_date","prop_type","line","prop_value",
-        "is_home","is_pitcher","outcome","status","over_under",
-        "time_of_day_bucket","game_day_of_week",
+        "player_id","game_id","game_date","prop_type",
+        "line","prop_value","prop_source",
+        "is_home","is_pitcher",
+        "result","outcome","status",      # accept either label
+        "over_under","time_of_day_bucket","game_day_of_week",    
     ]
     select_cols = sorted(set(base_cols + cols))
     try:
         resp = (
-            sb.table("training_examples_v1")
-            .select(",".join(select_cols))
-            .eq("prop_type", prop_type)
-            .in_("status", ["win","loss"])
-            .gte("game_date", since_date)
-            .order("game_date", desc=True)
-            .limit(limit)
-            .execute()
-        )
+            sb.table(FEATURE_VIEW)                 # ← unified view
+              .select(",".join(select_cols))
+              .eq("prop_type", prop_type)
+              .gte("game_date", since_date)
+              .order("game_date", desc=True)
+              .limit(limit)
+              .execute()
+        )    
         rows = resp.data or []
         return pd.DataFrame(rows)
     except Exception:
@@ -217,9 +221,16 @@ def _prep_frame(df: pd.DataFrame) -> pd.DataFrame:
         return df.copy()
 
     df = df.copy()
-    # target
-    df["y"] = (df["outcome"] == "win").astype(int)
-
+    # target: prefer numeric 'result' (0/1); fallback to 'outcome' ('win'/'loss')
+    if "result" in df.columns and pd.api.types.is_numeric_dtype(df["result"]):
+        df["y"] = pd.to_numeric(df["result"], errors="coerce").astype("Int64")
+    elif "outcome" in df.columns:
+        df["y"] = (df["outcome"] == "win").astype("Int64")
+    else:
+        df["y"] = pd.Series([pd.NA] * len(df), dtype="Int64")
+    # drop unlabeled rows early
+    df = df[df["y"].notna()].copy()
+    df["y"] = df["y"].astype(int)
     # coerce binary flags
     for col in ("is_home","is_pitcher"):
         if col in df.columns:
