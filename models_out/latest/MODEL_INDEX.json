@@ -99,38 +99,26 @@
   },
   "hits_allowed": {
     "prop_type": "hits_allowed",
-    "trained_at": "2025-08-21T03:44:22.946335",
+    "trained_at": "2025-08-21T16:19:51.854991",
     "file": "hits_allowed.joblib",
-    "auc_lr": 0.9982905982905983,
+    "auc_lr": 1.0,
     "auc_rf": 1.0,
     "rows": 267,
     "features_num": [
+      "prop_value",
       "is_home",
-      "d7_hits_allowed",
       "d15_hits_allowed",
       "d30_hits_allowed",
-      "d7_strikeouts_pitching",
-      "d15_strikeouts_pitching",
-      "d30_strikeouts_pitching",
-      "d7_walks_allowed",
-      "d15_walks_allowed",
-      "d30_walks_allowed",
-      "d7_earned_runs",
       "d15_earned_runs",
       "d30_earned_runs",
-      "bvp_plate_appearances",
-      "bvp_at_bats",
-      "bvp_hits",
-      "bvp_total_bases",
-      "bvp_walks",
-      "bvp_strikeouts",
-      "streak_count"
+      "d15_strikeouts_pitching",
+      "d30_strikeouts_pitching",
+      "d15_walks_allowed",
+      "d30_walks_allowed"
     ],
     "features_cat": [
-      "over_under",
       "time_of_day_bucket",
-      "game_day_of_week",
-      "streak_type"
+      "game_day_of_week"
     ]
   },
   "hits_runs_rbis": {

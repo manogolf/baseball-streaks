@@ -387,15 +387,21 @@ def train_models_for_prop(prop_type: str, *, days_back=DEFAULT_DAYS_BACK, limit=
             print(f"⚠️  {prop_type}: feature coverage {cov:.0%} ({len(used & expected)}/{len(expected)})")
 
     # 5) stratified split (ensures both classes in val)
-    from sklearn.model_selection import StratifiedShuffleSplit
-    sss = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
-    (train_idx, val_idx), = sss.split(df[cols_used], df["y"])
-    train_df, val_df = df.iloc[train_idx], df.iloc[val_idx]
-    if not quiet:
-        c_all = df["y"].value_counts().to_dict()
-        c_tr  = train_df["y"].value_counts().to_dict()
-        c_v   = val_df["y"].value_counts().to_dict()
-        print(f"[trainer] y counts all={c_all} train={c_tr} val={c_v}")
+    # --- time-based holdout first, with stratified fallback if needed ---
+    if "game_date" in df.columns:
+        df = df.sort_values("game_date")
+    else:
+        df = df.sort_values("game_id")
+
+    split = int(len(df) * 0.8)
+    train_df, val_df = df.iloc[:split], df.iloc[split:]
+
+    # ensure both classes exist in val; otherwise fallback to stratified
+    if train_df["y"].nunique() < 2 or val_df["y"].nunique() < 2:
+        from sklearn.model_selection import StratifiedShuffleSplit
+        sss = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+        (train_idx, val_idx), = sss.split(df[cols_used], df["y"])
+        train_df, val_df = df.iloc[train_idx], df.iloc[val_idx]
 
     X_tr, y_tr, w_tr = train_df[cols_used], train_df["y"], train_df["sample_weight"]
     X_v,  y_v,  w_v  =  val_df[cols_used],  val_df["y"],  val_df["sample_weight"]
@@ -406,20 +412,34 @@ def train_models_for_prop(prop_type: str, *, days_back=DEFAULT_DAYS_BACK, limit=
     pipe_lr.fit(X_tr, y_tr, clf__sample_weight=w_tr)
     pipe_rf.fit(X_tr, y_tr, clf__sample_weight=w_tr)
 
-    # 7) AUC
-    try:
-        auc_lr = roc_auc_score(y_v, pipe_lr.predict_proba(X_v)[:, 1], sample_weight=w_v)
-    except Exception:
-        auc_lr = np.nan
-    try:
-        auc_rf = roc_auc_score(y_v, pipe_rf.predict_proba(X_v)[:, 1], sample_weight=w_v)
-    except Exception:
-        auc_rf = np.nan
+    # 7) AUC — report both unweighted and weighted, then use weighted for selection/meta
+    proba_lr = pipe_lr.predict_proba(X_v)[:, 1]
+    proba_rf = pipe_rf.predict_proba(X_v)[:, 1]
+    pos_rate = float(np.mean(y_v))
+
+    def safe_auc(y, p, w=None):
+        try:
+            return roc_auc_score(y, p) if w is None else roc_auc_score(y, p, sample_weight=w)
+        except Exception:
+            return np.nan
+
+    auc_lr_uw = safe_auc(y_v, proba_lr, w=None)
+    auc_lr_w  = safe_auc(y_v, proba_lr, w_v)
+    auc_rf_uw = safe_auc(y_v, proba_rf, w=None)
+    auc_rf_w  = safe_auc(y_v, proba_rf, w_v)
+
+    # keep weighted versions as the canonical ones for model selection & metadata
+    auc_lr = auc_lr_w
+    auc_rf = auc_rf_w
 
     if not quiet:
-        lr_s = "NaN" if np.isnan(auc_lr) else f"{auc_lr:.3f}"
-        rf_s = "NaN" if np.isnan(auc_rf) else f"{auc_rf:.3f}"
-        print(f"📈 {prop_type}  AUC — LR: {lr_s}  RF: {rf_s}")
+        fmt = lambda x: "NaN" if np.isnan(x) else f"{x:.3f}"
+        print(
+            f"📈 {prop_type}  AUC — "
+            f"LR: {fmt(auc_lr_uw)} (uw) / {fmt(auc_lr_w)} (w);  "
+            f"RF: {fmt(auc_rf_uw)} (uw) / {fmt(auc_rf_w)} (w);  "
+            f"pos_rate={pos_rate:.3f}, n_val={len(y_v)}"
+        )
 
     best_model = pipe_rf if (auc_rf >= (auc_lr if not np.isnan(auc_lr) else -1)) else pipe_lr
 
