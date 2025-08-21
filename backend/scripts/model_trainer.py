@@ -118,55 +118,46 @@ def _chunked(xs: List[Any], n: int) -> List[List[Any]]:
 # ---- Data access -------------------------------------------------------------
 def _fetch_from_view(sb: Client, prop_type: str, days_back: int, limit: int, cols: List[str]) -> Optional[pd.DataFrame]:
     """Try consolidated feature view first (joined, de-duped, backfills applied)."""
-    since_date = (datetime.utcnow() - timedelta(days=days_back)).date().isoformat()
-    base_cols = [
-        "player_id","game_id","game_date","prop_type",
-        "line","prop_value","prop_source",
-        "is_home","is_pitcher",
-        "result","outcome","status",      # accept either label
-        "over_under","time_of_day_bucket","game_day_of_week",    
-    ]
-    select_cols = sorted(set(base_cols + cols))
-    try:
+    since_date = (datetime.utcnow() - timedelta(days=days_back)).date().isoformat()    try:
         resp = (
-            sb.table(FEATURE_VIEW)                 # ← unified view
-              .select(",".join(select_cols))
+            sb.table(FEATURE_VIEW)
+               .select("*")
               .eq("prop_type", prop_type)
               .gte("game_date", since_date)
               .order("game_date", desc=True)
               .limit(limit)
               .execute()
-        )    
+        )
         rows = resp.data or []
         print(f"[trainer] source=view:{FEATURE_VIEW} prop={prop_type} rows={len(rows)}")
         return pd.DataFrame(rows)
-    except Exception:
-        return None  # fallback path will handle
+    except Exception as e:
+        print(f"[trainer] view fetch failed ({FEATURE_VIEW}) for {prop_type}: {e}")
+        return None
 
 def _fetch_base_and_merge(sb: Client, prop_type: str, days_back: int, limit: int, feat_cols: List[str]) -> pd.DataFrame:
     """Fallback: model_training_props + join derived features by (player_id, game_id)."""
     since_date = (datetime.utcnow() - timedelta(days=days_back)).date().isoformat()
     resp = (
         sb.table("model_training_props")
-        .select("*")
-        .eq("prop_type", prop_type)
-        .not_.is_("line", "null")
-        .not_.is_("prop_value", "null")
-        .gte("game_date", since_date)
-        .order("game_date", desc=True)
-        .limit(limit)
-        .execute()
+          .select("*")
+          .eq("prop_type", prop_type)
+          .not_.is_("line", "null")
+          .not_.is_("prop_value", "null")
+          .gte("game_date", since_date)
+          .order("game_date", desc=True)
+          .limit(limit)
+          .execute()
     )
     rows = resp.data or []
     rows = [r for r in rows if r.get("outcome") in ("win","loss")]
     df = pd.DataFrame(rows)
-
     if df.empty:
+        print(f"[trainer] source=fallback:base empty prop={prop_type}")
         return df
 
     # time features (mirror inference)
     if "game_date" in df.columns:
-        # In case game_date is a date string
         try:
             dt = pd.to_datetime(df["game_date"])
         except Exception:
@@ -178,19 +169,23 @@ def _fetch_base_and_merge(sb: Client, prop_type: str, days_back: int, limit: int
         df["game_day_of_week"] = dow
 
     # merge in derived features for the exact games we have
-    pairs = df[["player_id","game_id"]].dropna().drop_duplicates()
+    # ensure join keys are numeric to avoid object/int64 mismatch
+    for k in ("player_id","game_id"):
+        if k in df.columns:
+            df[k] = pd.to_numeric(df[k], errors="coerce")
+
+    pairs = df[["player_id","game_id"]].dropna().drop_duplicates()    
     game_ids = pairs["game_id"].astype(str).tolist()
-    feat_cols_needed = list(dict.fromkeys(feat_cols))  # order-preserving de-dupe
+    feat_cols_needed = list(dict.fromkeys(feat_cols))
 
     derived_frames: List[pd.DataFrame] = []
     for chunk in _chunked(game_ids, 1000):
-# Select * to avoid requesting non-existent columns (e.g., streak_type)
         r = (
             sb.table("player_derived_stats")
-              .select("*")
+              .select("*")              # avoid requesting non-existent cols
               .in_("game_id", chunk)
               .execute()
-        )        
+        )
         part = r.data or []
         if part:
             derived_frames.append(pd.DataFrame(part))
@@ -198,17 +193,20 @@ def _fetch_base_and_merge(sb: Client, prop_type: str, days_back: int, limit: int
     if derived_frames:
         derived = pd.concat(derived_frames, ignore_index=True)
     else:
-        derived = pd.DataFrame(columns=["player_id","game_id"] + feat_cols_needed)
+        derived = pd.DataFrame(columns=["player_id","game_id"])
 
-        df = df.merge(derived, on=["player_id","game_id"], how="left", suffixes=("","_der"))
+    # coerce keys on derived as well
+    for k in ("player_id","game_id"):
+        if k in derived.columns:
+            derived[k] = pd.to_numeric(derived[k], errors="coerce")
+    df = df.merge(derived, on=["player_id","game_id"], how="left", suffixes=("","_der"))
+    # ensure all requested features exist
+    for f in feat_cols:
+        if f not in df.columns:
+            df[f] = np.nan
 
-        # ensure all requested features exist
-        for f in feat_cols:
-            if f not in df.columns:
-                df[f] = np.nan
-
-        print(f"[trainer] source=fallback:base+merge prop={prop_type} rows={len(df)}")
-        return df
+    print(f"[trainer] source=fallback:base+merge prop={prop_type} rows={len(df)}")
+    return df
 
 
 def fetch_training_rows(sb: Client, prop_type: str, days_back: int, limit: int, feat_cols: List[str]) -> pd.DataFrame:
