@@ -114,26 +114,44 @@ def _load_feature_spec() -> Dict[str, Any]:
 def _chunked(xs: List[Any], n: int) -> List[List[Any]]:
     return [xs[i:i+n] for i in range(0, len(xs), n)]
 
+def _pg_data(resp):
+    """Normalize PostgREST response to a list of rows across supabase-py versions."""
+    # supabase-py v2 returns object with .data
+    if hasattr(resp, "data"):
+        return resp.data or []
+    # some versions return dict
+    if isinstance(resp, dict):
+        return resp.get("data", []) or []
+    # some return list directly
+    if isinstance(resp, list):
+        return resp
+    return []
+
 
 # ---- Data access -------------------------------------------------------------
 def _fetch_from_view(sb: Client, prop_type: str, days_back: int, limit: int, cols: List[str]) -> Optional[pd.DataFrame]:
-    """Try consolidated feature view first (joined, de-duped, backfills applied)."""
-    since_date = (datetime.utcnow() - timedelta(days=days_back)).date().isoformat()    try:
-        resp = (
+    """Use consolidated feature view/table (joined, de-duped, backfills applied)."""
+    since_date = (datetime.utcnow() - timedelta(days=days_back)).date().isoformat()
+    try:
+        q = (
             sb.table(FEATURE_VIEW)
-               .select("*")
+              .select("*")                      # tolerate per-prop columns
               .eq("prop_type", prop_type)
               .gte("game_date", since_date)
-              .order("game_date", desc=True)
-              .limit(limit)
-              .execute()
         )
-        rows = resp.data or []
+        # prefer range for broader client compat
+        if hasattr(q, "range") and isinstance(limit, int):
+            q = q.range(0, max(0, limit - 1))
+        else:
+            q = q.limit(limit)
+        resp = q.execute()                      # ← ensure we actually execute
+        rows = _pg_data(resp)
         print(f"[trainer] source=view:{FEATURE_VIEW} prop={prop_type} rows={len(rows)}")
         return pd.DataFrame(rows)
     except Exception as e:
         print(f"[trainer] view fetch failed ({FEATURE_VIEW}) for {prop_type}: {e}")
         return None
+
 
 def _fetch_base_and_merge(sb: Client, prop_type: str, days_back: int, limit: int, feat_cols: List[str]) -> pd.DataFrame:
     """Fallback: model_training_props + join derived features by (player_id, game_id)."""
@@ -168,13 +186,13 @@ def _fetch_base_and_merge(sb: Client, prop_type: str, days_back: int, limit: int
         df["time_of_day_bucket"] = bucket
         df["game_day_of_week"] = dow
 
-    # merge in derived features for the exact games we have
     # ensure join keys are numeric to avoid object/int64 mismatch
-    for k in ("player_id","game_id"):
+    for k in ("player_id", "game_id"):
         if k in df.columns:
             df[k] = pd.to_numeric(df[k], errors="coerce")
 
-    pairs = df[["player_id","game_id"]].dropna().drop_duplicates()    
+    # merge in derived features for the exact games we have
+    pairs = df[["player_id","game_id"]].dropna().drop_duplicates()
     game_ids = pairs["game_id"].astype(str).tolist()
     feat_cols_needed = list(dict.fromkeys(feat_cols))
 
@@ -182,24 +200,25 @@ def _fetch_base_and_merge(sb: Client, prop_type: str, days_back: int, limit: int
     for chunk in _chunked(game_ids, 1000):
         r = (
             sb.table("player_derived_stats")
-              .select("*")              # avoid requesting non-existent cols
-              .in_("game_id", chunk)
-              .execute()
+            .select("*")
+            .in_("game_id", chunk)
+            .execute()
         )
-        part = r.data or []
+        part = _pg_data(r)
         if part:
             derived_frames.append(pd.DataFrame(part))
-
     if derived_frames:
         derived = pd.concat(derived_frames, ignore_index=True)
     else:
         derived = pd.DataFrame(columns=["player_id","game_id"])
 
     # coerce keys on derived as well
-    for k in ("player_id","game_id"):
+    for k in ("player_id", "game_id"):
         if k in derived.columns:
             derived[k] = pd.to_numeric(derived[k], errors="coerce")
+
     df = df.merge(derived, on=["player_id","game_id"], how="left", suffixes=("","_der"))
+
     # ensure all requested features exist
     for f in feat_cols:
         if f not in df.columns:
