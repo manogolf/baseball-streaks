@@ -87,6 +87,15 @@ _debug_feature_paths()
 # Single source of truth for the training view (public schema via PostgREST)
 FEATURE_VIEW = os.environ.get("FEATURE_VIEW", "training_features_for_model_v2")
 
+# ---- Training thresholds (class balance) -------------------------------------
+MIN_CLASS_COUNT = int(os.getenv("MIN_CLASS_COUNT", "100"))
+try:
+    import json as _json
+    MIN_CLASS_COUNT_BY_PROP = _json.loads(os.getenv("MIN_CLASS_COUNT_BY_PROP", "{}"))
+except Exception:
+    MIN_CLASS_COUNT_BY_PROP = {}
+
+
 # ---- Utilities ---------------------------------------------------------------
 def _atomic_write_bytes(path: Path, blob: bytes):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -241,26 +250,47 @@ def _prep_frame(df: pd.DataFrame) -> pd.DataFrame:
         return df.copy()
 
     df = df.copy()
-    # target: prefer numeric 'result' (0/1); fallback to 'outcome' ('win'/'loss')
+
+    # keep only labeled rows
+    labeled = pd.Series(True, index=df.index)
+    if "status" in df.columns:
+        labeled &= df["status"].isin(["win", "loss"])
+    if "outcome" in df.columns:
+        labeled &= df["outcome"].isin(["win", "loss"])
     if "result" in df.columns and pd.api.types.is_numeric_dtype(df["result"]):
-        df["y"] = pd.to_numeric(df["result"], errors="coerce").astype("Int64")
+        labeled &= df["result"].isin([0, 1])
+
+    df = df[labeled].copy()
+    if df.empty:
+        return df
+
+    # target: prefer clean numeric 'result'; else map outcome
+    if "result" in df.columns and pd.api.types.is_numeric_dtype(df["result"]):
+        y = pd.to_numeric(df["result"], errors="coerce")
+        y = y.where(y.isin([0, 1]), pd.NA)
     elif "outcome" in df.columns:
-        df["y"] = (df["outcome"] == "win").astype("Int64")
+        y = df["outcome"].map({"loss": 0, "win": 1})
     else:
-        df["y"] = pd.Series([pd.NA] * len(df), dtype="Int64")
-    # drop unlabeled rows early
+        y = pd.Series(pd.NA, index=df.index)
+
+    df["y"] = y.astype("Int64")
     df = df[df["y"].notna()].copy()
+    if df.empty:
+        return df
     df["y"] = df["y"].astype(int)
+
     # coerce binary flags
-    for col in ("is_home","is_pitcher"):
+    for col in ("is_home", "is_pitcher"):
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # sample weights: user_added gets big boost
+    # huge weight for user_added
     w = np.ones(len(df), dtype="float64")
     if "prop_source" in df.columns:
         w[df["prop_source"] == "user_added"] = 1000.0
     df["sample_weight"] = w
+
+    # drop features that are entirely NaN to avoid sklearn warnings
     return df
 
 
@@ -279,7 +309,9 @@ def build_pipeline(num_cols: List[str], cat_cols: List[str]):
         sparse_threshold=0.3,
     )
     lr = LogisticRegression(max_iter=1000)
-    rf = RandomForestClassifier(n_estimators=300, max_depth=None, n_jobs=-1, random_state=42)
+    rf = RandomForestClassifier(n_estimators=300, max_depth=None, n_jobs=-1, random_state=42, 
+    class_weight="balanced"
+    )
     lr_cal = CalibratedClassifierCV(lr, method="isotonic", cv=3)
     pipe_lr = Pipeline([("pre", pre), ("clf", lr_cal)])
     pipe_rf = Pipeline([("pre", pre), ("clf", rf)])
@@ -315,44 +347,72 @@ def train_models_for_prop(prop_type: str, *, days_back=DEFAULT_DAYS_BACK, limit=
 
     # 3) prep labels/weights
     df = _prep_frame(df)
-    if df["y"].nunique() < 2:
+    if df.empty or df["y"].nunique() < 2:
         if not quiet:
-            print(f"⏭️  {prop_type}: target has a single class; skipping.")
+            print(f"⏭️  {prop_type}: target has a single class or no labeled rows; skipping.")
         return None
 
-    # 4) split num/cat by dtype over the actual frame
+    # ⬇️ Insert the class-balance guard here
+    threshold = int(MIN_CLASS_COUNT_BY_PROP.get(prop_type, MIN_CLASS_COUNT))
+    pos = int((df["y"] == 1).sum())
+    neg = int((df["y"] == 0).sum())
+    if pos < threshold or neg < threshold:
+        if not quiet:
+            print(f"⏭️  {prop_type}: too few positives/negatives "
+                f"(pos={pos}, neg={neg}, threshold={threshold}); skipping.")
+        return None
+
+    # Drop features that are entirely NaN in this frame
+    all_nan = [c for c in set(feat_list) if c in df.columns and df[c].isna().all()]
+    if all_nan and not quiet:
+        print(f"ℹ️  {prop_type}: dropping all-NaN features: {sorted(all_nan)}")
+    feat_list = [c for c in feat_list if c not in all_nan]
+
+    # 4) determine num/cat AFTER pruning, then do the stratified split...
     ALWAYS_CAT = {"time_of_day_bucket","game_day_of_week"}
     num_used = [c for c in feat_list if c in df.columns and (is_numeric_dtype(df[c]) and c not in ALWAYS_CAT)]
     cat_used = [c for c in feat_list if c in df.columns and (not is_numeric_dtype(df[c]) or c in ALWAYS_CAT)]
+    cols_used = num_used + cat_used
+    if not cols_used:
+        if not quiet:
+            print(f"⏭️  {prop_type}: no usable features after pruning; skipping.")
+        return None
 
-    # coverage hint (avoid silent regressions)
+    # Coverage hint
     expected = set(feat_list)
-    used = set(num_used + cat_used)
+    used = set(cols_used)
     if not quiet and expected:
-        cov = len(used & expected) / len(expected)
+        cov = len(used & expected) / max(1, len(expected))
         if cov < 0.6:
             print(f"⚠️  {prop_type}: feature coverage {cov:.0%} ({len(used & expected)}/{len(expected)})")
 
-    # 5) train/validate
+    # 5) stratified split (ensures both classes in val)
+    from sklearn.model_selection import StratifiedShuffleSplit
+    sss = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+    (train_idx, val_idx), = sss.split(df[cols_used], df["y"])
+    train_df, val_df = df.iloc[train_idx], df.iloc[val_idx]
+    if not quiet:
+        c_all = df["y"].value_counts().to_dict()
+        c_tr  = train_df["y"].value_counts().to_dict()
+        c_v   = val_df["y"].value_counts().to_dict()
+        print(f"[trainer] y counts all={c_all} train={c_tr} val={c_v}")
+
+    X_tr, y_tr, w_tr = train_df[cols_used], train_df["y"], train_df["sample_weight"]
+    X_v,  y_v,  w_v  =  val_df[cols_used],  val_df["y"],  val_df["sample_weight"]
+
+    # 6) build pipelines (this DEFINES pipe_lr / pipe_rf) and fit
     pipe_lr, pipe_rf = build_pipeline(num_used, cat_used)
-
-    # train/val split
-    df = df.sample(frac=1.0, random_state=42)
-    n_val = max(1, int(len(df) * 0.2))
-    train_df, val_df = df.iloc[n_val:], df.iloc[:n_val]
-
-    X_tr, y_tr, w_tr = train_df[num_used + cat_used], train_df["y"], train_df["sample_weight"]
-    X_v,  y_v,  w_v  =  val_df[num_used + cat_used],  val_df["y"],  val_df["sample_weight"]
 
     pipe_lr.fit(X_tr, y_tr, clf__sample_weight=w_tr)
     pipe_rf.fit(X_tr, y_tr, clf__sample_weight=w_tr)
 
+    # 7) AUC
     try:
-        auc_lr = roc_auc_score(y_v, pipe_lr.predict_proba(X_v)[:,1], sample_weight=w_v)
+        auc_lr = roc_auc_score(y_v, pipe_lr.predict_proba(X_v)[:, 1], sample_weight=w_v)
     except Exception:
         auc_lr = np.nan
     try:
-        auc_rf = roc_auc_score(y_v, pipe_rf.predict_proba(X_v)[:,1], sample_weight=w_v)
+        auc_rf = roc_auc_score(y_v, pipe_rf.predict_proba(X_v)[:, 1], sample_weight=w_v)
     except Exception:
         auc_rf = np.nan
 
