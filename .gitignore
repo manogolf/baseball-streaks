@@ -66,3 +66,8 @@ models_out/
 *.pkl
 *.tar.gz
 /var/data/models/
+models_out/
+*.joblib
+*.pkl
+*.tar.gz
+/var/data/models/
