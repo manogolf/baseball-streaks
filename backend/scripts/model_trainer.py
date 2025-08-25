@@ -57,6 +57,16 @@ PROP_TYPES = [
     "walks_allowed",
 ]
 
+# Props that are pitcher-centric (used to drop d7_* windows)
+PITCHING_PROPS = {
+    "hits_allowed",
+    "earned_runs",
+    "walks_allowed",
+    "strikeouts_pitching",
+    "outs_recorded",
+}
+
+
 MODELS_DIR  = Path(os.environ.get("MODELS_DIR", "/var/data/models")).resolve()
 LATEST_DIR  = MODELS_DIR / "latest"
 ARCHIVE_DIR = MODELS_DIR / "archive"
@@ -248,49 +258,47 @@ def fetch_training_rows(sb: Client, prop_type: str, days_back: int, limit: int, 
 def _prep_frame(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return df.copy()
-
     df = df.copy()
 
-    # keep only labeled rows
-    labeled = pd.Series(True, index=df.index)
-    if "status" in df.columns:
-        labeled &= df["status"].isin(["win", "loss"])
-    if "outcome" in df.columns:
-        labeled &= df["outcome"].isin(["win", "loss"])
-    if "result" in df.columns and pd.api.types.is_numeric_dtype(df["result"]):
-        labeled &= df["result"].isin([0, 1])
-
-    df = df[labeled].copy()
-    if df.empty:
-        return df
-
-    # target: prefer clean numeric 'result'; else map outcome
-    if "result" in df.columns and pd.api.types.is_numeric_dtype(df["result"]):
-        y = pd.to_numeric(df["result"], errors="coerce")
-        y = y.where(y.isin([0, 1]), pd.NA)
-    elif "outcome" in df.columns:
-        y = df["outcome"].map({"loss": 0, "win": 1})
+    # --- choose label source (strict) ---
+    label_source = None
+    if "status" in df.columns and df["status"].notna().any():
+        df["y"] = (df["status"] == "win").astype(int)
+        label_source = "status"
+    elif "outcome" in df.columns and df["outcome"].notna().any():
+        df["y"] = (df["outcome"] == "win").astype(int)
+        label_source = "outcome"
+    elif {"result", "prop_value"}.issubset(df.columns):
+        # derive: OVER wins if actual result > line
+        r = pd.to_numeric(df["result"], errors="coerce")
+        pv = pd.to_numeric(df["prop_value"], errors="coerce")
+        df["y"] = (r > pv).astype("Int64")
+        label_source = "derived(result>prop_value)"
     else:
-        y = pd.Series(pd.NA, index=df.index)
+        df["y"] = pd.Series([pd.NA] * len(df), dtype="Int64")
+        label_source = "none"
 
-    df["y"] = y.astype("Int64")
+    # drop unlabeled
     df = df[df["y"].notna()].copy()
-    if df.empty:
-        return df
     df["y"] = df["y"].astype(int)
 
+    # log the label source early
+    try:
+        cnt = df["y"].value_counts().to_dict()
+        print(f"[trainer] label_source={label_source} y_counts={cnt}")
+    except Exception:
+        pass
+
     # coerce binary flags
-    for col in ("is_home", "is_pitcher"):
+    for col in ("is_home","is_pitcher"):
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # huge weight for user_added
+    # sample weights: keep your existing behavior
     w = np.ones(len(df), dtype="float64")
     if "prop_source" in df.columns:
         w[df["prop_source"] == "user_added"] = 1000.0
     df["sample_weight"] = w
-
-    # drop features that are entirely NaN to avoid sklearn warnings
     return df
 
 
@@ -362,16 +370,45 @@ def train_models_for_prop(prop_type: str, *, days_back=DEFAULT_DAYS_BACK, limit=
                 f"(pos={pos}, neg={neg}, threshold={threshold}); skipping.")
         return None
 
-    # Drop features that are entirely NaN in this frame
+    # --- Feature availability policy + pitching-specific trim ---
+    # 1) Drop only truly all-NaN features present in the frame
     all_nan = [c for c in set(feat_list) if c in df.columns and df[c].isna().all()]
     if all_nan and not quiet:
         print(f"ℹ️  {prop_type}: dropping all-NaN features: {sorted(all_nan)}")
     feat_list = [c for c in feat_list if c not in all_nan]
 
-    # 4) determine num/cat AFTER pruning, then do the stratified split...
+    # 2) For pitching props, drop d7* windows (rotation → weak coverage/signal)
+    if prop_type in PITCHING_PROPS:
+        drop_d7 = [c for c in feat_list if c.startswith("d7_") or c == "rolling_result_avg_7"]
+        if drop_d7 and not quiet:
+            print(f"ℹ️  {prop_type}: dropping pitcher d7-window features: {sorted(drop_d7)}")
+        feat_list = [c for c in feat_list if c not in drop_d7]
+
+    # (Informational) coverage log only — do NOT drop low-coverage columns
+    if not quiet:
+        cov = []
+        for c in feat_list:
+            if c in df.columns:
+                cov.append((c, float(df[c].notna().mean())))
+        cov.sort(key=lambda x: x[1])
+        low = [f"{c}:{int(p*100)}%" for c,p in cov if p < 0.60]
+        if low:
+            print("ℹ️  {0}: low-coverage kept → {1}".format(prop_type, ", ".join(low[:12]) + (" ..." if len(low)>12 else "")))
+
+    # 3) determine num/cat AFTER pruning
     ALWAYS_CAT = {"time_of_day_bucket","game_day_of_week"}
     num_used = [c for c in feat_list if c in df.columns and (is_numeric_dtype(df[c]) and c not in ALWAYS_CAT)]
     cat_used = [c for c in feat_list if c in df.columns and (not is_numeric_dtype(df[c]) or c in ALWAYS_CAT)]
+
+    # 4) add missingness indicators for numeric features that have NaNs
+    miss_inds = []
+    for c in num_used:
+        if df[c].isna().any():
+            mcol = f"isna__{c}"
+            df[mcol] = df[c].isna().astype(int)
+            miss_inds.append(mcol)
+    num_used = num_used + miss_inds
+
     cols_used = num_used + cat_used
     if not cols_used:
         if not quiet:

@@ -61,3 +61,8 @@ build/
 # .gitignore
 models_out/
 backend/.env.train
+models_out/
+*.joblib
+*.pkl
+*.tar.gz
+/var/data/models/

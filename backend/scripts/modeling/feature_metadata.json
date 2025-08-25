@@ -49,9 +49,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
+      "bvp_total_bases"
     ],
     "logistic_regression": [
       "streak_type",
@@ -102,9 +100,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
+      "bvp_total_bases"
     ]
   },
   "singles": {
@@ -157,9 +153,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
+      "bvp_total_bases"
     ],
     "logistic_regression": [
       "streak_type",
@@ -210,9 +204,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
+      "bvp_total_bases"
     ]
   },
   "doubles": {
@@ -265,8 +257,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line_diff"
+      "bvp_total_bases"
     ],
     "logistic_regression": [
       "streak_type",
@@ -317,8 +308,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line_diff"
+      "bvp_total_bases"
     ]
   },
   "triples": {
@@ -371,9 +361,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
+      "bvp_total_bases"
     ],
     "logistic_regression": [
       "streak_type",
@@ -424,9 +412,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
+      "bvp_total_bases"
     ]
   },
   "home_runs": {
@@ -479,8 +465,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line_diff"
+      "bvp_total_bases"
     ],
     "logistic_regression": [
       "streak_type",
@@ -531,8 +516,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line_diff"
+      "bvp_total_bases"
     ]
   },
   "total_bases": {
@@ -585,9 +569,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
+      "bvp_total_bases"
     ],
     "logistic_regression": [
       "streak_type",
@@ -638,9 +620,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
+      "bvp_total_bases"
     ]
   },
   "rbis": {
@@ -693,9 +673,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
+      "bvp_total_bases"
     ],
     "logistic_regression": [
       "streak_type",
@@ -746,9 +724,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
+      "bvp_total_bases"
     ]
   },
   "runs_scored": {
@@ -776,34 +752,30 @@
       "d7_hits_runs_rbis",
       "d15_hits_runs_rbis",
       "d30_hits_runs_rbis",
-      "d7_stolen_bases",
-      "d15_stolen_bases",
-      "d30_stolen_bases",
       "d7_strikeouts_batting",
       "d15_strikeouts_batting",
       "d30_strikeouts_batting",
-      "d7_strikeouts_pitching",
-      "d15_strikeouts_pitching",
-      "d30_strikeouts_pitching",
-      "d7_walks_allowed",
-      "d15_walks_allowed",
-      "d30_walks_allowed",
-      "d7_earned_runs",
-      "d15_earned_runs",
-      "d30_earned_runs",
-      "d7_hits_allowed",
-      "d15_hits_allowed",
-      "d30_hits_allowed",
+      "d7_singles",
+      "d15_singles",
+      "d30_singles",
+      "d7_doubles",
+      "d15_doubles",
+      "d30_doubles",
+      "d7_runs_scored",
+      "d15_runs_scored",
+      "d30_runs_scored",
+      "d7_team_runs_pg",
+      "d30_team_runs_pg",
+      "d7_opp_runs_pg",
+      "d30_opp_runs_pg",
+      "bvp_plate_appearances",
       "bvp_at_bats",
       "bvp_hits",
       "bvp_home_runs",
-      "bvp_rbi",
       "bvp_strikeouts",
       "bvp_walks",
-      "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
+      "bvp_rbi",
+      "bvp_total_bases"
     ],
     "logistic_regression": [
       "streak_type",
@@ -829,34 +801,30 @@
       "d7_hits_runs_rbis",
       "d15_hits_runs_rbis",
       "d30_hits_runs_rbis",
-      "d7_stolen_bases",
-      "d15_stolen_bases",
-      "d30_stolen_bases",
       "d7_strikeouts_batting",
       "d15_strikeouts_batting",
       "d30_strikeouts_batting",
-      "d7_strikeouts_pitching",
-      "d15_strikeouts_pitching",
-      "d30_strikeouts_pitching",
-      "d7_walks_allowed",
-      "d15_walks_allowed",
-      "d30_walks_allowed",
-      "d7_earned_runs",
-      "d15_earned_runs",
-      "d30_earned_runs",
-      "d7_hits_allowed",
-      "d15_hits_allowed",
-      "d30_hits_allowed",
+      "d7_singles",
+      "d15_singles",
+      "d30_singles",
+      "d7_doubles",
+      "d15_doubles",
+      "d30_doubles",
+      "d7_runs_scored",
+      "d15_runs_scored",
+      "d30_runs_scored",
+      "d7_team_runs_pg",
+      "d30_team_runs_pg",
+      "d7_opp_runs_pg",
+      "d30_opp_runs_pg",
+      "bvp_plate_appearances",
       "bvp_at_bats",
       "bvp_hits",
       "bvp_home_runs",
-      "bvp_rbi",
       "bvp_strikeouts",
       "bvp_walks",
-      "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
+      "bvp_rbi",
+      "bvp_total_bases"
     ]
   },
   "strikeouts_batting": {
@@ -909,9 +877,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
+      "bvp_total_bases"
     ],
     "logistic_regression": [
       "streak_type",
@@ -962,9 +928,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
+      "bvp_total_bases"
     ]
   },
   "walks": {
@@ -1015,9 +979,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
+      "bvp_total_bases"
     ],
     "logistic_regression": [
       "streak_type",
@@ -1066,9 +1028,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
+      "bvp_total_bases"
     ]
   },
   "stolen_bases": {
@@ -1116,8 +1076,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line_diff"
+      "bvp_total_bases"
     ],
     "logistic_regression": [
       "streak_type",
@@ -1163,15 +1122,18 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line_diff"
+      "bvp_total_bases"
     ]
   },
   "strikeouts_pitching": {
     "random_forest": [
-      "prop_value",
       "is_home",
       "time_of_day_bucket",
+      "d15_k_per9",
+      "d30_k_per9",
+      "d15_bb_per9",
+      "d30_bb_per9",
+      "days_rest",
       "game_day_of_week",
       "d15_hits_allowed",
       "d30_hits_allowed",
@@ -1183,9 +1145,13 @@
       "d30_walks_allowed"
     ],
     "logistic_regression": [
-      "prop_value",
       "is_home",
       "time_of_day_bucket",
+      "d15_k_per9",
+      "d30_k_per9",
+      "d15_bb_per9",
+      "d30_bb_per9",
+      "days_rest",
       "game_day_of_week",
       "d15_hits_allowed",
       "d30_hits_allowed",
@@ -1199,8 +1165,12 @@
   },
   "walks_allowed": {
     "random_forest": [
-      "prop_value",
       "is_home",
+      "d15_bb_per9",
+      "d30_bb_per9",
+      "d15_k_per9",
+      "d30_k_per9",
+      "days_rest",
       "time_of_day_bucket",
       "game_day_of_week",
       "d15_hits_allowed",
@@ -1213,8 +1183,12 @@
       "d30_walks_allowed"
     ],
     "logistic_regression": [
-      "prop_value",
       "is_home",
+      "d15_bb_per9",
+      "d30_bb_per9",
+      "d15_k_per9",
+      "d30_k_per9",
+      "days_rest",
       "time_of_day_bucket",
       "game_day_of_week",
       "d15_hits_allowed",
@@ -1229,8 +1203,14 @@
   },
   "earned_runs": {
     "random_forest": [
-      "prop_value",
       "is_home",
+      "d15_k_per9",
+      "d30_k_per9",
+      "d15_bb_per9",
+      "d30_bb_per9",
+      "d15_era",
+      "d30_era",
+      "days_rest",
       "time_of_day_bucket",
       "game_day_of_week",
       "d15_hits_allowed",
@@ -1243,8 +1223,14 @@
       "d30_walks_allowed"
     ],
     "logistic_regression": [
-      "prop_value",
       "is_home",
+      "d15_k_per9",
+      "d30_k_per9",
+      "d15_bb_per9",
+      "d30_bb_per9",
+      "d15_era",
+      "d30_era",
+      "days_rest",
       "time_of_day_bucket",
       "game_day_of_week",
       "d15_hits_allowed",
@@ -1259,7 +1245,6 @@
   },
   "outs_recorded": {
     "random_forest": [
-      "prop_value",
       "is_home",
       "time_of_day_bucket",
       "game_day_of_week",
@@ -1273,7 +1258,6 @@
       "d30_walks_allowed"
     ],
     "logistic_regression": [
-      "prop_value",
       "is_home",
       "time_of_day_bucket",
       "game_day_of_week",
@@ -1289,8 +1273,14 @@
   },
   "hits_allowed": {
     "random_forest": [
-      "prop_value",
       "is_home",
+      "d15_k_per9",
+      "d30_k_per9",
+      "d15_bb_per9",
+      "d30_bb_per9",
+      "d15_h_per9",
+      "d30_h_per9",
+      "days_rest",
       "time_of_day_bucket",
       "game_day_of_week",
       "d15_hits_allowed",
@@ -1303,8 +1293,14 @@
       "d30_walks_allowed"
     ],
     "logistic_regression": [
-      "prop_value",
       "is_home",
+      "d15_k_per9",
+      "d30_k_per9",
+      "d15_bb_per9",
+      "d30_bb_per9",
+      "d15_h_per9",
+      "d30_h_per9",
+      "days_rest",
       "time_of_day_bucket",
       "game_day_of_week",
       "d15_hits_allowed",
@@ -1318,111 +1314,99 @@
     ]
   },
   "hits_runs_rbis": {
-    "random_forest": [
-      "streak_type",
-      "streak_count",
-      "hit_streak",
-      "win_streak",
-      "rolling_result_avg_7",
-      "d7_hits",
-      "d7_home_runs",
-      "d7_rbis",
-      "d7_walks",
-      "d15_hits",
-      "d15_home_runs",
-      "d15_rbis",
-      "d15_walks",
-      "d30_hits",
-      "d30_home_runs",
-      "d30_rbis",
-      "d30_walks",
-      "d7_total_bases",
-      "d15_total_bases",
-      "d30_total_bases",
-      "d7_hits_runs_rbis",
-      "d15_hits_runs_rbis",
-      "d30_hits_runs_rbis",
-      "d7_stolen_bases",
-      "d15_stolen_bases",
-      "d30_stolen_bases",
-      "d7_strikeouts_batting",
-      "d15_strikeouts_batting",
-      "d30_strikeouts_batting",
-      "d7_strikeouts_pitching",
-      "d15_strikeouts_pitching",
-      "d30_strikeouts_pitching",
-      "d7_walks_allowed",
-      "d15_walks_allowed",
-      "d30_walks_allowed",
-      "d7_earned_runs",
-      "d15_earned_runs",
-      "d30_earned_runs",
-      "d7_hits_allowed",
-      "d15_hits_allowed",
-      "d30_hits_allowed",
-      "bvp_at_bats",
-      "bvp_hits",
-      "bvp_home_runs",
-      "bvp_rbi",
-      "bvp_strikeouts",
-      "bvp_walks",
-      "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
-    ],
     "logistic_regression": [
       "streak_type",
       "streak_count",
-      "hit_streak",
-      "win_streak",
       "rolling_result_avg_7",
       "d7_hits",
-      "d7_home_runs",
-      "d7_rbis",
-      "d7_walks",
       "d15_hits",
-      "d15_home_runs",
-      "d15_rbis",
-      "d15_walks",
       "d30_hits",
-      "d30_home_runs",
-      "d30_rbis",
-      "d30_walks",
       "d7_total_bases",
       "d15_total_bases",
       "d30_total_bases",
       "d7_hits_runs_rbis",
       "d15_hits_runs_rbis",
       "d30_hits_runs_rbis",
-      "d7_stolen_bases",
-      "d15_stolen_bases",
-      "d30_stolen_bases",
+      "d7_runs_rbis",
+      "d15_runs_rbis",
+      "d30_runs_rbis",
+      "d7_runs_scored",
+      "d15_runs_scored",
+      "d30_runs_scored",
+      "d7_walks",
+      "d15_walks",
+      "d30_walks",
       "d7_strikeouts_batting",
       "d15_strikeouts_batting",
       "d30_strikeouts_batting",
-      "d7_strikeouts_pitching",
-      "d15_strikeouts_pitching",
-      "d30_strikeouts_pitching",
-      "d7_walks_allowed",
-      "d15_walks_allowed",
-      "d30_walks_allowed",
-      "d7_earned_runs",
-      "d15_earned_runs",
-      "d30_earned_runs",
-      "d7_hits_allowed",
-      "d15_hits_allowed",
-      "d30_hits_allowed",
+      "d7_singles",
+      "d15_singles",
+      "d30_singles",
+      "d7_doubles",
+      "d15_doubles",
+      "d30_doubles",
+      "d7_home_runs",
+      "d15_home_runs",
+      "d30_home_runs",
+      "d7_team_runs_pg",
+      "d30_team_runs_pg",
+      "d7_opp_runs_pg",
+      "d30_opp_runs_pg",
+      "bvp_plate_appearances",
       "bvp_at_bats",
       "bvp_hits",
       "bvp_home_runs",
-      "bvp_rbi",
       "bvp_strikeouts",
       "bvp_walks",
+      "bvp_rbi",
+      "bvp_total_bases"
+    ],
+    "random_forest": [
+      "streak_type",
+      "streak_count",
+      "rolling_result_avg_7",
+      "d7_hits",
+      "d15_hits",
+      "d30_hits",
+      "d7_total_bases",
+      "d15_total_bases",
+      "d30_total_bases",
+      "d7_hits_runs_rbis",
+      "d15_hits_runs_rbis",
+      "d30_hits_runs_rbis",
+      "d7_runs_rbis",
+      "d15_runs_rbis",
+      "d30_runs_rbis",
+      "d7_runs_scored",
+      "d15_runs_scored",
+      "d30_runs_scored",
+      "d7_walks",
+      "d15_walks",
+      "d30_walks",
+      "d7_strikeouts_batting",
+      "d15_strikeouts_batting",
+      "d30_strikeouts_batting",
+      "d7_singles",
+      "d15_singles",
+      "d30_singles",
+      "d7_doubles",
+      "d15_doubles",
+      "d30_doubles",
+      "d7_home_runs",
+      "d15_home_runs",
+      "d30_home_runs",
+      "d7_team_runs_pg",
+      "d30_team_runs_pg",
+      "d7_opp_runs_pg",
+      "d30_opp_runs_pg",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
+      "bvp_at_bats",
+      "bvp_hits",
+      "bvp_home_runs",
+      "bvp_strikeouts",
+      "bvp_walks",
+      "bvp_rbi",
+      "bvp_total_bases"
     ]
   },
   "runs_rbis": {
@@ -1475,9 +1459,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
+      "bvp_total_bases"
     ],
     "logistic_regression": [
       "streak_type",
@@ -1528,9 +1510,7 @@
       "bvp_strikeouts",
       "bvp_walks",
       "bvp_plate_appearances",
-      "bvp_total_bases",
-      "line",
-      "line_diff"
+      "bvp_total_bases"
     ]
   }
 }
