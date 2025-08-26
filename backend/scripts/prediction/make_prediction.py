@@ -2,8 +2,7 @@
 from __future__ import annotations
 
 import os, sys, json
-from typing import Dict, Any, List, Optional, Tuple
-import sys 
+from typing import Dict, Any, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -14,8 +13,6 @@ from backend.app.services.model_registry import (
     get_expected_features,
 )
 
-DEBUG = os.getenv("DEBUG_PREDICT") not in (None, "", "0", "false", "False")
-
 # Make sure the repo root is on sys.path (…/project/src)
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
 if REPO_ROOT not in sys.path:
@@ -23,37 +20,16 @@ if REPO_ROOT not in sys.path:
 
 DEBUG = os.getenv("DEBUG_PREDICT") not in (None, "", "0", "false", "False")
 
-def _vectorize_and_inspect(features: Dict[str, Any], feature_list: List[str]) -> Tuple[pd.DataFrame, Dict[str, Any]]:
-    """
-    Build a 1-row DataFrame with columns EXACTLY matching training order.
-    Missing/invalid -> 0.0. Also returns quick diagnostics.
-    """
+def _vectorize(features: Dict[str, Any], feature_list: List[str]) -> pd.DataFrame:
+    """1-row DataFrame with columns EXACTLY matching training order; missing -> 0."""
     vals: List[float] = []
-    missing_keys: List[str] = []
-    non_numeric_keys: List[str] = []
     for f in feature_list:
         v = features.get(f, 0)
-        if v in (None, ""):
-            missing_keys.append(f)
-            v = 0
         try:
             vals.append(float(v))
         except Exception:
-            non_numeric_keys.append(f)
             vals.append(0.0)
-
-    X = pd.DataFrame([vals], columns=feature_list)
-    nonzero = int(np.count_nonzero(vals))
-    diags = {
-        "expected": len(feature_list),
-        "sent": len(feature_list),
-        "nonzero": nonzero,
-        "missing": len(missing_keys),
-        "non_numeric": len(non_numeric_keys),
-        "missing_keys": missing_keys[:10],       # cap to avoid noisy logs
-        "non_numeric_keys": non_numeric_keys[:10]
-    }
-    return X, diags
+    return pd.DataFrame([vals], columns=feature_list)
 
 def _p(model, X) -> Optional[float]:
     if model is None:
@@ -80,15 +56,16 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     # 1) expected columns (from metadata aligned to training)
     feat_list = get_expected_features(prop, prefer="random_forest")
 
-    # 2) strictly-filtered DF in correct order (no extra cols!) + quick diags
+    # 2) strictly-filtered DF in correct order (no extra cols!)
     X = _vectorize(features, feat_list)
+
     # small diagnostics
-    missing = [f for f in feat_list if features.get(f) in (None, "")]
-    nonzero = int(np.count_nonzero(X.to_numpy()))
     if DEBUG:
+        missing = [f for f in feat_list if features.get(f) in (None, "")]
+        nonzero = int(np.count_nonzero(X.to_numpy()))
         print(
-          f"[predict] prop={prop} expected={len(feat_list)} nonzero={nonzero} missing={len(missing)}",
-          file=sys.stderr, flush=True
+            f"[predict] prop={prop} expected={len(feat_list)} nonzero={nonzero} missing={len(missing)}",
+            file=sys.stderr, flush=True,
         )
 
     # 3) load models (disk-first, supabase fallback if configured)
@@ -108,19 +85,9 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     p_lr = _p(lr, X)
     p_rf = _p(rf, X)
     p_over = max(0.0, min(1.0, _blend(p_lr, p_rf)))
+
     if DEBUG:
         print(f"[predict] p_lr={p_lr} p_rf={p_rf} p={p_over}", file=sys.stderr, flush=True)
-    # Optional one-line debug (stderr so we don't break API JSON)
-    if DEBUG:
-        print(
-            f"[predict] prop={prop} expected={diags['expected']} nonzero={diags['nonzero']} "
-            f"missing={diags['missing']} non_numeric={diags['non_numeric']} "
-            f"p_lr={p_lr} p_rf={p_rf} p={p_over}",
-            file=sys.stderr,
-            flush=True,
-        )
-        if diags["missing"] > 0:
-            print(f"[predict] missing_keys(sample)={diags['missing_keys']}", file=sys.stderr, flush=True)
 
     return {
         "prop_type": prop,
@@ -130,7 +97,6 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
         "components": {"lr": p_lr, "rf": p_rf},
         "feature_count": len(feat_list),
         "used_features": feat_list,
-        "diagnostics": diags,                  # 👈 lightweight, helps the UI/API inspect
         "model": "blend(lr,rf)",
     }
 
