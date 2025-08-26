@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import os, sys, json
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -18,16 +18,39 @@ REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
-def _vectorize(features: Dict[str, Any], feature_list: List[str]) -> pd.DataFrame:
-    """1-row DataFrame with columns EXACTLY matching training order; missing -> 0."""
+DEBUG = os.getenv("DEBUG_PREDICT") not in (None, "", "0", "false", "False")
+
+def _vectorize_and_inspect(features: Dict[str, Any], feature_list: List[str]) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+    """
+    Build a 1-row DataFrame with columns EXACTLY matching training order.
+    Missing/invalid -> 0.0. Also returns quick diagnostics.
+    """
     vals: List[float] = []
+    missing_keys: List[str] = []
+    non_numeric_keys: List[str] = []
     for f in feature_list:
         v = features.get(f, 0)
+        if v in (None, ""):
+            missing_keys.append(f)
+            v = 0
         try:
             vals.append(float(v))
         except Exception:
+            non_numeric_keys.append(f)
             vals.append(0.0)
-    return pd.DataFrame([vals], columns=feature_list)
+
+    X = pd.DataFrame([vals], columns=feature_list)
+    nonzero = int(np.count_nonzero(vals))
+    diags = {
+        "expected": len(feature_list),
+        "sent": len(feature_list),
+        "nonzero": nonzero,
+        "missing": len(missing_keys),
+        "non_numeric": len(non_numeric_keys),
+        "missing_keys": missing_keys[:10],       # cap to avoid noisy logs
+        "non_numeric_keys": non_numeric_keys[:10]
+    }
+    return X, diags
 
 def _p(model, X) -> Optional[float]:
     if model is None:
@@ -54,8 +77,8 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     # 1) expected columns (from metadata aligned to training)
     feat_list = get_expected_features(prop, prefer="random_forest")
 
-    # 2) strictly-filtered DF in correct order (no extra cols!)
-    X = _vectorize(features, feat_list)
+    # 2) strictly-filtered DF in correct order (no extra cols!) + quick diags
+    X, diags = _vectorize_and_inspect(features, feat_list)
 
     # 3) load models (disk-first, supabase fallback if configured)
     lr = rf = None
@@ -75,6 +98,18 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     p_rf = _p(rf, X)
     p_over = max(0.0, min(1.0, _blend(p_lr, p_rf)))
 
+    # Optional one-line debug (stderr so we don't break API JSON)
+    if DEBUG:
+        print(
+            f"[predict] prop={prop} expected={diags['expected']} nonzero={diags['nonzero']} "
+            f"missing={diags['missing']} non_numeric={diags['non_numeric']} "
+            f"p_lr={p_lr} p_rf={p_rf} p={p_over}",
+            file=sys.stderr,
+            flush=True,
+        )
+        if diags["missing"] > 0:
+            print(f"[predict] missing_keys(sample)={diags['missing_keys']}", file=sys.stderr, flush=True)
+
     return {
         "prop_type": prop,
         "probability_over": p_over,
@@ -83,6 +118,7 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
         "components": {"lr": p_lr, "rf": p_rf},
         "feature_count": len(feat_list),
         "used_features": feat_list,
+        "diagnostics": diags,                  # 👈 lightweight, helps the UI/API inspect
         "model": "blend(lr,rf)",
     }
 
