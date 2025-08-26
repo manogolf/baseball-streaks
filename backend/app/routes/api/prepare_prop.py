@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, AliasChoices
 from typing import Optional, Dict, Any
-
+from pydantic.config import ConfigDict
 from backend.scripts.shared.enrich_game_context import enrich_game_context
 from backend.app.prop_utils import (
     get_player_id_by_name,
@@ -11,10 +11,6 @@ from backend.app.prop_utils import (
 )
 router = APIRouter()
 
-# at top of file
-from pydantic import BaseModel, Field, AliasChoices
-from pydantic.config import ConfigDict
-from typing import Optional
 
 class PreparePropInput(BaseModel):
     # Accept both snake_case and camelCase (and a couple legacy names)

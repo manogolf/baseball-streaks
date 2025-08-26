@@ -4,7 +4,7 @@ from __future__ import annotations
 import os, sys, json
 from typing import Dict, Any, List, Optional
 
-import numpy as np
+import sys, numpy as np
 import pandas as pd
 
 from backend.app.services.model_registry import (
@@ -54,19 +54,26 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     prop = canonicalize_prop_type(prop_type)
 
     # 1) expected columns (from metadata aligned to training)
-    feat_list = get_expected_features(prop, prefer="random_forest")
-
+    feat_rf = get_expected_features(prop, prefer="random_forest")
+    feat_lr = get_expected_features(prop, prefer="logistic_regression")
     # 2) strictly-filtered DF in correct order (no extra cols!)
-    X = _vectorize(features, feat_list)
+    X_rf = _vectorize(features, feat_rf)
+    X_lr = _vectorize(features, feat_lr)
+
+    if os.getenv("DEBUG_PREDICT") not in (None, "", "0", "false", "False"):
+   
+        print(
+            f"[predict] prop={prop} rf_expected={len(feat_rf)} rf_nonzero={int(np.count_nonzero(X_rf.to_numpy()))} "
+            f"lr_expected={len(feat_lr)} lr_nonzero={int(np.count_nonzero(X_lr.to_numpy()))}",
+            file=sys.stderr, flush=True
+    )
 
     # small diagnostics
     if DEBUG:
-        missing = [f for f in feat_list if features.get(f) in (None, "")]
-        nonzero = int(np.count_nonzero(X.to_numpy()))
-        print(
-            f"[predict] prop={prop} expected={len(feat_list)} nonzero={nonzero} missing={len(missing)}",
-            file=sys.stderr, flush=True,
-        )
+        nz_rf = int(np.count_nonzero(X_rf.to_numpy()))
+        nz_lr = int(np.count_nonzero(X_lr.to_numpy()))
+        print(f"[predict] prop={prop} rf_expected={len(feat_rf)} rf_nonzero={nz_rf} "
+            f"lr_expected={len(feat_lr)} lr_nonzero={nz_lr}", file=sys.stderr, flush=True)
 
     # 3) load models (disk-first, supabase fallback if configured)
     lr = rf = None
@@ -82,8 +89,8 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
         raise RuntimeError(f"No models available for prop_type '{prop}'")
 
     # 4) predict + blend
-    p_lr = _p(lr, X)
-    p_rf = _p(rf, X)
+    p_lr = _p(lr, X_lr)
+    p_rf = _p(rf, X_rf)    
     p_over = max(0.0, min(1.0, _blend(p_lr, p_rf)))
 
     if DEBUG:
@@ -92,11 +99,11 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "prop_type": prop,
         "probability_over": p_over,
-        "probability": p_over,                 # convenience
+        "probability": p_over,
         "probability_under": 1.0 - p_over,
         "components": {"lr": p_lr, "rf": p_rf},
-        "feature_count": len(feat_list),
-        "used_features": feat_list,
+        "feature_count": len(feat_rf),   # was len(feat_list)
+        "used_features": feat_rf,        # was feat_list
         "model": "blend(lr,rf)",
     }
 

@@ -8,7 +8,7 @@ import time
 import subprocess
 from typing import Any, Dict
 from pathlib import Path
-
+from backend.scripts.shared.supabase_utils import supabase
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, AliasChoices
 from pydantic.config import ConfigDict
@@ -19,6 +19,7 @@ from backend.app.services.model_registry import (
     get_expected_features as _expected_features,
 )
 
+ENRICH_TABLE_OVERRIDES: Dict[str, str] = {}  # <-- top-level, no indent
 router = APIRouter()
 
 # Choose backend: set PREDICT_MODE=subprocess to force subprocess
@@ -48,6 +49,35 @@ class PredictInput(BaseModel):
     prop_type: str = Field(validation_alias=AliasChoices("prop_type", "propType"))
     features: Dict[str, Any] = Field(default_factory=dict)
 
+def _enrich_features_from_training_view(prop_type: str, feats: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Fill missing engineered features for the given prop from the training view.
+    Default table name: training_features_{prop_type}_enriched.
+    Keys already present in feats are NOT overwritten.
+    """
+    prop = (_canon_func(prop_type) if _canon_func else prop_type).lower()
+    table = ENRICH_TABLE_OVERRIDES.get(prop, f"training_features_{prop}_enriched")
+    pid = feats.get("player_id")
+    gdate = feats.get("game_date")
+    if not pid or not gdate:
+        return feats
+    try:
+        resp = (
+            supabase.table(table)
+            .select("*")
+            .eq("player_id", pid)
+            .eq("game_date", gdate)     # 'YYYY-MM-DD'
+            .limit(1)
+            .execute()
+        )
+        rows = getattr(resp, "data", None) or []
+        if rows:
+            row = rows[0]
+            for k, v in row.items():
+                feats.setdefault(k, v)  # fill only missing keys
+    except Exception as e:
+        print(f"[predict] enrich fetch failed table={table}: {e}", flush=True)
+    return feats
 
 def _canonicalize_prop(name: str) -> str:
     if _canon_func is None:
@@ -127,6 +157,9 @@ async def predict(req: Request):
     # For the model call, strip direction (model is direction-agnostic)
     features_for_model = dict(features)
     features_for_model.pop("over_under", None)
+    
+    # Uniform enrichment for ALL prop types before calling the model
+    features_for_model = _enrich_features_from_training_view(canonical, features_for_model)
 
     # Call predictor (module or subprocess)
     used_model, backend = False, None
