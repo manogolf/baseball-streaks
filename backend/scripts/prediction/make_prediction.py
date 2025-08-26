@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os, sys, json
 from typing import Dict, Any, List, Optional, Tuple
+import sys 
 
 import numpy as np
 import pandas as pd
@@ -12,6 +13,8 @@ from backend.app.services.model_registry import (
     load_model,
     get_expected_features,
 )
+
+DEBUG = os.getenv("DEBUG_PREDICT") not in (None, "", "0", "false", "False")
 
 # Make sure the repo root is on sys.path (…/project/src)
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
@@ -78,7 +81,15 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     feat_list = get_expected_features(prop, prefer="random_forest")
 
     # 2) strictly-filtered DF in correct order (no extra cols!) + quick diags
-    X, diags = _vectorize_and_inspect(features, feat_list)
+    X = _vectorize(features, feat_list)
+    # small diagnostics
+    missing = [f for f in feat_list if features.get(f) in (None, "")]
+    nonzero = int(np.count_nonzero(X.to_numpy()))
+    if DEBUG:
+        print(
+          f"[predict] prop={prop} expected={len(feat_list)} nonzero={nonzero} missing={len(missing)}",
+          file=sys.stderr, flush=True
+        )
 
     # 3) load models (disk-first, supabase fallback if configured)
     lr = rf = None
@@ -97,7 +108,8 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     p_lr = _p(lr, X)
     p_rf = _p(rf, X)
     p_over = max(0.0, min(1.0, _blend(p_lr, p_rf)))
-
+    if DEBUG:
+        print(f"[predict] p_lr={p_lr} p_rf={p_rf} p={p_over}", file=sys.stderr, flush=True)
     # Optional one-line debug (stderr so we don't break API JSON)
     if DEBUG:
         print(
