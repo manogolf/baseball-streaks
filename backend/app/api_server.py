@@ -63,14 +63,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-@app.get("/", include_in_schema=False)
+# Handle both GET and HEAD explicitly so Render's probe is happy
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 def root_ok():
-    # Render does a HEAD /; FastAPI auto-provides HEAD for GET
     return PlainTextResponse("OK", status_code=200)
 
-@app.get("/healthz", include_in_schema=False)
-def healthz():
+@app.api_route("/health", methods=["GET", "HEAD"], include_in_schema=False)
+def health_ok():
+    return JSONResponse({"ok": True})
+
+@app.api_route("/healthz", methods=["GET", "HEAD"], include_in_schema=False)
+def healthz_ok():
     return JSONResponse({"status": "ok", "ts": int(time.time())})
+
 # ---- CORS ----
 app.add_middleware(
     CORSMiddleware,
