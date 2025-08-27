@@ -91,6 +91,8 @@ def _p(model, X) -> Optional[float]:
             y = model.predict(X)
             return float(np.ravel(y)[0])
     except Exception:
+        # small debug to surface schema errors instead of silently returning 0.5
+        print(f"[predict] {type(model).__name__} failed: {e}", file=sys.stderr, flush=True)
         return None
     return None
 
