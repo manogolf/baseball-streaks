@@ -90,8 +90,8 @@ def _p(model, X) -> Optional[float]:
         if hasattr(model, "predict"):
             y = model.predict(X)
             return float(np.ravel(y)[0])
-    except Exception:
-        # small debug to surface schema errors instead of silently returning 0.5
+    except Exception as e:  # <-- bind as e
+        # helpful log so we see column/schema issues instead of silent 0.5s
         print(f"[predict] {type(model).__name__} failed: {e}", file=sys.stderr, flush=True)
         return None
     return None
