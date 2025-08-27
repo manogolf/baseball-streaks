@@ -9,6 +9,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse, JSONResponse
+import time
 
 # ---- Routers (import the APIRouter objects directly) ----
 from backend.app.routes.api.player_profile import router as player_profile_router
@@ -61,10 +63,14 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-@app.get("/health")
-def health():
-    return {"ok": True}
+@app.get("/", include_in_schema=False)
+def root_ok():
+    # Render does a HEAD /; FastAPI auto-provides HEAD for GET
+    return PlainTextResponse("OK", status_code=200)
 
+@app.get("/healthz", include_in_schema=False)
+def healthz():
+    return JSONResponse({"status": "ok", "ts": int(time.time())})
 # ---- CORS ----
 app.add_middleware(
     CORSMiddleware,
