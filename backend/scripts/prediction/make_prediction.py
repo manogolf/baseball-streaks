@@ -1,13 +1,12 @@
 # backend/scripts/prediction/make_prediction.py
 
 import joblib
-import os, sys, json
+import os, json
 import sys, numpy as np
 import pandas as pd
 import math
 
 from typing import Dict, Any, List, Optional
-from __future__ import annotations
 from pathlib import Path
 from backend.app.services.model_registry import (
     canonicalize_prop_type,
