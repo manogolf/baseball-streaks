@@ -1,12 +1,14 @@
 # backend/scripts/prediction/make_prediction.py
-from __future__ import annotations
 
+import joblib
 import os, sys, json
-from typing import Dict, Any, List, Optional
-
 import sys, numpy as np
 import pandas as pd
+import math
 
+from typing import Dict, Any, List, Optional
+from __future__ import annotations
+from pathlib import Path
 from backend.app.services.model_registry import (
     canonicalize_prop_type,
     load_model,
@@ -20,16 +22,64 @@ if REPO_ROOT not in sys.path:
 
 DEBUG = os.getenv("DEBUG_PREDICT") not in (None, "", "0", "false", "False")
 
+def _is_missing(v) -> bool:
+    return v is None or v == "" or (isinstance(v, float) and math.isnan(v))
+
 def _vectorize(features: Dict[str, Any], feature_list: List[str]) -> pd.DataFrame:
-    """1-row DataFrame with columns EXACTLY matching training order; missing -> 0."""
-    vals: List[float] = []
-    for f in feature_list:
-        v = features.get(f, 0)
-        try:
-            vals.append(float(v))
-        except Exception:
-            vals.append(0.0)
-    return pd.DataFrame([vals], columns=feature_list)
+    """
+    Build a 1-row DataFrame whose columns exactly match `feature_list`.
+    Special handling:
+      - 'isna__<base>' columns are generated from missingness of `<base>`
+      - 'streak_type' remains a string category (default 'none')
+      - everything else coerced to float with fallback 0.0
+    """
+    row: Dict[str, Any] = {}
+    for col in feature_list:
+        if col.startswith("isna__"):
+            base = col.split("__", 1)[1]
+            v = features.get(base, None)
+            row[col] = 1.0 if _is_missing(v) else 0.0
+        elif col == "streak_type":
+            v = features.get("streak_type", None)
+            # if caller passed streak_type_hot/cold flags, synthesize a label
+            if v is None:
+                hot = features.get("streak_type_hot")
+                cold = features.get("streak_type_cold")
+                if hot in (1, True, "1", "true"): v = "hot"
+                elif cold in (1, True, "1", "true"): v = "cold"
+                else: v = "none"
+            row[col] = str(v)
+        else:
+            v = features.get(col, 0)
+            try:
+                row[col] = float(v)
+            except Exception:
+                row[col] = 0.0
+    return pd.DataFrame([row], columns=feature_list)
+
+def _input_columns_for(prop: str) -> list[str] | None:
+    """
+    Prefer the input column list stored in the model artifact's meta.
+    This list matches what the pipeline expects (e.g., 'isna__*', raw categoricals).
+    """
+    try:
+        p = Path("/var/data/models/latest") / f"{prop}.joblib"
+        if p.exists():
+            obj = joblib.load(p)
+            meta = obj.get("meta") if isinstance(obj, dict) else None
+            if meta:
+                # try a few common keys
+                for key in ("input_columns", "expected_input_columns", "features_in", "expected_columns"):
+                    cols = meta.get(key)
+                    if cols:
+                        return list(cols)
+    except Exception:
+        pass
+    try:
+        # last resort (older artifacts). may not include isna__/categoricals
+        return get_expected_features(prop, prefer="random_forest")
+    except Exception:
+        return None
 
 def _p(model, X) -> Optional[float]:
     if model is None:
@@ -53,27 +103,13 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     """Main entry for in-process import."""
     prop = canonicalize_prop_type(prop_type)
 
-    # 1) expected columns (from metadata aligned to training)
-    feat_rf = get_expected_features(prop, prefer="random_forest")
-    feat_lr = get_expected_features(prop, prefer="logistic_regression")
+    # 1) expected columns (prefer artifact meta)
+    feat_cols = _input_columns_for(prop) or []
+    if not feat_cols:
+        feat_cols = get_expected_features(prop, prefer="random_forest") or []
+
     # 2) strictly-filtered DF in correct order (no extra cols!)
-    X_rf = _vectorize(features, feat_rf)
-    X_lr = _vectorize(features, feat_lr)
-
-    if os.getenv("DEBUG_PREDICT") not in (None, "", "0", "false", "False"):
-   
-        print(
-            f"[predict] prop={prop} rf_expected={len(feat_rf)} rf_nonzero={int(np.count_nonzero(X_rf.to_numpy()))} "
-            f"lr_expected={len(feat_lr)} lr_nonzero={int(np.count_nonzero(X_lr.to_numpy()))}",
-            file=sys.stderr, flush=True
-    )
-
-    # small diagnostics
-    if DEBUG:
-        nz_rf = int(np.count_nonzero(X_rf.to_numpy()))
-        nz_lr = int(np.count_nonzero(X_lr.to_numpy()))
-        print(f"[predict] prop={prop} rf_expected={len(feat_rf)} rf_nonzero={nz_rf} "
-            f"lr_expected={len(feat_lr)} lr_nonzero={nz_lr}", file=sys.stderr, flush=True)
+    X = _vectorize(features, feat_cols)
 
     # 3) load models (disk-first, supabase fallback if configured)
     lr = rf = None
@@ -89,12 +125,9 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
         raise RuntimeError(f"No models available for prop_type '{prop}'")
 
     # 4) predict + blend
-    p_lr = _p(lr, X_lr)
-    p_rf = _p(rf, X_rf)    
+    p_lr = _p(lr, X)
+    p_rf = _p(rf, X)
     p_over = max(0.0, min(1.0, _blend(p_lr, p_rf)))
-
-    if DEBUG:
-        print(f"[predict] p_lr={p_lr} p_rf={p_rf} p={p_over}", file=sys.stderr, flush=True)
 
     return {
         "prop_type": prop,
@@ -102,8 +135,8 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
         "probability": p_over,
         "probability_under": 1.0 - p_over,
         "components": {"lr": p_lr, "rf": p_rf},
-        "feature_count": len(feat_rf),   # was len(feat_list)
-        "used_features": feat_rf,        # was feat_list
+        "feature_count": len(feat_cols),
+        "used_features": feat_cols,
         "model": "blend(lr,rf)",
     }
 
