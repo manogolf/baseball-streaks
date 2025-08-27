@@ -19,6 +19,29 @@ REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
+    # Columns that are identifiers/provenance, not model features
+_EXCLUDE_KEYS = {
+    "player_id", "team_id", "game_id", "game_date",
+    "prop_type", "over_under", "prop_value",
+    "prop_source", "created_at", "updated_at", "ingested_at",
+}
+
+def _columns_from_features_dict(features: Dict[str, Any]) -> List[str]:
+    """
+    Infer the model input columns from the enriched features (MV row):
+      - include all base numeric/string features (minus IDs/provenance)
+      - add isna__<base> for each base
+      - ensure 'streak_type' exists (categorical expected by the pipeline)
+    """
+    base = [k for k in features.keys() if k not in _EXCLUDE_KEYS]
+    cols = set(base)
+    for b in base:
+        cols.add(f"isna__{b}")
+    cols.add("streak_type")
+    # Deterministic order (pipeline uses names; order won't matter, but keep stable)
+    return sorted(cols)
+
+
 DEBUG = os.getenv("DEBUG_PREDICT") not in (None, "", "0", "false", "False")
 
 def _is_missing(v) -> bool:
@@ -104,13 +127,14 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     """Main entry for in-process import."""
     prop = canonicalize_prop_type(prop_type)
 
-    # 1) expected columns (prefer artifact meta)
-    feat_cols = _input_columns_for(prop) or []
+    # 1) expected columns (prefer artifact meta if present; else infer from DB-enriched features)
+    feat_cols = _input_columns_for(prop) or _columns_from_features_dict(features)
     if not feat_cols:
         feat_cols = get_expected_features(prop, prefer="random_forest") or []
 
     # 2) strictly-filtered DF in correct order (no extra cols!)
     X = _vectorize(features, feat_cols)
+    ...
 
     # 3) load models (disk-first, supabase fallback if configured)
     lr = rf = None
