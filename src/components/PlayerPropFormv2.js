@@ -427,35 +427,46 @@ export default function PlayerPropFormV2() {
       {prediction && (
         <div className="p-3 rounded border space-y-2">
           {(() => {
-            // prefer server-provided; fallback to client-calculated
-            const probOver =
-              prediction.prob ??
-              prediction.probability ??
-              prediction.probability_over ??
-              null;
+            // ✅ Use server model fields; do NOT derive pick from user-side `prob`
+            const pOver =
+              prediction.p_over ?? prediction.probability_over ?? null;
+
             const pick =
+              prediction.recommended ??
               prediction.recommendation ??
-              (probOver != null ? pickFromProb(probOver) : null);
+              (pOver != null ? (pOver >= 0.5 ? "Over" : "Under") : null);
+
             const conf =
+              prediction.confidence ??
               prediction.confidence_score ??
-              (probOver != null ? confidenceFromProb(probOver) : null);
+              (pOver != null ? Math.max(pOver, 1 - pOver) : null);
+
+            // Optional: show user-side probability for the chosen direction (purely informational)
+            const userSide =
+              pOver == null ? null : overUnder === "over" ? pOver : 1 - pOver;
 
             return (
               <>
                 <div className="font-medium">
-                  🎯 Prediction ready • {probOver != null ? pct(probOver) : "—"}
+                  🎯 Model (P Over): {pOver != null ? pct(pOver) : "—"}
                 </div>
 
                 <div className="text-sm">
                   {pick ? (
                     <>
                       Pick: <strong>{pick}</strong>
-                      {conf != null ? (
+                      {conf != null && (
                         <>
                           {" "}
                           • Confidence: <strong>{pct(conf)}</strong>
                         </>
-                      ) : null}
+                      )}
+                      {userSide != null && (
+                        <>
+                          {" "}
+                          • Your side: <strong>{pct(userSide)}</strong>
+                        </>
+                      )}
                     </>
                   ) : (
                     <span className="text-gray-600">No pick available</span>
