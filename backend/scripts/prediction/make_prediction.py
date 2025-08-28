@@ -186,6 +186,74 @@ def _blend(a: Optional[float], b: Optional[float]) -> float:
     xs = [x for x in (a, b) if x is not None]
     return sum(xs) / len(xs) if xs else 0.5
 
+
+def _load_artifact_meta(prop: str) -> dict:
+    """Read /var/data/models/latest/{prop}.joblib and return its meta dict."""
+    try:
+        p = Path("/var/data/models/latest") / f"{prop}.joblib"
+        obj = joblib.load(p)
+        if isinstance(obj, dict):
+            return obj.get("meta") or {}
+    except Exception:
+        pass
+    return {}
+
+def _auc_for(prop: str, algo: str) -> Optional[float]:
+    """
+    Try a few common keys to find AUC in the artifact meta.
+    algo in {"logistic_regression","random_forest"}.
+    """
+    meta = _load_artifact_meta(prop)
+    if not meta:
+        return None
+
+    # common key patterns
+    if algo == "logistic_regression":
+        for k in ("auc_lr", "lr_auc"):
+            if k in meta: 
+                try: return float(meta[k])
+                except: pass
+        try: return float((meta.get("metrics", {}).get("lr", {}) or {}).get("auc"))
+        except: pass
+    elif algo == "random_forest":
+        for k in ("auc_rf", "rf_auc"):
+            if k in meta: 
+                try: return float(meta[k])
+                except: pass
+        try: return float((meta.get("metrics", {}).get("rf", {}) or {}).get("auc"))
+        except: pass
+
+    # very generic fallbacks if present
+    for k in ("valid_auc", "auc"):
+        if k in meta:
+            try: return float(meta[k])
+            except: pass
+    return None
+
+def _weight_from_auc(auc: Optional[float]) -> Optional[float]:
+    """Map AUC to a non-negative weight; 0.5→0, better than random > 0."""
+    if auc is None:
+        return None
+    try:
+        return max(float(auc) - 0.5, 0.0)
+    except Exception:
+        return None
+
+def _blend_weighted(values: list[float], weights: list[float]) -> Optional[float]:
+    """Weighted mean with renormalization; returns None if nothing valid."""
+    if not values or not weights or len(values) != len(weights):
+        return None
+    # keep only (v,w) where both are valid and w>0
+    pairs = [(v, w) for v, w in zip(values, weights) if v is not None and w is not None and w > 0]
+    if not pairs:
+        # If all weights are 0/None, fall back to plain average of non-None values
+        vals = [v for v in values if v is not None]
+        return sum(vals) / len(vals) if vals else None
+    num = sum(v * w for v, w in pairs)
+    den = sum(w for _, w in pairs)
+    return (num / den) if den > 0 else None
+
+
 def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     """Main entry for in-process import."""
     prop = canonicalize_prop_type(prop_type)
@@ -211,7 +279,7 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     if not (lr or rf):
         raise RuntimeError(f"No models available for prop_type '{prop}'")
 
-    # 4) predict (retry-aware if available) + guard + blend
+    # 4) predict (retry-aware if available) + AUC-weighted blend
     if "_p_retry_missing" in globals():
         p_lr = _p_retry_missing(lr, X, features)
         p_rf = _p_retry_missing(rf, X, features)
@@ -219,12 +287,23 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
         p_lr = _p(lr, X)
         p_rf = _p(rf, X)
 
-    # If both models failed to score, raise instead of silently returning 0.5
     if p_lr is None and p_rf is None:
         raise RuntimeError(f"both models failed to score for prop={prop}")
 
-    # Normal blend path
-    p_over = max(0.0, min(1.0, _blend(p_lr, p_rf)))
+    # fetch AUCs -> weights
+    auc_lr = _auc_for(prop, "logistic_regression")
+    auc_rf = _auc_for(prop, "random_forest")
+    w_lr = _weight_from_auc(auc_lr)
+    w_rf = _weight_from_auc(auc_rf)
+
+    # weighted blend with robust fallbacks
+    p_over = _blend_weighted([p_lr, p_rf], [w_lr, w_rf])
+    if p_over is None:
+        # last resort (shouldn’t happen): equal-blend of what we have
+        p_over = _blend(p_lr, p_rf)
+
+    # clamp
+    p_over = max(0.0, min(1.0, p_over))
 
     return {
         "prop_type": prop,
@@ -232,9 +311,14 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
         "probability": p_over,
         "probability_under": 1.0 - p_over,
         "components": {"lr": p_lr, "rf": p_rf},
+        "blend": {
+            "strategy": "auc_weighted",
+            "weights": {"lr": w_lr, "rf": w_rf},
+            "aucs": {"lr": auc_lr, "rf": auc_rf},
+        },
         "feature_count": len(feat_cols),
         "used_features": feat_cols,
-        "model": "blend(lr,rf)",
+        "model": "blend_auc(lr,rf)",
     }
 
 # Subprocess mode: read stdin JSON and print JSON to stdout.
