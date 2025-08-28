@@ -33,15 +33,20 @@ except Exception:
 
 
 def _extract_prob(d: Any) -> float:
-    """Return a 0–1 probability from whatever the predictor returns."""
+    """Return a 0–1 probability from the predictor; raise if missing/invalid."""
     if not isinstance(d, dict):
-        return 0.5
-    p = d.get("probability") or d.get("probability_over") or d.get("prob")
-    try:
-        p = float(p)
-    except (TypeError, ValueError):
-        return 0.5
-    return max(0.0, min(1.0, p))
+        raise ValueError("predictor returned a non-dict payload")
+
+    # common keys we accept, in priority order
+    for key in ("probability", "probability_over", "prob", "confidence"):
+        if key in d and d[key] is not None:
+            try:
+                p = float(d[key])
+                return max(0.0, min(1.0, p))
+            except (TypeError, ValueError):
+                raise ValueError(f"invalid probability at '{key}': {d[key]!r}")
+
+    raise ValueError("predictor did not provide a probability field")
 
 
 class PredictInput(BaseModel):
@@ -173,9 +178,9 @@ async def predict(req: Request):
             used_model, backend = True, "subprocess"
     except HTTPException:
         raise
-    except Exception:
-        out = {"prob": 0.5, "stub": True}
-        used_model, backend = False, None
+    except Exception as e:
+        # Bubble the error so we SEE it, instead of silently returning 0.5
+        raise HTTPException(status_code=500, detail=f"prediction failed upstream: {e}")
     dt_ms = int((time.time() - t0) * 1000)
 
     # Normalize whatever we got back into a single probability

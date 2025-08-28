@@ -2,9 +2,11 @@
 
 import joblib
 import os, json
-import sys, numpy as np
+import sys
+import numpy as np
 import pandas as pd
 import math
+import re
 
 from typing import Dict, Any, List, Optional
 from pathlib import Path
@@ -14,6 +16,7 @@ from backend.app.services.model_registry import (
     get_expected_features,
 )
 
+# (optional) previously unused: _missing_re = re.compile(r"columns are missing:\s*\{([^}]*)\}")
 # Make sure the repo root is on sys.path (…/project/src)
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
 if REPO_ROOT not in sys.path:
@@ -25,6 +28,66 @@ _EXCLUDE_KEYS = {
     "prop_type", "over_under", "prop_value",
     "prop_source", "created_at", "updated_at", "ingested_at",
 }
+
+def _parse_missing_columns(msg: str) -> List[str]:
+    # extract 'colname' items from error string
+    return re.findall(r"'([^']+)'", msg or "")
+
+def _augment_df_with_missing(X: pd.DataFrame, features: Dict[str, Any], missing: List[str]) -> pd.DataFrame:
+    """Add missing columns the pipeline asked for, with sensible defaults."""
+    X = X.copy()
+    for col in missing:
+        if col in X.columns:
+            continue
+        if col.startswith("isna__"):
+            base = col.split("__", 1)[1]
+            v = features.get(base, None)
+            X[col] = 1.0 if (v is None or v == "" or (isinstance(v, float) and math.isnan(v))) else 0.0
+        elif col == "streak_type":
+            v = features.get("streak_type")
+            if v is None:
+                hot = features.get("streak_type_hot")
+                cold = features.get("streak_type_cold")
+                if hot in (1, True, "1", "true"): v = "hot"
+                elif cold in (1, True, "1", "true"): v = "cold"
+                else: v = "none"
+            X[col] = str(v)
+        else:
+            # numeric default
+            val = features.get(col, 0.0)
+            try:
+                val = float(val)
+            except Exception:
+                val = 0.0
+            X[col] = val
+    return X
+
+def _p_retry_missing(model, X: pd.DataFrame, features: Dict[str, Any]) -> Optional[float]:
+    """Score; if the model complains about missing columns, augment and retry once."""
+    if model is None:
+        return None
+    # first attempt
+    try:
+        if hasattr(model, "predict_proba"):
+            return float(model.predict_proba(X)[0][1])
+        if hasattr(model, "predict"):
+                y2 = model.predict(X2)
+                return float(np.ravel(y2)[0])    
+    except Exception as e:
+        missing = _parse_missing_columns(str(e))
+        if not missing:
+            print(f"[predict] {type(model).__name__} failed: {e}", file=sys.stderr, flush=True)
+            return None
+        X2 = _augment_df_with_missing(X, features, missing)
+        try:
+            if hasattr(model, "predict_proba"):
+                return float(model.predict_proba(X2)[0][1])
+            if hasattr(model, "predict"):
+                return float(np.ravel(model.predict(X2)[0]))
+        except Exception as e2:
+            print(f"[predict] {type(model).__name__} retry failed: {e2}", file=sys.stderr, flush=True)
+            return None
+    return None
 
 def _columns_from_features_dict(features: Dict[str, Any]) -> List[str]:
     """
@@ -134,7 +197,6 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
 
     # 2) strictly-filtered DF in correct order (no extra cols!)
     X = _vectorize(features, feat_cols)
-    ...
 
     # 3) load models (disk-first, supabase fallback if configured)
     lr = rf = None
@@ -149,9 +211,19 @@ def predict(*, prop_type: str, features: Dict[str, Any]) -> Dict[str, Any]:
     if not (lr or rf):
         raise RuntimeError(f"No models available for prop_type '{prop}'")
 
-    # 4) predict + blend
-    p_lr = _p(lr, X)
-    p_rf = _p(rf, X)
+    # 4) predict (retry-aware if available) + guard + blend
+    if "_p_retry_missing" in globals():
+        p_lr = _p_retry_missing(lr, X, features)
+        p_rf = _p_retry_missing(rf, X, features)
+    else:
+        p_lr = _p(lr, X)
+        p_rf = _p(rf, X)
+
+    # If both models failed to score, raise instead of silently returning 0.5
+    if p_lr is None and p_rf is None:
+        raise RuntimeError(f"both models failed to score for prop={prop}")
+
+    # Normal blend path
     p_over = max(0.0, min(1.0, _blend(p_lr, p_rf)))
 
     return {
