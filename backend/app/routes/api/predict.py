@@ -191,7 +191,15 @@ async def predict(req: Request):
 
     # Direction from user input; model returns P(over)
     direction = (features.get("over_under") or "over").lower()
-    prob = p_over if direction == "over" else (1.0 - p_over)
+
+    # Always expose the model's raw probabilities
+    p_under = 1.0 - p_over
+    recommended = "over" if p_over >= 0.5 else "under"
+    confidence = max(p_over, p_under)  # 0.5..1.0
+
+    # Convenience: probability of the *user's chosen side*
+    # (safe for UI, but does NOT affect the model's recommendation)
+    prob_user = p_over if direction == "over" else p_under
 
     model_tag = out.get("model") or out.get("model_name") or out.get("algo")
 
@@ -208,16 +216,18 @@ async def predict(req: Request):
         "model": model_tag,
         "stub": not used_model or bool(out.get("stub")),
         "features_count": len(features),
-        "expected_feature_count": expected_count,  # <- should be ~50 if wired right
+        "expected_feature_count": expected_count,
         "elapsed_ms": dt_ms,
-        "direction": direction,
-        "p_over": p_over,
-        "p_under": 1.0 - p_over,
+        "direction": direction,   # what the user picked
+        "p_over": p_over,         # raw model prob
+        "p_under": p_under,       # raw model prob
+        "recommended": recommended,
+        "confidence": confidence,
     }
 
-    # Mint commit token AFTER computing the final prob
+    # Mint commit token using the probability of the chosen side
     token = mint_commit_token(
-        prob=prob,
+        prob=prob_user,
         prop_type=canonical,
         features={k: v for k, v in features.items() if k is not None},
         ttl_seconds=int(os.getenv("PROP_COMMIT_TTL_SEC", "600")),
@@ -225,19 +235,27 @@ async def predict(req: Request):
         version="v1",
     )
 
-    # Pass through any extra fields, but avoid duplicating prob fields
+    # Pass through any extra fields from the predictor, but avoid duplicates
     passthrough = {
         k: v
         for k, v in out.items()
-        if k not in {"prob", "probability", "probability_over", "confidence"}
+        if k not in {
+            "prob", "probability", "probability_over", "probability_under",
+            "confidence", "recommended", "model"
+        }
     }
-    # Ensure both directions present for UI/debug
-    passthrough.setdefault("probability_over", p_over)
-    passthrough.setdefault("probability_under", 1.0 - p_over)
     passthrough["prop_type"] = canonical
 
     return {
-        "prob": prob,
+        # UI convenience (probability of the user's chosen side)
+        "prob": prob_user,
+
+        # Canonical, always-present model outputs
+        "p_over": p_over,
+        "p_under": p_under,
+        "recommended": recommended,
+        "confidence": confidence,
+
         "commit_token": token,
         "meta": meta,
         **passthrough,
