@@ -1,86 +1,77 @@
 #!/usr/bin/env bash
-set -Eeuo pipefail
-trap 'echo "[pull_and_unpack] ERROR line $LINENO: $BASH_COMMAND" >&2' ERR
+set -euo pipefail
 
-REPO="${MODELS_REPO:?set MODELS_REPO like owner/repo}"
+: "${MODELS_REPO:?set MODELS_REPO like owner/repo}"
 DEST="${MODELS_DIR:-/var/data/models}"
-TAG="${MODELS_TAG:-models-latest}"
+TAG="${MODELS_TAG:-models-latest}"      # or a timestamp tag
 USE_LATEST="${USE_LATEST_API:-0}"
 
-mkdir -p "$DEST"
-umask 002
-
-# ---- lock to avoid concurrent predeploys ----
-LOCK="$DEST/.update.lock"
-exec 9>"$LOCK"
-flock -n 9 || { echo "[pull_and_unpack] another update in progress, exiting"; exit 0; }
-
-# ---- skip if already installed ----
-if [[ -f "$DEST/latest/.version" ]]; then
-  INSTALLED="$(cat "$DEST/latest/.version" || true)"
-  if [[ "$INSTALLED" == "$TAG" ]]; then
-    echo "✅ Already installed tag: $TAG → $DEST/latest (skip)"
-    exit 0
-  fi
-fi
-
-# ---- auth header only if token present ----
+# Optional auth header (fine if missing on public repos)
 AUTH=()
-[[ -n "${GH_TOKEN:-}"      ]] && AUTH=(-H "Authorization: token $GH_TOKEN")
-[[ ${#AUTH[@]} -eq 0 && -n "${GITHUB_TOKEN:-}" ]] && AUTH=(-H "Authorization: token $GITHUB_TOKEN")
-
-# ---- resolve API endpoint ----
-if [[ "$USE_LATEST" == "1" ]]; then
-  API_URL="https://api.github.com/repos/$REPO/releases/latest"
-else
-  API_URL="https://api.github.com/repos/$REPO/releases/tags/$TAG"
-fi
+[ -n "${GH_TOKEN:-}" ]      && AUTH=(-H "Authorization: token $GH_TOKEN")
+[ ${#AUTH[@]} -eq 0 ] && [ -n "${GITHUB_TOKEN:-}" ] && AUTH=(-H "Authorization: token $GITHUB_TOKEN")
 
 TMPROOT="$(mktemp -d)"
 trap 'rm -rf "$TMPROOT"' EXIT
 JSON="$TMPROOT/release.json"
-
-# robust curl: retry on network & 5xx, backoff a bit
-curl -fsSL "${AUTH[@]}" \
-  --retry 5 --retry-all-errors --retry-delay 2 \
-  -H "Accept: application/vnd.github+json" \
-  "$API_URL" -o "$JSON"
-
-ASSET_URL="$(python3 - <<'PY'
-import json,sys
-d=json.load(open(sys.argv[1]))
-for a in d.get("assets",[]):
-    if a.get("name","").endswith((".tar.gz",".tgz")):
-        print(a["browser_download_url"]); break
-PY
-"$JSON")"
-
-[[ -n "$ASSET_URL" ]] || { echo "No tarball asset found on $API_URL"; exit 1; }
-
-echo "⬇️  Downloading: $ASSET_URL"
+WORK="$TMPROOT/extract"
 TAR="$TMPROOT/models.tar.gz"
-curl -fL --retry 5 --retry-all-errors --retry-delay 2 \
-  -o "$TAR" "$ASSET_URL"
+mkdir -p "$WORK" "$DEST"
 
-EXTRACT="$TMPROOT/extract"
-mkdir -p "$EXTRACT"
+# Pick endpoint
+if [ "$USE_LATEST" = "1" ]; then
+  API_URL="https://api.github.com/repos/$MODELS_REPO/releases/latest"
+else
+  API_URL="https://api.github.com/repos/$MODELS_REPO/releases/tags/$TAG"
+fi
 
-# suppress macOS xattr chatter; strip top-level
-tar --warning=no-unknown-keyword \
-    -xzf "$TAR" -C "$EXTRACT" --strip-components=1
+echo "[pull_and_unpack] Fetching release metadata: $API_URL"
+curl -fsSL "${AUTH[@]}" "$API_URL" -o "$JSON"
 
-# basic sanity: at least one joblib
-if ! find "$EXTRACT" -maxdepth 1 -type f -name '*.joblib' | head -n1 | grep -q .; then
-  echo "Tarball sanity check failed: no .joblib files at top level." >&2
+# Extract the first *.tar.gz (prefer .tar.gz over .tgz)
+ASSET_URL="$(python3 - "$JSON" <<'PY'
+import sys, json
+path = sys.argv[1]
+d = json.load(open(path))
+assets = d.get("assets", [])
+best = None
+for a in assets:
+    n = (a.get("name") or "").lower()
+    if n.endswith(".tar.gz") or n.endswith(".tgz"):
+        best = a.get("browser_download_url")
+        if n.endswith(".tar.gz"):
+            break
+print(best or "")
+PY
+)"
+if [ -z "$ASSET_URL" ]; then
+  echo "[pull_and_unpack] ERROR: no .tar.gz asset found in release JSON"
   exit 1
 fi
 
-echo "$TAG" > "$EXTRACT/.version"
+echo "[pull_and_unpack] Downloading asset: $ASSET_URL"
+curl -fsSL "${AUTH[@]}" "$ASSET_URL" -o "$TAR"
 
-# atomic swap
-rm -rf "$DEST/latest.prev"
-[[ -d "$DEST/latest" ]] && mv "$DEST/latest" "$DEST/latest.prev"
-mv "$EXTRACT" "$DEST/latest"
+echo "[pull_and_unpack] Unpacking to temp dir…"
+tar -xzf "$TAR" -C "$WORK" --strip-components=1 || {
+  echo "[pull_and_unpack] NOTE: retrying without strip-components=1"
+  rm -rf "$WORK" && mkdir -p "$WORK"
+  tar -xzf "$TAR" -C "$WORK"
+}
 
-echo "✅ Installed tag: $TAG → $DEST/latest"
-find "$DEST/latest" -maxdepth 1 -type f -name '*.joblib' -printf ' - %f\n' | sort
+# If tarball contains a top-level "latest" folder, flatten it
+if [ -d "$WORK/latest" ] && [ -f "$WORK/latest/MODEL_INDEX.json" ]; then
+  mv "$WORK/latest" "$WORK.tmp" && rm -rf "$WORK" && mv "$WORK.tmp" "$WORK"
+fi
+
+echo "${TAG}" > "$WORK/.version" || true
+
+# Atomic swap into DEST/latest
+if [ -d "$DEST/latest" ]; then
+  rm -rf "$DEST/latest.prev"
+  mv "$DEST/latest" "$DEST/latest.prev"
+fi
+mv "$WORK" "$DEST/latest"
+
+echo "✅ Installed tag: ${TAG} → ${DEST}/latest"
+ls -1 "$DEST/latest"/*.joblib 2>/dev/null | sed 's#^.*/# - #'
