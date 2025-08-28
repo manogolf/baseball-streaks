@@ -1,5 +1,3 @@
-# backend/app/api_server.py
-
 import sys
 import os
 from contextlib import asynccontextmanager
@@ -23,19 +21,11 @@ from backend.app.routes.api.model_accuracy_weekly import router as model_accurac
 from backend.app.routes.api.player_list import router as player_list_router
 from backend.app.routes.api.players import router as players_router
 from backend.app.routes.api.props import router as props_router
-# If you have a games endpoint that exposes `router`, import it like this:
-# from app.routes.api.games import router as games_router
 
 from backend.app.services.model_registry import load_model
 
-# --- verify players router at startup ---
-import backend.app.routes.api.players as players_mod
-print("players.py file:", players_mod.__file__)
-print("players routes:", [r.path for r in players_router.routes])
-
-
 COMMON_PROPS = [
-    "hits", "home_runs", "rbi", "runs_scored", "strikeouts_batting", "walks",
+    "hits", "home_runs", "rbis", "runs_scored", "strikeouts_batting", "walks",
     "total_bases", "singles", "doubles", "triples", "stolen_bases",
     "strikeouts_pitching", "outs_recorded", "earned_runs", "hits_allowed",
     "walks_allowed", "hits_runs_rbis", "runs_rbis",
@@ -75,6 +65,40 @@ def health_ok():
 @app.api_route("/healthz", methods=["GET", "HEAD"], include_in_schema=False)
 def healthz_ok():
     return JSONResponse({"status": "ok", "ts": int(time.time())})
+
+# --- verify players router at startup ---
+import backend.app.routes.api.players as players_mod
+print("players.py file:", players_mod.__file__)
+print("players routes:", [r.path for r in players_router.routes])
+
+
+COMMON_PROPS = [
+    "hits", "home_runs", "rbi", "runs_scored", "strikeouts_batting", "walks",
+    "total_bases", "singles", "doubles", "triples", "stolen_bases",
+    "strikeouts_pitching", "outs_recorded", "earned_runs", "hits_allowed",
+    "walks_allowed", "hits_runs_rbis", "runs_rbis",
+]
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if os.getenv("PRELOAD_MODELS", "0") == "1":
+        props = os.getenv("PREWARM_PROPS")
+        if props:
+            props_to_load = [p.strip() for p in props.split(",") if p.strip()]
+        else:
+            props_to_load = COMMON_PROPS
+
+        for p in props_to_load:
+            for algo in ("random_forest", "logistic_regression"):
+                try:
+                    load_model(p, algo)
+                    print(f"✅ Warmed model: {p} / {algo}")
+                except Exception as e:
+                    print(f"⚠️ Failed to warm model {p} / {algo}: {e}")
+    else:
+        print("⏩ Skipping model prewarm (PRELOAD_MODELS=0)")
+    yield
+
 
 # ---- CORS ----
 app.add_middleware(
