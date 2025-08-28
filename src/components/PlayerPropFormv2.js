@@ -428,8 +428,11 @@ export default function PlayerPropFormV2() {
         <div className="p-3 rounded border space-y-2">
           {(() => {
             // ✅ Use server model fields; do NOT derive pick from user-side `prob`
-            const pOver =
+            const clamp01 = (x) => Math.max(0, Math.min(1, Number(x)));
+            const pOverRaw =
               prediction.p_over ?? prediction.probability_over ?? null;
+            const pOver = pOverRaw == null ? null : clamp01(pOverRaw);
+            const pUnder = pOver == null ? null : 1 - pOver;
 
             const pick =
               prediction.recommended ??
@@ -439,7 +442,7 @@ export default function PlayerPropFormV2() {
             const conf =
               prediction.confidence ??
               prediction.confidence_score ??
-              (pOver != null ? Math.max(pOver, 1 - pOver) : null);
+              (pOver != null ? Math.max(pOver, pUnder) : null);
 
             // Optional: show user-side probability for the chosen direction (purely informational)
             const userSide =
@@ -448,7 +451,8 @@ export default function PlayerPropFormV2() {
             return (
               <>
                 <div className="font-medium">
-                  🎯 Model (P Over): {pOver != null ? pct(pOver) : "—"}
+                  🎯 Model (Probability of Over):{" "}
+                  {pOver != null ? pct(pOver) : "—"}
                 </div>
 
                 <div className="text-sm">
@@ -461,12 +465,14 @@ export default function PlayerPropFormV2() {
                           • Confidence: <strong>{pct(conf)}</strong>
                         </>
                       )}
+                      {/* 
                       {userSide != null && (
                         <>
                           {" "}
                           • Your side: <strong>{pct(userSide)}</strong>
                         </>
                       )}
+                      */}
                     </>
                   ) : (
                     <span className="text-gray-600">No pick available</span>
