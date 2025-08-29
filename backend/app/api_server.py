@@ -1,5 +1,5 @@
 import sys
-import os
+import os, time
 from contextlib import asynccontextmanager
 
 # Ensure package resolution (keep if you rely on it)
@@ -21,7 +21,6 @@ from backend.app.routes.api.model_accuracy_weekly import router as model_accurac
 from backend.app.routes.api.player_list import router as player_list_router
 from backend.app.routes.api.players import router as players_router
 from backend.app.routes.api.props import router as props_router
-
 from backend.app.services.model_registry import load_model
 
 COMMON_PROPS = [
@@ -78,27 +77,6 @@ COMMON_PROPS = [
     "strikeouts_pitching", "outs_recorded", "earned_runs", "hits_allowed",
     "walks_allowed", "hits_runs_rbis", "runs_rbis",
 ]
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    if os.getenv("PRELOAD_MODELS", "0") == "1":
-        props = os.getenv("PREWARM_PROPS")
-        if props:
-            props_to_load = [p.strip() for p in props.split(",") if p.strip()]
-        else:
-            props_to_load = COMMON_PROPS
-
-        for p in props_to_load:
-            for algo in ("random_forest", "logistic_regression"):
-                try:
-                    load_model(p, algo)
-                    print(f"✅ Warmed model: {p} / {algo}")
-                except Exception as e:
-                    print(f"⚠️ Failed to warm model {p} / {algo}: {e}")
-    else:
-        print("⏩ Skipping model prewarm (PRELOAD_MODELS=0)")
-    yield
-
 
 # ---- CORS ----
 app.add_middleware(
