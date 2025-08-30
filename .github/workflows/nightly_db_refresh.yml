@@ -2,7 +2,7 @@ name: Nightly DB Refresh
 
 on:
   schedule:
-    # GitHub cron is UTC. 09:00 UTC ≈ 2am PDT / 1am PST (Los Angeles).
+    # 09:00 UTC ≈ 2am Pacific (Los Angeles)
     - cron: "0 9 * * *"
   workflow_dispatch:
 
@@ -12,9 +12,6 @@ jobs:
     timeout-minutes: 120
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
@@ -22,31 +19,23 @@ jobs:
 
       - name: Sanity check connection
         env:
-          PGHOST: ${{ secrets.PGHOST }}
-          PGPORT: ${{ secrets.PGPORT }}
-          PGDATABASE: ${{ secrets.PGDATABASE }}
-          PGUSER: ${{ secrets.PGUSER }}
-          PGPASSWORD: ${{ secrets.PGPASSWORD }}
-          PGSSLMODE: ${{ secrets.PGSSLMODE }} # e.g. "require"
-        run: psql -v ON_ERROR_STOP=1 -c "SELECT now() AS connected_at_utc;"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }} # <-- set this one secret in GitHub
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT now() AS connected_at_utc;"
 
-      - name: Refresh matviews (CONCURRENTLY)
+      - name: Refresh matviews (CONCURRENTLY) + ANALYZE
         env:
-          PGHOST: ${{ secrets.PGHOST }}
-          PGPORT: ${{ secrets.PGPORT }}
-          PGDATABASE: ${{ secrets.PGDATABASE }}
-          PGUSER: ${{ secrets.PGUSER }}
-          PGPASSWORD: ${{ secrets.PGPASSWORD }}
-          PGSSLMODE: ${{ secrets.PGSSLMODE }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          psql -v ON_ERROR_STOP=1 -f scripts/refresh_matviews.sql
-
-      - name: Analyze
-        env:
-          PGHOST: ${{ secrets.PGHOST }}
-          PGPORT: ${{ secrets.PGPORT }}
-          PGDATABASE: ${{ secrets.PGDATABASE }}
-          PGUSER: ${{ secrets.PGUSER }}
-          PGPASSWORD: ${{ secrets.PGPASSWORD }}
-          PGSSLMODE: ${{ secrets.PGSSLMODE }}
-        run: psql -v ON_ERROR_STOP=1 -c "ANALYZE;"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          SET statement_timeout = '0';
+          REFRESH MATERIALIZED VIEW CONCURRENTLY public.player_pitching_games;
+          REFRESH MATERIALIZED VIEW CONCURRENTLY public.player_pitching_laststarts_mat;
+          REFRESH MATERIALIZED VIEW CONCURRENTLY public.pitcher_last3_agg;
+          REFRESH MATERIALIZED VIEW CONCURRENTLY public.player_rolling_batting_agg;
+          REFRESH MATERIALIZED VIEW CONCURRENTLY public.pitcher_rolling_per9;
+          REFRESH MATERIALIZED VIEW CONCURRENTLY public.player_rolling_pitching_rates;
+          REFRESH MATERIALIZED VIEW CONCURRENTLY public.player_rolling_agg_mat;
+          REFRESH MATERIALIZED VIEW CONCURRENTLY public.bvp_rollup_prior;
+          REFRESH MATERIALIZED VIEW CONCURRENTLY public.bvp_pairs;
+          ANALYZE;
+          SQL
