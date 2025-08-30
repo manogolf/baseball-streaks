@@ -1,0 +1,52 @@
+name: Nightly DB Refresh
+
+on:
+  schedule:
+    # GitHub cron is UTC. 09:00 UTC ≈ 2am PDT / 1am PST (Los Angeles).
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+jobs:
+  refresh-db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Sanity check connection
+        env:
+          PGHOST: ${{ secrets.PGHOST }}
+          PGPORT: ${{ secrets.PGPORT }}
+          PGDATABASE: ${{ secrets.PGDATABASE }}
+          PGUSER: ${{ secrets.PGUSER }}
+          PGPASSWORD: ${{ secrets.PGPASSWORD }}
+          PGSSLMODE: ${{ secrets.PGSSLMODE }} # e.g. "require"
+        run: psql -v ON_ERROR_STOP=1 -c "SELECT now() AS connected_at_utc;"
+
+      - name: Refresh matviews (CONCURRENTLY)
+        env:
+          PGHOST: ${{ secrets.PGHOST }}
+          PGPORT: ${{ secrets.PGPORT }}
+          PGDATABASE: ${{ secrets.PGDATABASE }}
+          PGUSER: ${{ secrets.PGUSER }}
+          PGPASSWORD: ${{ secrets.PGPASSWORD }}
+          PGSSLMODE: ${{ secrets.PGSSLMODE }}
+        run: |
+          psql -v ON_ERROR_STOP=1 -f scripts/refresh_matviews.sql
+
+      - name: Analyze
+        env:
+          PGHOST: ${{ secrets.PGHOST }}
+          PGPORT: ${{ secrets.PGPORT }}
+          PGDATABASE: ${{ secrets.PGDATABASE }}
+          PGUSER: ${{ secrets.PGUSER }}
+          PGPASSWORD: ${{ secrets.PGPASSWORD }}
+          PGSSLMODE: ${{ secrets.PGSSLMODE }}
+        run: psql -v ON_ERROR_STOP=1 -c "ANALYZE;"

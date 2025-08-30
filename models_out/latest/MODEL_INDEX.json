@@ -170,12 +170,20 @@
     "rows": 5000
   },
   "singles": {
-    "prop_type": "singles",
-    "trained_at": "2025-08-17T01:27:26.551703",
-    "file": "singles.joblib",
-    "auc_lr": null,
-    "auc_rf": null,
-    "rows": 5000
+    "val_metrics": {
+      "lr_auc": 0.5,
+      "rf_auc": 0.5
+    },
+    "n_train": 400,
+    "n_val": 100,
+    "features_num": [
+      "prop_value",
+      "isna__prop_value"
+    ],
+    "features_cat": [
+      "streak_type",
+      "time_of_day_bucket"
+    ]
   },
   "stolen_bases": {
     "prop_type": "stolen_bases",

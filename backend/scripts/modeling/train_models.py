@@ -2,6 +2,7 @@
 import os, json, math, argparse, time
 from pathlib import Path
 from typing import List, Tuple
+from .feature_sql import build_training_sql
 
 import numpy as np
 import pandas as pd
@@ -56,10 +57,43 @@ def _mv_name(prop: str) -> str:
 
 def _load_prop_df(engine, prop: str, days_back: int = None, limit: int = None) -> pd.DataFrame:
     """
-    Load records from the per-prop MV and derive label y_over.
-    Drops pushes/voids and keeps settled or null status.
-    Optional days_back filters by game_date >= current_date - days_back.
+    Load training rows for a prop. By default, use the dynamic SQL builder that
+    joins MT + (PDS/BVP) on the fly and selects ONLY the features listed in
+    feature_metadata.json for the model. Keep the y_over label logic exactly as before.
+
+    To fall back to your old per-prop MVs, set TRAIN_DATA_MODE=mv.
     """
+    mode = os.getenv("TRAIN_DATA_MODE", "dynamic").lower()
+
+    if mode == "dynamic":
+        # Choose one model’s feature set to define the columns (both LR/RF will use the same X)
+        # You can flip to "logistic_regression" if you prefer that feature list instead.
+        model_name = "random_forest"
+
+        # Build the SELECT; it returns the columns named exactly as in feature_metadata.json,
+        # plus: prop_value, result, status, over_under, game_date, prop_source, etc., and y_over.
+        sql = build_training_sql(
+            engine,
+            prop_type=prop,
+            model_name=model_name,
+            days_back=days_back,
+            limit=limit,
+        )
+
+        with engine.connect() as conn:
+            df = pd.read_sql(text(sql), conn)
+
+        # If the builder didn’t compute the label, compute it here (kept identical to your logic)
+        if "y_over" not in df.columns:
+            df["y_over"] = np.where(df["result"] > df["prop_value"], 1,
+                             np.where(df["result"] < df["prop_value"], 0, np.nan))
+
+        # drop pushes/NaN labels, match your original behavior
+        df = df[~df["y_over"].isna()].copy()
+        df["y_over"] = df["y_over"].astype(int)
+        return df
+
+    # ---------- fallback to your existing MV path (unchanged) ----------
     base_sql = f"""
         SELECT *,
                CASE
@@ -67,7 +101,7 @@ def _load_prop_df(engine, prop: str, days_back: int = None, limit: int = None) -
                  WHEN result < prop_value THEN 0
                  ELSE NULL
                END AS y_over
-        FROM {_mv_name(prop)}
+        FROM { _mv_name(prop) }
         WHERE (status IS NULL OR status IN ('resolved','final','settled'))
     """
     clauses = []
@@ -80,10 +114,8 @@ def _load_prop_df(engine, prop: str, days_back: int = None, limit: int = None) -
     if limit:
         base_sql += f" LIMIT {int(limit)}"
 
-    # run
     with engine.connect() as conn:
         df = pd.read_sql(text(base_sql), conn, params=params)
-    # drop pushes/NaN labels
     df = df[~df["y_over"].isna()].copy()
     df["y_over"] = df["y_over"].astype(int)
     return df
@@ -173,23 +205,31 @@ def _split_by_time(df: pd.DataFrame, test_frac: float = 0.2) -> Tuple[np.ndarray
         cut = max(1, int(len(df) * (1.0 - test_frac)))
         return idx[:cut], idx[cut:]
 
-def _fit_models(X: pd.DataFrame, y: np.ndarray, num_cols: List[str], cat_cols: List[str], w: np.ndarray):
+def _fit_models(X, y, num_cols, cat_cols, w):
     num_pipe = Pipeline(steps=[
         ("imputer", SimpleImputer(strategy="constant", fill_value=0.0)),
         ("scaler", StandardScaler(with_mean=False)),
     ])
+
+    # sklearn >= 1.2 uses `sparse_output`; older uses `sparse`
+    try:
+        ohe = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
+    except TypeError:
+        ohe = OneHotEncoder(handle_unknown="ignore", sparse=False)
+
     cat_pipe = Pipeline(steps=[
         ("imputer", SimpleImputer(strategy="constant", fill_value="missing")),
-        ("ohe", OneHotEncoder(handle_unknown="ignore", sparse=True)),
+        ("ohe", ohe),
     ])
+
     pre = ColumnTransformer([
         ("num", num_pipe, num_cols),
         ("cat", cat_pipe, cat_cols),
-    ], remainder="drop", sparse_threshold=1.0)
+    ], remainder="drop")  # you can omit sparse_threshold now
 
     lr = Pipeline([
         ("pre", pre),
-        ("clf", LogisticRegression(max_iter=2000, n_jobs=None)),
+        ("clf", LogisticRegression(max_iter=2000)),
     ])
     rf = Pipeline([
         ("pre", pre),
