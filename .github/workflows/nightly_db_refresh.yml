@@ -8,37 +8,41 @@ on:
 jobs:
   refresh-db:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
+
     steps:
       - name: Install PostgreSQL client + DNS tools
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client dnsutils
 
-      # Resolve IPv4 and pin it in /etc/hosts
+      # Resolve an IPv4 A-record from public DNS and pin it
       - name: Force IPv4 for Supabase host
         env:
           PGHOST: ${{ secrets.PGHOST }} # e.g. db.cnwwhhmpashijqbspvhf.supabase.co
         run: |
-          IP=$(dig +short A "$PGHOST" | head -n1)
+          set -e
+          IP=$(dig +short A "$PGHOST" @1.1.1.1 | head -n1) || true
+          if [ -z "$IP" ]; then IP=$(dig +short A "$PGHOST" @8.8.8.8 | head -n1) || true; fi
+          if [ -z "$IP" ]; then IP=$(getent ahostsv4 "$PGHOST" | awk '{print $1; exit}') || true; fi
           if [ -z "$IP" ]; then
-            IP=$(getent ahostsv4 "$PGHOST" | awk '{print $1; exit}')
-          fi
-          if [ -z "$IP" ]; then
-            echo "Could not resolve IPv4 for $PGHOST" >&2; exit 1
+            echo "Could not resolve IPv4 for $PGHOST"; 
+            echo "AAAA records (IPv6) are:"; dig +short AAAA "$PGHOST" @1.1.1.1 || true
+            exit 1
           fi
           echo "Pinning $PGHOST -> $IP"
           echo "$IP $PGHOST" | sudo tee -a /etc/hosts
           echo "IPV4=$IP" >> "$GITHUB_ENV"
 
-      - name: Sanity check connection (IPv4)
+      - name: Sanity check connection (IPv4 only)
         env:
           PGHOST: ${{ secrets.PGHOST }}
           PGPORT: 5432
           PGDATABASE: ${{ secrets.PGDATABASE }} # usually postgres
-          PGUSER: postgres # or your DB user
+          PGUSER: postgres # or your DB user (hardcoded)
           PGPASSWORD: ${{ secrets.PGPASSWORD }} # Supabase DB password
         run: |
-          unset PGHOSTADDR
+          # libpq will now resolve $PGHOST to the pinned IPv4 in /etc/hosts
           psql "host=${PGHOST} port=${PGPORT} dbname=${PGDATABASE} user=${PGUSER} password=${PGPASSWORD} sslmode=require" \
             -v ON_ERROR_STOP=1 \
             -c "SELECT inet_server_addr() AS server_ip, now() AS connected_at_utc;"
@@ -51,7 +55,6 @@ jobs:
           PGUSER: postgres
           PGPASSWORD: ${{ secrets.PGPASSWORD }}
         run: |
-          unset PGHOSTADDR
           psql "host=${PGHOST} port=${PGPORT} dbname=${PGDATABASE} user=${PGUSER} password=${PGPASSWORD} sslmode=require" -v ON_ERROR_STOP=1 <<'SQL'
           SET statement_timeout = '0';
           REFRESH MATERIALIZED VIEW CONCURRENTLY public.player_pitching_games;
