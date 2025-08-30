@@ -2,8 +2,7 @@ name: Nightly DB Refresh
 
 on:
   schedule:
-    # 09:00 UTC ≈ 2am Pacific (Los Angeles)
-    - cron: "0 9 * * *"
+    - cron: "0 9 * * *" # 09:00 UTC ≈ 2am Pacific
   workflow_dispatch:
 
 jobs:
@@ -17,16 +16,32 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql-client
 
-      - name: Sanity check connection
+      - name: Sanity check connection (force IPv4)
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }} # <-- set this one secret in GitHub
-        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT now() AS connected_at_utc;"
-
-      - name: Refresh matviews (CONCURRENTLY) + ANALYZE
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PGHOST: ${{ secrets.PGHOST }}
+          PGPORT: ${{ secrets.PGPORT }}
+          PGDATABASE: ${{ secrets.PGDATABASE }}
+          PGUSER: ${{ secrets.PGUSER }}
+          PGPASSWORD: ${{ secrets.PGPASSWORD }}
+          PGSSLMODE: require
         run: |
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          IP=$(getent ahostsv4 "$PGHOST" | awk '{print $1; exit}')
+          echo "Using IPv4 $IP for $PGHOST"
+          export PGHOSTADDR="$IP"
+          psql -v ON_ERROR_STOP=1 -c "SELECT inet_server_addr() AS server_ip, now() AS connected_at_utc;"
+
+      - name: Refresh matviews (CONCURRENTLY) + ANALYZE (force IPv4)
+        env:
+          PGHOST: ${{ secrets.PGHOST }}
+          PGPORT: ${{ secrets.PGPORT }}
+          PGDATABASE: ${{ secrets.PGDATABASE }}
+          PGUSER: postgres
+          PGPASSWORD: ${{ secrets.PGPASSWORD }}
+          PGSSLMODE: require
+        run: |
+          IP=$(getent ahostsv4 "$PGHOST" | awk '{print $1; exit}')
+          export PGHOSTADDR="$IP"
+          psql -v ON_ERROR_STOP=1 <<'SQL'
           SET statement_timeout = '0';
           REFRESH MATERIALIZED VIEW CONCURRENTLY public.player_pitching_games;
           REFRESH MATERIALIZED VIEW CONCURRENTLY public.player_pitching_laststarts_mat;
