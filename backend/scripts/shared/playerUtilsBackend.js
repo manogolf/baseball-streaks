@@ -209,6 +209,17 @@ export function isPitcher(position) {
   return pos === "P" || pos === "SP" || pos === "RP";
 }
 
+// ✅ New: true only for the starting pitcher
+export function isStarterPitcher(position, stats) {
+  const pos = (position || "").toUpperCase();
+  const gamesStarted = Number(stats?.pitching?.gamesStarted ?? 0);
+  // If StatsAPI flags a start, trust it.
+  if (gamesStarted > 0) return true;
+  // Fallback: some feeds tag starters as "SP" even if gamesStarted is missing.
+  if (pos === "SP") return true;
+  return false;
+}
+
 export function getPlayerTeamFromBoxscoreData(player, gameData) {
   const homePlayers = gameData?.teams?.home?.players || {};
   const awayPlayers = gameData?.teams?.away?.players || {};

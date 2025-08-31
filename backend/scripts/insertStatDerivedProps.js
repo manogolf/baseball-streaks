@@ -17,6 +17,7 @@ import {
   getStreaksForPlayer,
   getPlayerPositionMap,
   isPitcher,
+  isStarterPitcher,
 } from "./shared/playerUtilsBackend.js";
 import { fetchBoxscoreStatsForGame } from "./shared/fetchBoxscoreStats.js";
 import {
@@ -186,8 +187,8 @@ async function processDate(gameDate) {
         const hasBat = Object.keys(batting).length > 0;
         const hasPitch = Object.keys(pitching).length > 0;
         const position = positionMap.get(Number(p.id));
-        const isPitch = isPitcher(position) || hasPitch; // include pitchers with stats
-        return hasBat || isPitch;
+        const isPitch = isPitcher(position) || hasPitch;
+        const isStarter = isStarterPitcher(position, stats); // NEW        return hasBat || isPitch;
       });
 
       log(`✅ Final player pool after filtering: ${players.length}`);
@@ -265,8 +266,14 @@ async function processDate(gameDate) {
         // Build eligible prop types from actual stat presence
         let eligiblePropTypes = [];
         if (hasBat) eligiblePropTypes.push(...BATTER_PROP_TYPES);
-        if (isPitch) eligiblePropTypes.push(...PITCHER_PROP_TYPES);
-        eligiblePropTypes = [...new Set(eligiblePropTypes)]; // de-dupe
+        // ✅ Starter-only: pitcher props only if starter
+        if (isPitch && isStarter) {
+          eligiblePropTypes.push(...PITCHER_PROP_TYPES);
+        }
+        // If they’re a pitcher but not the starter, you can either:
+        //   a) keep their batter props (two-way guys) and skip pitcher props (current behavior), or
+        //   b) drop them entirely. To drop entirely, uncomment:
+        // if (isPitch && !isStarter && !hasBat) continue;        eligiblePropTypes = [...new Set(eligiblePropTypes)]; // de-dupe
 
         dbg(`🔁 eligiblePropTypes: ${JSON.stringify(eligiblePropTypes)}`);
 
@@ -288,7 +295,8 @@ async function processDate(gameDate) {
         }
 
         for (const propType of eligiblePropTypes) {
-          // ratio sampling applies to ALL batter props (two-way included)
+          // Belt-and-suspenders: never emit pitcher props unless starter
+          if (!isStarter && !isBatterProp(propType)) continue; // ratio sampling applies to ALL batter props (two-way included)
           if (
             isBatterProp(propType) &&
             !shouldInclude(player_id, gameId, propType)
