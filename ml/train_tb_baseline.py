@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+import os
 
 import numpy as np
 import pandas as pd
@@ -37,6 +38,12 @@ df = pd.read_csv(CSV_PATH)
 df["game_date"] = pd.to_datetime(df["game_date"])
 df = df.sort_values("game_date").reset_index(drop=True)
 
+# --- rolling lookback for daily retrains ---
+LOOKBACK_DAYS = int(os.getenv("TB_LOOKBACK_DAYS", "540"))  # ~18 months by default
+max_date = df["game_date"].max()
+min_keep = max_date - pd.Timedelta(days=LOOKBACK_DAYS - 1)
+df = df[df["game_date"] >= min_keep].copy()
+
 # Coerce all non-ID, non-target to numeric when possible
 for c in df.columns:
     if c not in ID_COLS + [TARGET]:
@@ -63,21 +70,28 @@ for c in cat_cols:
 # =========================
 # Time-based split
 # =========================
-max_date = df["game_date"].max()
+max_date   = df["game_date"].max()
 test_start = max_date - pd.Timedelta(days=TEST_DAYS - 1)
-val_start = test_start - pd.Timedelta(days=VAL_DAYS)
+val_start  = test_start - pd.Timedelta(days=VAL_DAYS)
+
+saved_min = df.loc[df["game_date"] < test_start, "game_date"].min()
+saved_max = (test_start - pd.Timedelta(days=1))
+print(f"Saved model trained on: {saved_min.date()} → {saved_max.date()}")
+
 
 train_idx = df["game_date"] < val_start
-val_idx = (df["game_date"] >= val_start) & (df["game_date"] < test_start)
-test_idx = df["game_date"] >= test_start
+val_idx   = (df["game_date"] >= val_start) & (df["game_date"] < test_start)
+test_idx  = df["game_date"] >= test_start
 
 X_train, y_train = X[train_idx], y[train_idx]
-X_val, y_val = X[val_idx], y[val_idx]
-X_test, y_test = X[test_idx], y[test_idx]
+X_val,   y_val   = X[val_idx],   y[val_idx]
+X_test,  y_test  = X[test_idx],  y[test_idx]
 
 print("Date ranges:")
 print(f"  train < {val_start.date()}  |  val [{val_start.date()}, {test_start.date()})  |  test ≥ {test_start.date()}")
 
+# optional sanity
+print("Shapes:", X_train.shape, X_val.shape, X_test.shape)
 # =========================
 # Pipeline
 # =========================
