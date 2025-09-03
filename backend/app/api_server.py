@@ -22,6 +22,7 @@ from backend.app.routes.api.player_list import router as player_list_router
 from backend.app.routes.api.players import router as players_router
 from backend.app.routes.api.props import router as props_router
 from backend.app.services.model_registry import load_model
+from backend.app.routes.api.score_prop import router as score_prop_router
 
 COMMON_PROPS = [
     "hits", "home_runs", "rbis", "runs_scored", "strikeouts_batting", "walks",
@@ -72,6 +73,7 @@ def register_routes(app: FastAPI) -> None:
     from backend.app.routes.api.model_accuracy_weekly import router as model_accuracy_weekly_router
     from backend.app.routes.api.player_list import router as player_list_router
     from backend.app.routes.api.players import router as players_router
+    
     # from backend.app.routes.api.games import router as games_router  # if exists
 
     # CORS middleware (keep)
@@ -97,6 +99,7 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(user_vs_model_weekly_router)
     app.include_router(model_accuracy_weekly_router)
     app.include_router(player_list_router)
+    app.include_router(score_prop_router, tags=["poisson"])
     # app.include_router(games_router, prefix="/api", tags=["games"])
 
 register_routes(app)
