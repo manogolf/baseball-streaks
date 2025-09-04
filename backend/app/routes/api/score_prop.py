@@ -37,6 +37,8 @@ def _apply_calibrator(p: float, cal_path: Path) -> float:
 @router.post("/api/score-prop")
 def score_prop(req: ScoreReq):
     md = _model_dir(req.prop_type)
+
+    # 1) locate poisson model
     lam_file = md / f"{req.prop_type[:2]}_poisson_v1.joblib"  # e.g. tb_poisson_v1.joblib
     if not lam_file.exists():
         lam_file = next(iter(md.glob("*poisson*.joblib")), None)
@@ -45,17 +47,40 @@ def score_prop(req: ScoreReq):
 
     pipe = joblib.load(lam_file)
 
-    # Build single-row DataFrame with the features the pipeline expects.
-    # We at least pass 'player_id' and 'game_date'; the pipeline’s preprocessor will
-    # impute/one-hot/ignore others as designed.
-    X = pd.DataFrame([{"player_id": req.player_id, "game_date": req.game_date}])
+    # 2) load required feature columns
+    feat_file = None
+    for cand in [md / f"{req.prop_type[:2]}_features_v1.json", *md.glob("*features*.json")]:
+        if cand.exists():
+            feat_file = cand
+            break
+    if not feat_file:
+        raise HTTPException(500, f"Features file not found in {md}")
 
+    try:
+        spec = json.loads(feat_file.read_text())
+    except Exception as e:
+        raise HTTPException(500, f"Invalid features file {feat_file}: {e}")
+
+    req_cols = spec["features"] if isinstance(spec, dict) and "features" in spec else spec
+    if not isinstance(req_cols, list):
+        raise HTTPException(500, f"Features file {feat_file} must be a list or {{'features':[...]}}, got {type(req_cols).__name__}")
+
+    # 3) build single-row with every expected column present
+    row = {}
+    for col in req_cols:
+        if col in ("team", "opponent"):
+            row[col] = "UNK"        # safe default; OneHotEncoder should ignore unknown if configured
+        else:
+            row[col] = 0.0          # numeric defaults
+
+    X = pd.DataFrame([row], columns=req_cols)
+
+    # 4) predict and calibrate
     mu = float(pipe.predict(X)[0])  # expected count
-    k = math.floor(req.line)        # tail P(X > line)
+    k = math.floor(req.line)
     p_over_raw = 1.0 - poisson.cdf(k, mu)
     p_over = p_over_raw
 
-    # optional calibrators
     cal_path = md / f"{req.prop_type[:2]}_calibrators_v1.json"
     if cal_path.exists():
         p_over = _apply_calibrator(p_over_raw, cal_path)
@@ -69,5 +94,5 @@ def score_prop(req: ScoreReq):
         "p_over_raw": p_over_raw,
         "used_model": True,
         "model_version": str(Path(md).parent.name),  # vYYYYMMDD
-        "process": "poisson"
+        "process": "poisson",
     }
