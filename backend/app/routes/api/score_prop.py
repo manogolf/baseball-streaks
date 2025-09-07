@@ -177,13 +177,18 @@ def _issue_commit_token(payload: dict) -> str:
 # ---------- route ----------
 # backend/app/routes/api/score_prop.py (route replacement only)
 
+# ---------- route ----------
+# backend/app/routes/api/score_prop.py (route replacement only)
+
 @router.post("/api/score-prop")
 def score_prop(req: ScoreReq):
-    from backend.app.services.commit_token import mint_commit_token, features_hash  # local import to avoid cycles
+    from backend.app.services.commit_token import mint_commit_token  # local import to avoid cycles
 
+    # Discover model + artifact-local feature/calibrator files
     model_path, zero_path, cal_path, feat_path, md = _find_artifacts(req.prop_type)
     version = _resolve_version_from_latest(md)
 
+    # Require features unless you’ve built a separate server-side feature builder
     if not req.features:
         raise HTTPException(
             400,
@@ -191,37 +196,17 @@ def score_prop(req: ScoreReq):
             "The scorer aligns to the trained numeric feature spec and fills missing with 0.0."
         )
 
-    # --- feature file fallbacks (accept features.json, etc.) ---
-    if not feat_path or not feat_path.exists():
-        for candidate in (
-            md / "features.json",
-            md / f"{req.prop_type}_features.json",
-            md / f"{req.prop_type}.features.json",
-        ):
-            if candidate.exists():
-                feat_path = candidate
-                break
-
-    # last resort: consult model registry’s index-based resolver
-    if not feat_path or not feat_path.exists():
-        try:
-            from backend.app.services.model_registry import resolve_feature_spec_path
-            feat_path = resolve_feature_spec_path(req.prop_type)
-        except Exception:
-            feat_path = None
-
-    if not feat_path or not feat_path.exists():
-        listing = sorted(p.name for p in md.glob("*"))
+    if not feat_path:
         raise HTTPException(
             500,
-            f"Features file not found alongside model for '{req.prop_type}' in {md}; saw: {listing}"
+            f"Features file not found alongside model for '{req.prop_type}' in {md}"
         )
 
     # Load model(s)
     pipe = joblib.load(model_path)
     zero_pipe = joblib.load(zero_path) if zero_path else None
 
-    # Align strictly numeric features to spec
+    # Align features to spec (strict numeric)
     spec = _load_feature_spec(feat_path)
     X = _align_numeric_row(req.features, spec)
 
@@ -229,7 +214,11 @@ def score_prop(req: ScoreReq):
     try:
         lam = float(np.clip(pipe.predict(X)[0], 1e-9, 1e9))
     except Exception as e:
-        raise HTTPException(500, f"predict failed: {e} | n_spec={len(spec)} | model={model_path.name}")
+        # helpful debug
+        raise HTTPException(
+            500,
+            f"predict failed: {e} | n_spec={len(spec)} | model={model_path.name}"
+        )
 
     if zero_pipe is not None:
         try:
@@ -239,55 +228,33 @@ def score_prop(req: ScoreReq):
     else:
         pi = 0.0
 
-    if req.line is None:
-        raise HTTPException(400, "line is required for scoring")
-
     p_over_raw = _zip_tail_over(req.line, pi, lam)
     p_over = _apply_calibrator_scalar(p_over_raw, cal_path, req.line) if (cal_path and cal_path.exists()) else p_over_raw
 
-    # Canonical identifiers from features (server trusts prepareProp)
-    f = req.features
-    try:
-        player_id = int(f["player_id"])
-        game_id   = int(f["game_id"])
-        game_date = f.get("game_date")
-        team_id   = f.get("team_id")
-        team_abbr = (f.get("team") or "").upper() or None
-        if team_id is not None:
-            team_id = int(team_id)
-    except Exception as e:
-        raise HTTPException(400, f"Missing/invalid identifiers in features: {e}")
-
-    # Build a deterministic hash of the numeric vector the model saw
-    # Reuse the row dict we constructed in _align_numeric_row
-    numeric_row = {k: float(f.get(k, 0.0)) for k in spec}
-    fhash = features_hash(spec, numeric_row)
-
-    # Token claims: include everything needed to store the prop exactly as scored
-# build commit payload exactly as the verifier expects
-    # --- mint commit token (v1.<payload_b64>.<sig_b64>) ---
-    payload = {
+    # Build commit token payload — includes the full features dict (no hash)
+    import time
+    commit_payload = {
+        "ts": int(time.time()),         # REQUIRED by verifier
         "v": 1,
-        "ts": int(time.time()),
+        "prop_type": req.prop_type,     # REQUIRED
+        "features": dict(req.features), # REQUIRED
 
-        # required by verifier:
-        "prop_type": req.prop_type,
-        "features": dict(req.features),  # include full features
-
-        # context (auditing)
+        # extra context (OK to include)
         "line": float(req.line),
-        "mu": float(lam),
-        "p_over": float(p_over),
         "model_version": version,
+        "mu": lam,
+        "p_over": p_over,
         "artifact": model_path.name,
         "feat_file": feat_path.name,
+
+        # convenience fields
         "player_id": req.features.get("player_id"),
         "game_id": req.features.get("game_id"),
         "game_date": req.features.get("game_date"),
         "team_id": req.features.get("team_id"),
-        "team_abbr": (req.features.get("team") or "").upper(),
+        "team_abbr": req.features.get("team"),
     }
-    commit_token = mint_commit_token(payload)
+    commit_token = mint_commit_token(commit_payload)
 
     return {
         "prop_type": req.prop_type,
