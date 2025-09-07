@@ -1,5 +1,6 @@
 # backend/app/routes/api/props.py
 
+import os, logging
 from fastapi import APIRouter, HTTPException, Request
 from typing import Dict, Any, Optional
 
@@ -7,11 +8,13 @@ from backend.scripts.shared.supabase_utils import supabase
 from backend.app.security.commit_token import verify_commit_token
 from backend.app.prop_utils import get_team_abbr_from_team_id, get_latest_team_for_player
 
+
 try:
     from postgrest.exceptions import APIError as PostgrestAPIError
 except Exception:
     PostgrestAPIError = Exception
 
+log = logging.getLogger(__name__)
 router = APIRouter()
 TABLE = "player_props"  # user-added props table
 
@@ -51,6 +54,13 @@ def _dup_exists(*, prop_source, player_id, game_id, prop_type) -> bool:
 async def add_prop(req: Request):
     body = await req.json()
     token = body.get("commit_token")
+
+     # ---- DEBUG: confirm what the live process sees ----
+    log.info("[props.add] token_dots=%s secret_len=%s",
+             (token or "").count("."),
+             len(os.getenv("COMMIT_TOKEN_SECRET", "")))
+    # -----------------------------------------------
+    
     if not token:
         raise HTTPException(status_code=400, detail="commit_token required")
 

@@ -5,6 +5,8 @@ from pydantic import BaseModel
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from backend.app.services.model_registry import resolve_feature_spec_path
+from backend.app.security.commit_token import mint_commit_token
+
 import os, json, math, time
 import time, base64, hmac, hashlib
 import joblib
@@ -263,27 +265,29 @@ def score_prop(req: ScoreReq):
 
     # Token claims: include everything needed to store the prop exactly as scored
 # build commit payload exactly as the verifier expects
-    commit_payload = {
-        "ts": int(time.time()),             # REQUIRED by verify_commit_token
-        "v": 1,                             # optional
-        "prop_type": req.prop_type,         # REQUIRED
-        "features": dict(req.features),     # REQUIRED (not features_hash)
+    # --- mint commit token (v1.<payload_b64>.<sig_b64>) ---
+    payload = {
+        "v": 1,
+        "ts": int(time.time()),
 
-        # extra context (fine to include)
+        # required by verifier:
+        "prop_type": req.prop_type,
+        "features": dict(req.features),  # include full features
+
+        # context (auditing)
         "line": float(req.line),
+        "mu": float(lam),
+        "p_over": float(p_over),
         "model_version": version,
-        "mu": lam,
-        "p_over": p_over,
         "artifact": model_path.name,
         "feat_file": feat_path.name,
         "player_id": req.features.get("player_id"),
         "game_id": req.features.get("game_id"),
         "game_date": req.features.get("game_date"),
         "team_id": req.features.get("team_id"),
-        "team_abbr": req.features.get("team"),
+        "team_abbr": (req.features.get("team") or "").upper(),
     }
-
-    commit_token = _issue_commit_token(commit_payload)  # yields v1.<payload_b64>.<sig_b64>
+    commit_token = mint_commit_token(payload)
 
     return {
         "prop_type": req.prop_type,
