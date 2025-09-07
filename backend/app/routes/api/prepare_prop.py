@@ -48,14 +48,36 @@ def _resolve_team_and_opponent(conn, player_id: int, game_id: int) -> Tuple[int,
         raise ValueError("team_id not found for player/game")
 
     # 2) team/opponent abbr from player_stats (for features only)
+
     row = conn.execute(
         text("""
-            SELECT team, opponent
-            FROM public.player_stats
-            WHERE player_id = :pid AND game_id = :gid
+            WITH base AS (
+            SELECT :pid::bigint AS player_id, :gid::bigint AS game_id
+            )
+            SELECT
+            COALESCE(ptbg.team_id, mtp.team_id, tr.team_id) AS team_id,
+            ps.team,
+            ps.opponent
+            FROM base b
+            LEFT JOIN public.player_stats ps
+            ON ps.player_id = b.player_id AND ps.game_id = b.game_id
+            LEFT JOIN public.player_team_by_game ptbg
+            ON ptbg.player_id = b.player_id AND ptbg.game_id = b.game_id
+            AND ptbg.team_id IS NOT NULL
+            LEFT JOIN LATERAL (
+            SELECT m.team_id
+            FROM public.model_training_props m
+            WHERE m.player_id = b.player_id
+                AND m.game_id   = b.game_id
+                AND m.team_id IS NOT NULL
+            ORDER BY m.created_at DESC
+            LIMIT 1
+            ) mtp ON TRUE
+            LEFT JOIN public.teams_resolver tr
+            ON tr.abbr = ps.team
             LIMIT 1
         """),
-        {"pid": player_id, "gid": game_id}
+        {"pid": int(player_id), "gid": int(game_id)},
     ).mappings().first()
 
     if not row or not row["team"] or not row["opponent"]:
