@@ -15,9 +15,12 @@ Feature order preference (highest → lowest):
 from __future__ import annotations
 
 import os, json, threading, requests
+import logging
 from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
 from joblib import load as joblib_load
+
+log = logging.getLogger(__name__)
 
 # ── Optional Supabase client (only if env vars exist) ─────────────────────────
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -43,6 +46,55 @@ _FEATURE_JSON_CANDIDATES: List[Path] = [
 
 def _latest_index_path() -> Path:
     return MODELS_DIR / "latest" / "MODEL_INDEX.json"
+
+# Add just below: def _latest_index_path() -> Path: ...
+def _latest_root() -> Path:
+    return (MODELS_DIR / "latest").resolve()
+
+def _read_latest_index_dict() -> dict:
+    p = _latest_index_path()
+    try:
+        return json.loads(p.read_text())
+    except Exception as e:
+        log.warning("MODEL_INDEX.json not readable at %s: %s", p, e)
+        return {}
+
+def resolve_feature_spec_path(prop_name: str) -> Path:
+    """
+    Resolve the features.json path for a prop using:
+      1) MODEL_INDEX.json 'features' entry (absolute or relative to latest/)
+      2) latest/<prop>/features.json
+      3) latest/<prop>/<prop>_features.json
+    """
+    root = _latest_root()
+    idx = _read_latest_index_dict()
+    entry = idx.get(prop_name) or {}
+
+    candidates = []
+
+    # 1) Path from index ('features': "total_bases/features.json")
+    feat = entry.get("features")
+    if isinstance(feat, str) and feat.strip():
+        p = Path(feat)
+        candidates.append(p if p.is_absolute() else (root / p))
+
+    # 2–3) Common local names alongside the model
+    prop_dir = root / prop_name
+    candidates += [
+        prop_dir / "features.json",
+        prop_dir / f"{prop_name}_features.json",
+    ]
+
+    log.info("[features] %s candidates: %s", prop_name, [str(p) for p in candidates])
+
+    for p in candidates:
+        if p.exists():
+            log.info("[features] %s resolved -> %s (%d bytes)", prop_name, p, p.stat().st_size)
+            return p
+
+    raise FileNotFoundError(
+        f"Features file not found for '{prop_name}'. Tried: " + ", ".join(str(p) for p in candidates)
+    )
 
 # ── Caches ────────────────────────────────────────────────────────────────────
 _lock = threading.Lock()
@@ -151,6 +203,15 @@ def get_expected_features(prop_type: str, prefer: str = "random_forest") -> List
     feats = _features_from_index(prop)
     if feats:
         return feats
+    
+        # 3b) MODEL_INDEX.json may specify a *path* ('features') to a JSON list
+    try:
+        p = resolve_feature_spec_path(prop)
+        feats = json.loads(p.read_text())
+        if isinstance(feats, list) and feats:
+            return list(dict.fromkeys(feats))
+    except Exception:
+        pass
 
     # 4) Last resort: empty → caller should 0-fill
     return []

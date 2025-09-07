@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from pathlib import Path
 from typing import Optional, Dict, Any, List
+from backend.app.services.model_registry import resolve_feature_spec_path
 import os, json, math
 import joblib
 import numpy as np
@@ -156,8 +157,22 @@ def _zip_tail_over(line: float, pi: float, lam: float) -> float:
 # ---------- route ----------
 @router.post("/api/score-prop")
 def score_prop(req: ScoreReq):
-    model_path, zero_path, cal_path, feat_path, md = _find_artifacts(req.prop_type)
+    # Discover model + artifact-local feature/calibrator files
+    model_path, zero_path, cal_path, feat_path_art, md = _find_artifacts(req.prop_type)
     version = _resolve_version_from_latest(md)
+
+    # Resolve canonical feature spec (repo JSON → model meta → MODEL_INDEX),
+    # falling back to the artifact-local features file if necessary.
+    try:
+        feat_path = resolve_feature_spec_path(req.prop_type)  # returns a Path
+    except FileNotFoundError:
+        feat_path = feat_path_art  # may be None
+
+    if feat_path is None or not Path(feat_path).exists():
+        raise HTTPException(
+            500,
+            f"Features file not found for '{req.prop_type}'. Tried resolver and artifact-local in {md}"
+        )
 
     # Require features unless you’ve built a separate server-side feature builder.
     if not req.features:
@@ -167,22 +182,18 @@ def score_prop(req: ScoreReq):
             "The scorer aligns to the trained numeric feature spec and fills missing with 0.0."
         )
 
-    if not feat_path:
-        raise HTTPException(500, f"Features file not found alongside model for '{req.prop_type}' in {md}")
-
     # Load model(s)
     pipe = joblib.load(model_path)
     zero_pipe = joblib.load(zero_path) if zero_path else None
 
     # Align features to spec (strict numeric)
-    spec = _load_feature_spec(feat_path)
+    spec = _load_feature_spec(Path(feat_path))
     X = _align_numeric_row(req.features, spec)
 
     # Predict lambda (and optional zero prob)
     try:
         lam = float(np.clip(pipe.predict(X)[0], 1e-9, 1e9))
     except Exception as e:
-        # helpful debug
         raise HTTPException(500, f"predict failed: {e} | n_spec={len(spec)} | model={model_path.name}")
 
     if zero_pipe is not None:
@@ -205,10 +216,10 @@ def score_prop(req: ScoreReq):
         "p_over_raw": p_over_raw,
         "used_zero_model": bool(zero_path),
         "used_model": True,
-        "model_version": version,           # vYYYYMMDD
+        "model_version": version,
         "artifact_dir": str(md),
         "model_file": model_path.name,
         "zero_model_file": zero_path.name if zero_path else None,
         "calibrators_file": cal_path.name if cal_path else None,
-        "features_file": feat_path.name,
+        "features_file": Path(feat_path).name,
     }
