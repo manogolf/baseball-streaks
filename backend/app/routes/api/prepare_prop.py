@@ -49,36 +49,31 @@ def _resolve_team_and_opponent(conn, player_id: int, game_id: int) -> Tuple[int,
 
     # 2) team/opponent abbr from player_stats (for features only)
 
-    row = conn.execute(
-        text("""
-            WITH base AS (
-            SELECT :pid::bigint AS player_id, :gid::bigint AS game_id
-            )
-            SELECT
-            COALESCE(ptbg.team_id, mtp.team_id, tr.team_id) AS team_id,
-            ps.team,
-            ps.opponent
-            FROM base b
-            LEFT JOIN public.player_stats ps
-            ON ps.player_id = b.player_id AND ps.game_id = b.game_id
-            LEFT JOIN public.player_team_by_game ptbg
-            ON ptbg.player_id = b.player_id AND ptbg.game_id = b.game_id
-            AND ptbg.team_id IS NOT NULL
-            LEFT JOIN LATERAL (
-            SELECT m.team_id
-            FROM public.model_training_props m
-            WHERE m.player_id = b.player_id
-                AND m.game_id   = b.game_id
-                AND m.team_id IS NOT NULL
-            ORDER BY m.created_at DESC
-            LIMIT 1
-            ) mtp ON TRUE
-            LEFT JOIN public.teams_resolver tr
-            ON tr.abbr = ps.team
-            LIMIT 1
-        """),
-        {"pid": int(player_id), "gid": int(game_id)},
-    ).mappings().first()
+    sql = """
+    SELECT
+    COALESCE(ptbg.team_id, mtp.team_id, tr.team_id) AS team_id,
+    ps.team,
+    ps.opponent
+    FROM public.player_stats ps
+    LEFT JOIN public.player_team_by_game ptbg
+    ON ptbg.player_id = ps.player_id
+    AND ptbg.game_id   = ps.game_id
+    AND ptbg.team_id IS NOT NULL
+    LEFT JOIN LATERAL (
+    SELECT m.team_id
+    FROM public.model_training_props m
+    WHERE m.player_id = ps.player_id
+        AND m.game_id   = ps.game_id
+        AND m.team_id IS NOT NULL
+    ORDER BY m.created_at DESC
+    LIMIT 1
+    ) mtp ON TRUE
+    LEFT JOIN public.teams_resolver tr
+    ON tr.abbr = ps.team
+    WHERE ps.player_id = %(pid)s AND ps.game_id = %(gid)s
+    LIMIT 1
+    """
+    row = conn.exec_driver_sql(sql, {"pid": int(player_id), "gid": int(game_id)}).mappings().first()
 
     if not row or not row["team"] or not row["opponent"]:
         raise ValueError("team/opponent not found in player_stats for player/game")
