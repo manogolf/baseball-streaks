@@ -21,6 +21,7 @@ from backend.app.routes.api.model_accuracy_weekly import router as model_accurac
 from backend.app.routes.api.player_list import router as player_list_router
 from backend.app.routes.api.players import router as players_router
 from backend.app.routes.api.props import router as props_router
+from backend.app.routes.api import props as props_routes
 from backend.app.services.model_registry import load_model
 from backend.app.routes.api.score_prop import router as score_prop_router
 
@@ -74,6 +75,7 @@ def register_routes(app: FastAPI) -> None:
     from backend.app.routes.api.player_list import router as player_list_router
     from backend.app.routes.api.players import router as players_router
     
+    
     # from backend.app.routes.api.games import router as games_router  # if exists
 
     # CORS middleware (keep)
@@ -93,6 +95,7 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(players_router, prefix="/api", tags=["players"])
     app.include_router(prepare_router, prefix="/api", tags=["prepare"])
     app.include_router(predict_router, prefix="/api", tags=["predict"])
+    app.include_router(props_routes.router, prefix="/api", tags=["props"])
     app.include_router(player_profile_router)
     app.include_router(model_metrics_router)
     app.include_router(user_vs_model_accuracy_router)
