@@ -170,8 +170,32 @@ def score_prop(req: ScoreReq):
             "Provide 'features' (from /api/prepareProp). "
             "The scorer aligns to the trained numeric feature spec and fills missing with 0.0."
         )
-    if not feat_path:
-        raise HTTPException(500, f"Features file not found alongside model for '{req.prop_type}' in {md}")
+
+    # --- feature file fallbacks (accept features.json, etc.) ---
+    if not feat_path or not feat_path.exists():
+        for candidate in (
+            md / "features.json",
+            md / f"{req.prop_type}_features.json",
+            md / f"{req.prop_type}.features.json",
+        ):
+            if candidate.exists():
+                feat_path = candidate
+                break
+
+    # last resort: consult model registry’s index-based resolver
+    if not feat_path or not feat_path.exists():
+        try:
+            from backend.app.services.model_registry import resolve_feature_spec_path
+            feat_path = resolve_feature_spec_path(req.prop_type)
+        except Exception:
+            feat_path = None
+
+    if not feat_path or not feat_path.exists():
+        listing = sorted(p.name for p in md.glob("*"))
+        raise HTTPException(
+            500,
+            f"Features file not found alongside model for '{req.prop_type}' in {md}; saw: {listing}"
+        )
 
     # Load model(s)
     pipe = joblib.load(model_path)
