@@ -5,7 +5,8 @@ from pydantic import BaseModel
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from backend.app.services.model_registry import resolve_feature_spec_path
-import os, json, math
+import os, json, math, time
+import time, base64, hmac, hashlib
 import joblib
 import numpy as np
 import pandas as pd
@@ -153,6 +154,23 @@ def _zip_tail_over(line: float, pi: float, lam: float) -> float:
         tail -= pk
     return float(max(0.0, min(1.0, tail)))
 
+def _b64e(b: bytes) -> str:
+    # URL-safe base64, no padding
+    return base64.urlsafe_b64encode(b).rstrip(b"=").decode("utf-8")
+
+def _secret_bytes() -> bytes:
+    s = os.getenv("COMMIT_TOKEN_SECRET") or "dev-unsafe"
+    return s.encode("utf-8")
+
+def _issue_commit_token(payload: dict) -> str:
+    # v1.<payload_b64>.<sig_b64> — HMAC over the BASE64 STRING
+    payload_bytes = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    payload_b64 = _b64e(payload_bytes)
+    sig = hmac.new(_secret_bytes(), payload_b64.encode("utf-8"), hashlib.sha256).digest()
+    sig_b64 = _b64e(sig)
+    return f"v1.{payload_b64}.{sig_b64}"
+
+
 
 # ---------- route ----------
 # backend/app/routes/api/score_prop.py (route replacement only)
@@ -244,28 +262,28 @@ def score_prop(req: ScoreReq):
     fhash = features_hash(spec, numeric_row)
 
     # Token claims: include everything needed to store the prop exactly as scored
-    import time
-    now = int(time.time())
-    claims = {
-        "v": 1,
-        "iat": now,
-        "exp": now + 30 * 60,  # 30 minutes
-        "prop_type": req.prop_type,
+# build commit payload exactly as the verifier expects
+    commit_payload = {
+        "ts": int(time.time()),             # REQUIRED by verify_commit_token
+        "v": 1,                             # optional
+        "prop_type": req.prop_type,         # REQUIRED
+        "features": dict(req.features),     # REQUIRED (not features_hash)
+
+        # extra context (fine to include)
         "line": float(req.line),
-        "player_id": player_id,
-        "game_id": game_id,
-        "game_date": game_date,
-        "team_id": team_id,
-        "team_abbr": team_abbr,
         "model_version": version,
         "mu": lam,
         "p_over": p_over,
-        "features_hash": fhash,
-        # optional for auditing:
         "artifact": model_path.name,
         "feat_file": feat_path.name,
+        "player_id": req.features.get("player_id"),
+        "game_id": req.features.get("game_id"),
+        "game_date": req.features.get("game_date"),
+        "team_id": req.features.get("team_id"),
+        "team_abbr": req.features.get("team"),
     }
-    commit_token = mint_commit_token(claims)
+
+    commit_token = _issue_commit_token(commit_payload)  # yields v1.<payload_b64>.<sig_b64>
 
     return {
         "prop_type": req.prop_type,
