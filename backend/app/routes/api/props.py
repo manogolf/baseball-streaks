@@ -2,7 +2,6 @@
 
 from fastapi import APIRouter, HTTPException, Request
 from typing import Dict, Any, Optional
-import traceback
 
 from backend.scripts.shared.supabase_utils import supabase
 from backend.app.security.commit_token import verify_commit_token
@@ -34,19 +33,16 @@ def _get_player_name_by_id(pid: int | str) -> Optional[str]:
         pass
     return None
 
-def _dup_exists(*, user_id, player_id, game_id, prop_type, prop_value) -> bool:
+def _dup_exists(*, prop_source, player_id, game_id, prop_type) -> bool:
     q = (
         supabase.from_(TABLE)
         .select("id")
+        .eq("prop_source", prop_source)
         .eq("player_id", str(player_id))
         .eq("game_id", int(game_id))
         .eq("prop_type", prop_type)
-        .eq("prop_value", float(prop_value))
+        .limit(1)
     )
-    if user_id:
-        q = q.eq("user_id", user_id)
-    else:
-        q = q.is_("user_id", "null")
     res = q.execute()
     rows = getattr(res, "data", []) or []
     return bool(rows)
@@ -80,21 +76,30 @@ async def add_prop(req: Request):
     try:
         prop_value_num = float(prop_value_raw) if prop_value_raw is not None else None
     except (TypeError, ValueError):
-       raise HTTPException(status_code=400, detail="prop_value must be numeric")
+        raise HTTPException(status_code=400, detail="prop_value must be numeric")
+
+    # NEW: prop_source is the uniqueness scope (replaces user_id entirely)
+    prop_source = (
+        body.get("prop_source")
+        or data.get("prop_source")
+        or features.get("prop_source")
+        or "user_added"
+    )
 
     missing = [k for k, v in [
-    ("player_id",  player_id),
-    ("team_id",    team_id),
-    ("game_id",    game_id),
-    ("game_date",  game_date),
-    ("prop_type",  prop_type),
-    ("over_under", over_under),
-    ("prop_value", prop_value_num),
+        ("player_id",  player_id),
+        ("team_id",    team_id),
+        ("game_id",    game_id),
+        ("game_date",  game_date),
+        ("prop_type",  prop_type),
+        ("over_under", over_under),
+        ("prop_value", prop_value_num),
+        ("prop_source", prop_source),
     ] if v is None]
     if missing:
-       raise HTTPException(status_code=400, detail=f"Missing required fields: {', '.join(missing)}")
+        raise HTTPException(status_code=400, detail=f"Missing required fields: {', '.join(missing)}")
 
-    # 3) TEAM (abbr): prefer UI value; derive only if missing
+    # 2) TEAM (abbr): prefer UI value; derive only if missing
     team_abbr = None
     if isinstance(features.get("team"), str) and features["team"].strip():
         team_abbr = features["team"].strip().upper()
@@ -111,15 +116,12 @@ async def add_prop(req: Request):
     if not team_abbr:
         raise HTTPException(status_code=400, detail="Could not determine team (abbr) to insert")
 
-    # 4) Ensure player_name (NOT NULL)
+    # 3) Ensure player_name (NOT NULL)
     player_name = features.get("player_name")
     if not player_name and player_id:
         player_name = _get_player_name_by_id(player_id)
     if not player_name:
         raise HTTPException(status_code=400, detail="Could not resolve player_name")
-
-    # Optional: user id (uuid) — from body, token, or features
-    user_id = body.get("user_id") or data.get("user_id") or features.get("user_id")
 
     # Optional context fields
     is_home = features.get("is_home")
@@ -127,7 +129,7 @@ async def add_prop(req: Request):
     if isinstance(is_home, (bool, int)):
         home_away = "home" if bool(is_home) else "away"
 
-    # 5) Build row to match public.player_props
+    # 4) Build row to match public.player_props
     row: Dict[str, Any] = {
         "game_date": str(game_date)[:10],      # YYYY-MM-DD
         "player_name": player_name,
@@ -140,10 +142,12 @@ async def add_prop(req: Request):
         "player_id": str(player_id),           # TEXT column in schema
         "team_id": int(team_id),
 
+        # 🔁 Scope + context (NO user_id)
+        "prop_source": prop_source,
+
         # Optional, if present
         "confidence_score": float(prob) if prob is not None else None,
         "predicted_outcome": data.get("predicted_outcome"),
-        "user_id": user_id,
         "opponent_encoded": features.get("opponent_encoded"),
         "is_home": bool(is_home) if is_home is not None else None,
         "home_away": home_away,
@@ -153,40 +157,30 @@ async def add_prop(req: Request):
         "opponent": features.get("opponent"),
         "game_time": features.get("game_time"),
         "starting_pitcher_id": features.get("starting_pitcher_id"),
-        # "prop_source": "user",  # default already
     }
 
     # Drop None values to avoid NOT NULL / unknown column issues
     row_clean = {k: v for k, v in row.items() if v is not None}
 
-    prop_value = float(row_clean["prop_value"])
-
+    # Duplicate check: (prop_source, player_id, game_id, prop_type)
     if _dup_exists(
-        user_id=user_id,
+        prop_source=prop_source,
         player_id=player_id,
         game_id=game_id,
         prop_type=prop_type,
-        prop_value=prop_value,
     ):
         return {"saved": False, "duplicate": True}
 
-    # value used for duplicate check
-    prop_value = float(row_clean["prop_value"])
-
-
     # --- insert / upsert ---
     try:
-        if user_id:
-            res = (
-                supabase.from_(TABLE)
-                .upsert(
-                    row_clean,
-                    on_conflict="user_id,player_id,game_id,prop_type,prop_value",
-                )
-                .execute()
+        res = (
+            supabase.from_(TABLE)
+            .upsert(
+                row_clean,
+                on_conflict="prop_source,player_id,game_id,prop_type",
             )
-        else:
-            res = supabase.from_(TABLE).insert(row_clean).execute()
+            .execute()
+        )
 
         if getattr(res, "error", None):
             raise HTTPException(status_code=500, detail=f"DB insert failed: {res.error}")

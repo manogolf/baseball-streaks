@@ -220,6 +220,7 @@ export default function PlayerPropFormV2() {
     setSaving(true);
     try {
       const res = await postApi("/api/props/add", {
+        prop_source: "user_added",
         commit_token: commitToken,
       });
       if (res?.duplicate) {

@@ -155,39 +155,30 @@ def _zip_tail_over(line: float, pi: float, lam: float) -> float:
 
 
 # ---------- route ----------
+# backend/app/routes/api/score_prop.py (route replacement only)
+
 @router.post("/api/score-prop")
 def score_prop(req: ScoreReq):
-    # Discover model + artifact-local feature/calibrator files
-    model_path, zero_path, cal_path, feat_path_art, md = _find_artifacts(req.prop_type)
+    from backend.app.services.commit_token import mint_commit_token, features_hash  # local import to avoid cycles
+
+    model_path, zero_path, cal_path, feat_path, md = _find_artifacts(req.prop_type)
     version = _resolve_version_from_latest(md)
 
-    # Resolve canonical feature spec (repo JSON → model meta → MODEL_INDEX),
-    # falling back to the artifact-local features file if necessary.
-    try:
-        feat_path = resolve_feature_spec_path(req.prop_type)  # returns a Path
-    except FileNotFoundError:
-        feat_path = feat_path_art  # may be None
-
-    if feat_path is None or not Path(feat_path).exists():
-        raise HTTPException(
-            500,
-            f"Features file not found for '{req.prop_type}'. Tried resolver and artifact-local in {md}"
-        )
-
-    # Require features unless you’ve built a separate server-side feature builder.
     if not req.features:
         raise HTTPException(
             400,
             "Provide 'features' (from /api/prepareProp). "
             "The scorer aligns to the trained numeric feature spec and fills missing with 0.0."
         )
+    if not feat_path:
+        raise HTTPException(500, f"Features file not found alongside model for '{req.prop_type}' in {md}")
 
     # Load model(s)
     pipe = joblib.load(model_path)
     zero_pipe = joblib.load(zero_path) if zero_path else None
 
-    # Align features to spec (strict numeric)
-    spec = _load_feature_spec(Path(feat_path))
+    # Align strictly numeric features to spec
+    spec = _load_feature_spec(feat_path)
     X = _align_numeric_row(req.features, spec)
 
     # Predict lambda (and optional zero prob)
@@ -204,8 +195,53 @@ def score_prop(req: ScoreReq):
     else:
         pi = 0.0
 
+    if req.line is None:
+        raise HTTPException(400, "line is required for scoring")
+
     p_over_raw = _zip_tail_over(req.line, pi, lam)
     p_over = _apply_calibrator_scalar(p_over_raw, cal_path, req.line) if (cal_path and cal_path.exists()) else p_over_raw
+
+    # Canonical identifiers from features (server trusts prepareProp)
+    f = req.features
+    try:
+        player_id = int(f["player_id"])
+        game_id   = int(f["game_id"])
+        game_date = f.get("game_date")
+        team_id   = f.get("team_id")
+        team_abbr = (f.get("team") or "").upper() or None
+        if team_id is not None:
+            team_id = int(team_id)
+    except Exception as e:
+        raise HTTPException(400, f"Missing/invalid identifiers in features: {e}")
+
+    # Build a deterministic hash of the numeric vector the model saw
+    # Reuse the row dict we constructed in _align_numeric_row
+    numeric_row = {k: float(f.get(k, 0.0)) for k in spec}
+    fhash = features_hash(spec, numeric_row)
+
+    # Token claims: include everything needed to store the prop exactly as scored
+    import time
+    now = int(time.time())
+    claims = {
+        "v": 1,
+        "iat": now,
+        "exp": now + 30 * 60,  # 30 minutes
+        "prop_type": req.prop_type,
+        "line": float(req.line),
+        "player_id": player_id,
+        "game_id": game_id,
+        "game_date": game_date,
+        "team_id": team_id,
+        "team_abbr": team_abbr,
+        "model_version": version,
+        "mu": lam,
+        "p_over": p_over,
+        "features_hash": fhash,
+        # optional for auditing:
+        "artifact": model_path.name,
+        "feat_file": feat_path.name,
+    }
+    commit_token = mint_commit_token(claims)
 
     return {
         "prop_type": req.prop_type,
@@ -221,5 +257,6 @@ def score_prop(req: ScoreReq):
         "model_file": model_path.name,
         "zero_model_file": zero_path.name if zero_path else None,
         "calibrators_file": cal_path.name if cal_path else None,
-        "features_file": Path(feat_path).name,
+        "features_file": feat_path.name,
+        "commit_token": commit_token,
     }
