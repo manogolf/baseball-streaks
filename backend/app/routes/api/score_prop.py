@@ -172,11 +172,6 @@ def _issue_commit_token(payload: dict) -> str:
     sig_b64 = _b64e(sig)
     return f"v1.{payload_b64}.{sig_b64}"
 
-
-
-# ---------- route ----------
-# backend/app/routes/api/score_prop.py (route replacement only)
-
 # ---------- route ----------
 # backend/app/routes/api/score_prop.py (route replacement only)
 
@@ -253,7 +248,12 @@ def score_prop(req: ScoreReq):
         "team_id": req.features.get("team_id"),
         "team_abbr": req.features.get("team"),
     }
-    commit_token = mint_commit_token(commit_payload)
+    commit_token = mint_commit_token(
+        prob=float(p_over),
+        prop_type=req.prop_type,
+        features=dict(req.features),
+        ttl_seconds=600,
+    )
 
     return {
         "prop_type": req.prop_type,
