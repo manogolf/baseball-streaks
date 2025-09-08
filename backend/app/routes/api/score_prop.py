@@ -182,7 +182,6 @@ def _issue_commit_token(payload: dict) -> str:
 
 @router.post("/api/score-prop")
 def score_prop(req: ScoreReq):
-    from backend.app.services.commit_token import mint_commit_token  # local import to avoid cycles
 
     # Discover model + artifact-local feature/calibrator files
     model_path, zero_path, cal_path, feat_path, md = _find_artifacts(req.prop_type)
