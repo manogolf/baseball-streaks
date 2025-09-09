@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional
 
 from backend.scripts.shared.supabase_utils import supabase
 from backend.app.security.commit_token import verify_commit_token
-from backend.app.prop_utils import get_team_abbr_from_team_id, get_latest_team_for_player
+from backend.scripts.shared.prop_utils import get_team_abbr_from_team_id, get_latest_team_for_player
 
 
 try:

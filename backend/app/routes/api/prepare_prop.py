@@ -8,7 +8,7 @@ from typing import Optional, Dict, Any, Tuple
 from sqlalchemy import text, create_engine
 from sqlalchemy.exc import ProgrammingError
 from backend.scripts.shared.enrich_game_context import enrich_game_context
-from backend.app.prop_utils import (
+from backend.scripts.shared.prop_utils import (
     get_player_id_by_name,
     get_latest_team_for_player,
     get_team_abbr_from_team_id,           # ✅ add

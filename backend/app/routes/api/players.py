@@ -10,7 +10,7 @@ from backend.app.services.supabase_queries import (
     players_search,
     players_by_team,
 )
-from backend.app.prop_utils import get_latest_team_for_player
+from backend.scripts.shared.prop_utils import get_latest_team_for_player
 from backend.scripts.shared.supabase_utils import supabase
 
 router = APIRouter()
