@@ -26,7 +26,7 @@ from postgrest.exceptions import APIError
 import os
 import traceback
 
-from backend.scripts.shared.supabase_utils import supabase
+from scripts.shared.supabase_utils import supabase
 
 router = APIRouter()
 CACHE_TTL_MINUTES = 60  # Cache freshness threshold

@@ -220,6 +220,7 @@ team_id_map = teamIdMap
 team_name_map = teamNameMap
 abbr_to_id_map = abbrToIdMap
 get_team_id_from_abbr = getTeamIdFromAbbr
+get_team_abbr_from_team_id = getFullTeamAbbreviationFromID
 get_team_info_by_abbr = getTeamInfoByAbbr
 get_team_info_by_id = getTeamInfoById
 is_valid_mlb_team = isValidMLBTeam

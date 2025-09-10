@@ -1,6 +1,6 @@
 # backend/app/security/commit_token.py
-from __future__ import annotations
 
+from __future__ import annotations
 import base64
 import hashlib
 import hmac

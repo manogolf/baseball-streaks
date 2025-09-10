@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Query
 from datetime import date
-from backend.app.services.games import enrich_game_context  # implement using your current logic
+from app.services.games import enrich_game_context  # implement using your current logic
 
 router = APIRouter()
 

@@ -1,16 +1,21 @@
-# backend/app/prop_utils.py
+# backend/scripts/shared/prop_utils.py
 
 from __future__ import annotations
-
-from typing import Optional, Tuple
+import requests
 import json
+from typing import Optional, Tuple
 from urllib.request import urlopen
+from datetime import datetime
+from dateutil import parser
+from zoneinfo import ZoneInfo
+from .team_name_map import team_id_map  # canonical map lives in shared/
+from scripts.shared.supabase_utils import supabase
+from scripts.shared.team_name_map import (
+    normalizeTeamAbbreviation as norm_abbr,  # e.g., "AZ" -> "ARI"
+    getTeamIdFromAbbr,                       # abbr -> team_id
+)
 
-# Optional MLB StatsAPI fallback (pip install MLB-StatsAPI)
-try:
-    import statsapi
-except Exception:  # pragma: no cover
-    statsapi = None
+ET = ZoneInfo("America/New_York")
 
 # -------------------------------------------------------------------
 # Model map + helpers (unchanged behavior)
@@ -55,11 +60,6 @@ def get_canonical_model_name(prop_type: str) -> Optional[str]:
 # DB + mapping helpers (ID-first; matches public.player_ids schema)
 # -------------------------------------------------------------------
 
-from backend.scripts.shared.supabase_utils import supabase
-from backend.scripts.shared.team_name_map import (
-    normalizeTeamAbbreviation as norm_abbr,  # e.g., "AZ" -> "ARI"
-    getTeamIdFromAbbr,                       # abbr -> team_id
-)
 
 def get_player_id_by_name(name: str) -> Optional[int]:
     """
@@ -155,55 +155,41 @@ def get_latest_team_for_player(player_id: int) -> Tuple[Optional[str], Optional[
         return None, None
 
 
-def get_team_abbr_from_team_id(team_id: int) -> Optional[str]:
+def get_team_abbr_from_team_id(team_id: int) -> str | None:
+    """UI-only convenience; do not persist abbr in storage."""
+    info = team_id_map.get(int(team_id)) or team_id_map.get(str(team_id))
+    return (info or {}).get("abbr")
+
+def find_game_id_by_team_id_and_date(team_id: int, game_date: str) -> int | None:
     """
-    Derive team abbreviation from team_id. If you later add a local id->abbr
-    map in Python, prefer that; this HTTP fallback is fine for now.
+    Primary resolver (today/future only): return gamePk for team_id on game_date.
+
+    Doubleheader rule:
+      • Prefer the next upcoming start (ET) relative to now
+      • If multiple upcoming, choose the earliest
+      • If all are in the future (e.g., both), choose earliest
     """
-    if not team_id:
-        return None
-    try:
-        with urlopen(f"https://statsapi.mlb.com/api/v1/teams/{team_id}") as resp:
-            team = json.load(resp)
-        teams = team.get("teams") or []
-        if not teams:
-            return None
-        return teams[0].get("abbreviation")
-    except Exception:
+    url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={game_date}"
+    r = requests.get(url, timeout=10)
+    r.raise_for_status()
+    data = r.json()
+
+    games = (data.get("dates") or [{}])[0].get("games") or []
+    candidates = []
+    for g in games:
+        teams = g.get("teams") or {}
+        home = ((teams.get("home") or {}).get("team") or {}).get("id")
+        away = ((teams.get("away") or {}).get("team") or {}).get("id")
+        if home == team_id or away == team_id:
+            start_utc = parser.isoparse(g.get("gameDate"))
+            start_et = start_utc.astimezone(ET)
+            candidates.append((int(g.get("gamePk")), start_et))
+
+    if not candidates:
         return None
 
-
-def find_game_id_by_team_id_and_date(*, team_id: int, game_date: str) -> Optional[int]:
-    """
-    Use MLB StatsAPI schedule to find the gamePk for team/date.
-    Returns the first gamePk (extend if you need doubleheader handling).
-    """
-    if not team_id or not game_date:
-        return None
-    url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={game_date}&teamId={team_id}"
-    try:
-        with urlopen(url) as resp:
-            data = json.load(resp)
-        dates = data.get("dates") or []
-        if not dates:
-            return None
-        games = dates[0].get("games") or []
-        if not games:
-            return None
-        return int(games[0]["gamePk"])
-    except Exception:
-        return None
-
-
-def find_game_id_by_team_and_date(*, team_abbr: str, game_date: str) -> Optional[int]:
-    """
-    Back-compat helper: abbr + date -> gamePk.
-    Prefer find_game_id_by_team_id_and_date in new code.
-    """
-    if not team_abbr or not game_date:
-        return None
-    abbr = norm_abbr(team_abbr)
-    team_id = getTeamIdFromAbbr(abbr)
-    if team_id is None:
-        return None
-    return find_game_id_by_team_id_and_date(team_id=team_id, game_date=game_date)
+    now_et = datetime.now(ET)
+    future = [(gid, dt) for gid, dt in candidates if dt > now_et]
+    pick = min(future, key=lambda x: x[1])[0] if future else min(candidates, key=lambda x: x[1])[0]
+    return int(pick)
+# --- end add ---

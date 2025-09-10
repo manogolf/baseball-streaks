@@ -11,8 +11,34 @@ Feature order preference (highest → lowest):
   2) Model meta inside joblib ("features_num"+"features_cat")
   3) latest/MODEL_INDEX.json (written by trainer)
 """
-
+# in backend/app/services/model_registry.py
 from __future__ import annotations
+import os, json
+from pathlib import Path
+
+_FEATURE_META = None
+
+def _load_feature_metadata_repo():
+    global _FEATURE_META
+    if _FEATURE_META is not None:
+        return _FEATURE_META
+    # 1) Env override first
+    p = os.getenv("FEATURE_META_PATH")
+    if p and Path(p).exists():
+        _FEATURE_META = json.loads(Path(p).read_text())
+        return _FEATURE_META
+    # 2) Fall back to existing candidates
+    for path in _FEATURE_JSON_CANDIDATES:
+        if path.exists():
+            _FEATURE_META = json.loads(path.read_text())
+            return _FEATURE_META
+    _FEATURE_META = {}
+    return _FEATURE_META
+
+
+
+
+
 
 import os, json, threading, requests
 import logging

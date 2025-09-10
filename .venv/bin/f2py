@@ -1,4 +1,4 @@
-#!/Users/jerrystrain/Projects/baseball-streaks/.venv/bin/python
+#!/Users/jerrystrain/Projects/baseball-streaks/.venv/bin/python3
 import sys
 from numpy.f2py.f2py2e import main
 if __name__ == '__main__':

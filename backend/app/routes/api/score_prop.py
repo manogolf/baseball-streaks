@@ -4,8 +4,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from pathlib import Path
 from typing import Optional, Dict, Any, List
-from backend.app.services.model_registry import resolve_feature_spec_path
-from backend.app.security.commit_token import mint_commit_token
+from app.services.model_registry import resolve_feature_spec_path
+from app.security.commit_token import mint_commit_token
 
 import os, json, math, time
 import time, base64, hmac, hashlib

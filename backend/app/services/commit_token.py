@@ -1,7 +1,7 @@
 # backend/app/security/commit_token.py
 
-from __future__ import annotations
 
+from __future__ import annotations
 import os, json, time, hmac, hashlib, base64
 from typing import Any, Dict, Optional
 

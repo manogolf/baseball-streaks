@@ -1,12 +1,69 @@
 // src/components/PlayerPropFormv2.js
 import React, { useState, useEffect, useRef } from "react";
 
-const BASE_API = "https://baseball-streaks-sq44.onrender.com";
+const BASE_API =
+  process.env.REACT_APP_API_BASE ||
+  (typeof window !== "undefined" && window.__API_BASE__) ||
+  "http://127.0.0.1:8001";
 
-// pretty labels + % helpers
-const prettyProp = (s) =>
-  s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+// Put near the top of PlayerPropFormv2.js (below BASE_API)
+async function prepareThenPredict({
+  player_id,
+  team_id,
+  team_abbr,
+  game_date,
+  prop_type,
+  prop_value, // aka "line"
+  over_under, // optional
+}) {
+  // 1) prepareProp
+  const prepRes = await fetch(`${BASE_API}/api/prepareProp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      player_id,
+      team_id,
+      game_date,
+      prop_type,
+      prop_value, // backend aliases this to "line"
+      over_under,
+    }),
+  });
+  if (!prepRes.ok) {
+    const err = await prepRes.json().catch(() => ({}));
+    throw new Error(err.detail || `prepareProp failed (${prepRes.status})`);
+  }
+  const prepJson = await prepRes.json();
+  const features = prepJson.features;
 
+  // 2) predict
+  const predRes = await fetch(`${BASE_API}/api/predict`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prop_type, features }),
+  });
+  if (!predRes.ok) {
+    const err = await predRes.json().catch(() => ({}));
+    throw new Error(err.detail || `predict failed (${predRes.status})`);
+  }
+  const predJson = await predRes.json();
+
+  return {
+    features,
+    probability: predJson.probability,
+    commit_token: predJson.commit_token,
+  };
+}
+
+const PITCHING_TYPES = new Set([
+  "strikeouts_pitching",
+  "outs_recorded",
+  "earned_runs",
+  "hits_allowed",
+  "walks_allowed",
+]);
+
+// % helpers
 const pct = (p) => (p == null ? "—" : `${(p * 100).toFixed(1)}%`);
 const pickFromProb = (p) => (p >= 0.5 ? "Over" : "Under");
 const confidenceFromProb = (p) => (p >= 0.5 ? p : 1 - p);
@@ -159,53 +216,35 @@ export default function PlayerPropFormV2() {
     if (propValue === "") return setError("Enter a value.");
 
     setLoading(true);
-    const t0 = performance.now();
     try {
-      // 1) prepare (server derives IDs + context)
-      const prepPayload = {
+      // require a resolved player_id (we no longer send player_name to the backend)
+      if (!playerId)
+        throw new Error("Resolve a player first to get player_id.");
+
+      const { features, probability, commit_token } = await prepareThenPredict({
+        player_id: Number(playerId),
+        team_id: undefined, // let backend resolve from abbr
+        team_abbr: (teamAbbr || "").toUpperCase(),
         game_date: gameDate,
         prop_type: propType,
-        over_under: overUnder,
         prop_value: Number(propValue),
-        ...(playerId
-          ? { player_id: Number(playerId) }
-          : {
-              player_name: playerName.trim(),
-              team_abbr: teamAbbr.trim().toUpperCase(),
-            }),
-      };
+        over_under: overUnder,
+      });
 
-      console.info("[Props V2] → /api/prepareProp", prepPayload);
-      const prepRes = await postApi("/api/prepareProp", prepPayload);
-      const features = prepRes.features ?? prepRes;
-
-      if (features.player_id) setPlayerId(String(features.player_id));
-      if (features.team) {
+      // reflect any canonicalizations from backend
+      if (features?.player_id) setPlayerId(String(features.player_id));
+      if (features?.team) {
         setTeamAbbr(String(features.team).toUpperCase());
-        setTeamTouched(false); // came from backend; not a manual edit
+        setTeamTouched(false);
       }
 
       setPrepPreview({
         sample: Object.fromEntries(Object.entries(features).slice(0, 12)),
       });
 
-      // 2) predict (returns commit_token)
-      console.info("[Props V2] → /api/predict");
-      const pred = await postApi("/api/predict", {
-        prop_type: propType,
-        features: {
-          ...features,
-          // ensure the UI dropdown wins for the text abbr
-          team: (teamAbbr || features.team || "").toUpperCase(),
-        },
-      });
-
-      console.info("[Props V2] ← /api/predict", pred);
-      setPrediction(pred);
-      setCommitToken(pred.commit_token || null);
-
-      const ms = Math.round(performance.now() - t0);
-      console.info(`[Props V2] total submit time: ${ms} ms`);
+      // show the result and enable “Add Prop”
+      setPrediction({ probability });
+      setCommitToken(commit_token || null);
     } catch (err) {
       console.error("[Props V2] submit error:", err);
       setError(err.message || "Unknown error");

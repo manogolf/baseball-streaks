@@ -1,11 +1,11 @@
 from fastapi import APIRouter, HTTPException
-from backend.scripts.shared.supabase_utils import supabase
+from scripts.shared.supabase_utils import supabase
 
 router = APIRouter()
 
 
 from fastapi import APIRouter, HTTPException
-from backend.scripts.shared.supabase_utils import supabase
+from scripts.shared.supabase_utils import supabase
 
 router = APIRouter()
 

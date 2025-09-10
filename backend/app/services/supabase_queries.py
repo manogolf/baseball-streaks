@@ -1,5 +1,5 @@
 from typing import Optional, List, Dict, Any
-from backend.scripts.shared.supabase_utils import get_supabase
+from scripts.shared.supabase_utils import get_supabase
 
 # ---- helpers ---------------------------------------------------------------
 

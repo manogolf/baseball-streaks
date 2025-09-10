@@ -1,209 +1,304 @@
-#  backend/app/routes/api/prepare_prop.py
+# backend/app/routes/api/prepare_prop.py
+from __future__ import annotations
 
-import os
-from supabase import create_client
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field, AliasChoices, ConfigDict
-from typing import Optional, Dict, Any, Tuple
-from sqlalchemy import text, create_engine
-from sqlalchemy.exc import ProgrammingError
-from backend.scripts.shared.enrich_game_context import enrich_game_context
-from backend.scripts.shared.prop_utils import (
-    get_player_id_by_name,
-    get_latest_team_for_player,
-    get_team_abbr_from_team_id,           # ✅ add
-    find_game_id_by_team_id_and_date,     # ✅ add (ID-first)
+from pydantic import BaseModel, field_validator
+from typing import Any, Dict, Optional, Tuple
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+import requests
+
+# Supabase client (used only to ensure FK target in game_info)
+from scripts.shared.supabase_utils import supabase
+
+# Team + time helpers (stable, file you provided)
+from scripts.shared.team_name_map import (
+    get_team_id_from_abbr,
+    get_team_info_by_id,
+    normalize_team_abbreviation,
 )
+
+# If these utilities exist in your repo; we fall back to local helpers if import fails
+try:
+    from scripts.shared.time_utils_backend import (
+        getDayOfWeekET,
+        getTimeOfDayBucketET,
+    )
+except Exception:
+    # Fallbacks if your util module is missing in local runs
+    def getDayOfWeekET(date_or_iso: str) -> str:
+        """
+        Accept 'YYYY-MM-DD' or ISO datetime; return e.g. 'Mon', 'Tue'...
+        """
+        s = (date_or_iso or "").strip()
+        dt = None
+        try:
+            # ISO datetime
+            dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        except Exception:
+            try:
+                # Date only
+                dt = datetime.strptime(s[:10], "%Y-%m-%d").replace(tzinfo=ZoneInfo("America/New_York"))
+            except Exception:
+                return "Mon"
+        dt_et = dt.astimezone(ZoneInfo("America/New_York"))
+        return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][dt_et.weekday()]
+
+    def getTimeOfDayBucketET(iso_et: Optional[str]) -> str:
+        """
+        Very light bucketization like v1: 'day' (<17:00 ET) else 'evening'.
+        """
+        if not iso_et:
+            return "evening"
+        try:
+            dt = datetime.fromisoformat(iso_et.replace("Z", "+00:00"))
+            dt_et = dt.astimezone(ZoneInfo("America/New_York"))
+            return "day" if dt_et.hour < 17 else "evening"
+        except Exception:
+            return "evening"
+
+
 router = APIRouter()
 
-_engine = None
-def get_engine():
-    global _engine
-    if _engine is None:
-        _engine = create_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
-    return _engine
+# Pitching props (soft metadata only)
+PITCHING_PROPS = {
+    "strikeouts_pitching", "outs_recorded", "earned_runs",
+    "hits_allowed", "walks_allowed"
+}
 
-def _resolve_team_and_opponent(conn, player_id: int, game_id: int) -> Tuple[int, str, str]:
+
+class PrepareInput(BaseModel):
+    # User-entered or resolved on the client
+    player_id: Optional[int] = None
+    player_name: Optional[str] = None
+    team_id: Optional[int] = None
+    team_abbr: Optional[str] = None
+
+    game_date: str  # 'YYYY-MM-DD' (today or future)
+    prop_type: str
+    prop_value: Optional[float] = None  # aka "line"
+    over_under: Optional[str] = None    # "over" | "under"
+
+    @field_validator("game_date")
+    @classmethod
+    def _validate_date(cls, v: str) -> str:
+        try:
+            # Normalize to 'YYYY-MM-DD'
+            d = datetime.strptime(v[:10], "%Y-%m-%d")
+            return d.strftime("%Y-%m-%d")
+        except Exception:
+            raise ValueError("game_date must be YYYY-MM-DD")
+
+    @field_validator("over_under")
+    @classmethod
+    def _normalize_ou(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        s = v.strip().lower()
+        if s not in {"over", "under"}:
+            raise ValueError("over_under must be 'over' or 'under'")
+        return s
+
+    @field_validator("team_abbr")
+    @classmethod
+    def _norm_abbr(cls, v: Optional[str]) -> Optional[str]:
+        return normalize_team_abbreviation(v) if v else v
+
+
+def _fetch_schedule_one(date_yyyy_mm_dd: str) -> Dict[str, Any]:
     """
-    Returns (team_id, team_abbr, opp_abbr) for (player_id, game_id).
-
-    • team_id comes from public.player_team_by_game (immutable id)
-    • team/opponent strings come from public.player_stats for that game
-      (only to satisfy model feature columns; not used for logic)
-
-    Raises ValueError if either piece is missing.
+    Fetch MLB schedule for a single date via StatsAPI.
     """
-    # 1) team_id from canonical table
-    tid = conn.execute(
-        text("""
-            SELECT team_id
-            FROM public.player_team_by_game
-            WHERE player_id = :pid AND game_id = :gid
-            LIMIT 1
-        """),
-        {"pid": player_id, "gid": game_id}
-    ).scalar()
+    url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date_yyyy_mm_dd}"
+    r = requests.get(url, timeout=10)
+    if not r.ok:
+        raise HTTPException(502, f"MLB schedule fetch failed ({r.status_code})")
+    return r.json()
 
-    if tid is None:
-        raise ValueError("team_id not found for player/game")
 
-    # 2) team/opponent abbr from player_stats (for features only)
-
-    sql = """
-    SELECT
-    COALESCE(ptbg.team_id, mtp.team_id, tr.team_id) AS team_id,
-    ps.team,
-    ps.opponent
-    FROM public.player_stats ps
-    LEFT JOIN public.player_team_by_game ptbg
-    ON ptbg.player_id = ps.player_id
-    AND ptbg.game_id   = ps.game_id
-    AND ptbg.team_id IS NOT NULL
-    LEFT JOIN LATERAL (
-    SELECT m.team_id
-    FROM public.model_training_props m
-    WHERE m.player_id = ps.player_id
-        AND m.game_id   = ps.game_id
-        AND m.team_id IS NOT NULL
-    ORDER BY m.created_at DESC
-    LIMIT 1
-    ) mtp ON TRUE
-    LEFT JOIN public.teams_resolver tr
-    ON tr.abbr = ps.team
-    WHERE ps.player_id = %(pid)s AND ps.game_id = %(gid)s
-    LIMIT 1
+def _pick_team_game(schedule_json: Dict[str, Any], team_id: int) -> Dict[str, Any]:
     """
-    row = conn.exec_driver_sql(sql, {"pid": int(player_id), "gid": int(game_id)}).mappings().first()
+    From a schedule day payload, return the game object involving team_id.
+    Raises if none.
+    """
+    dates = schedule_json.get("dates") or []
+    for day in dates:
+        for g in day.get("games", []):
+            home = g.get("teams", {}).get("home", {}).get("team", {}) or {}
+            away = g.get("teams", {}).get("away", {}).get("team", {}) or {}
+            if int(home.get("id", -1)) == int(team_id) or int(away.get("id", -1)) == int(team_id):
+                return g
+    raise HTTPException(404, f"No scheduled game for team_id {team_id} on {schedule_json.get('dates',[{'date':'?'}])[0].get('date','?')}.")
 
-    if not row or not row["team"] or not row["opponent"]:
-        raise ValueError("team/opponent not found in player_stats for player/game")
 
-    team_abbr = str(row["team"]).strip().upper()
-    opp_abbr  = str(row["opponent"]).strip().upper()
-    return int(tid), team_abbr, opp_abbr
+def _utc_to_et_iso(utc_iso: str) -> str:
+    """
+    Convert MLB 'gameDate' (UTC) to ET ISO string (no microseconds).
+    """
+    dt_utc = datetime.fromisoformat(utc_iso.replace("Z", "+00:00")).astimezone(timezone.utc)
+    dt_et = dt_utc.astimezone(ZoneInfo("America/New_York"))
+    return dt_et.replace(microsecond=0).isoformat()
 
 
-class PreparePropInput(BaseModel):
-    # identifiers: accept either id or name; enforce presence in endpoint code
-    player_id: Optional[int] = Field(default=None, validation_alias=AliasChoices("player_id", "playerId"))
-    player_name: Optional[str] = Field(default=None, validation_alias=AliasChoices("player_name", "playerName"))
+def _extract_game_summary(g: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Build a compact summary from schedule game object.
+    """
+    game_id = int(g.get("gamePk"))
+    teams = g.get("teams", {})
+    home_team = teams.get("home", {}).get("team", {}) or {}
+    away_team = teams.get("away", {}).get("team", {}) or {}
 
-    # game: accept either game_id or game_date; enforce presence in endpoint code
-    game_id: Optional[int] = Field(default=None, validation_alias=AliasChoices("game_id", "gameId"))
-    game_date: Optional[str] = Field(default=None, validation_alias=AliasChoices("game_date", "gameDate"))
+    # Abbreviations (StatsAPI often includes; if not, fallback using ID map)
+    home_abbr = home_team.get("abbreviation")
+    away_abbr = away_team.get("abbreviation")
+    if not home_abbr:
+        info = get_team_info_by_id(int(home_team.get("id")))
+        home_abbr = info["abbr"] if info else None
+    if not away_abbr:
+        info = get_team_info_by_id(int(away_team.get("id")))
+        away_abbr = info["abbr"] if info else None
 
-    # prop
-    prop_type: str = Field(validation_alias=AliasChoices("prop_type", "propType"))
-    # allow both "line" and legacy "prop_value", but OPTIONAL (we can score both sides)
-    line: Optional[float] = Field(default=None, validation_alias=AliasChoices("line", "prop_value"))
+    # Probable starters if present (optional)
+    home_prob = teams.get("home", {}).get("probablePitcher", {}) or {}
+    away_prob = teams.get("away", {}).get("probablePitcher", {}) or {}
+    sp_home_id = int(home_prob.get("id")) if home_prob.get("id") else None
+    sp_away_id = int(away_prob.get("id")) if away_prob.get("id") else None
 
-    # legacy/ignored inputs (kept only for compatibility; backend will resolve)
-    over_under: Optional[str] = Field(default=None, validation_alias=AliasChoices("over_under", "overUnder"))
-    team_abbr: Optional[str] = Field(default=None, validation_alias=AliasChoices("team", "team_abbr", "teamAbbr"))
-    team_id: Optional[int] = Field(default=None, validation_alias=AliasChoices("team_id", "teamId"))
+    # UTC → ET
+    gameDate = g.get("gameDate")  # UTC ISO
+    game_time_et = _utc_to_et_iso(gameDate) if gameDate else None
+    game_date = gameDate[:10] if gameDate else None
 
-    # ignore any extra keys from the UI
-    model_config = ConfigDict(extra="ignore")
+    return {
+        "game_id": game_id,
+        "home_team_id": int(home_team.get("id")),
+        "away_team_id": int(away_team.get("id")),
+        "home_abbr": home_abbr,
+        "away_abbr": away_abbr,
+        "game_time_et": game_time_et,
+        "game_date": game_date,
+        "sp_home_id": sp_home_id,
+        "sp_away_id": sp_away_id,
+    }
+
+
+def _ensure_game_info_row(summary: Dict[str, Any]) -> None:
+    """
+    Best-effort upsert into public.game_info so /props/add won’t violate FK.
+    Safe no-op on conflict. Swallows errors (non-fatal for prepareProp).
+    """
+    try:
+        # Exists?
+        ex = (
+            supabase.from_("game_info")
+            .select("game_id")
+            .eq("game_id", summary["game_id"])
+            .limit(1)
+            .execute()
+        )
+        if getattr(ex, "data", []) or []:
+            return
+
+        payload = {
+            "game_id": summary["game_id"],
+            "game_date": summary["game_date"],
+            "home_team_id": summary["home_team_id"],
+            "away_team_id": summary["away_team_id"],
+            "home_team_abbr": summary["home_abbr"],
+            "away_team_abbr": summary["away_abbr"],
+            "game_time": summary["game_time_et"],  # timezone-aware string ok for timestamptz
+            "starting_pitcher_id_home": summary.get("sp_home_id"),
+            "starting_pitcher_id_away": summary.get("sp_away_id"),
+        }
+        supabase.from_("game_info").upsert(payload, on_conflict="game_id").execute()
+    except Exception:
+        # Non-fatal: prediction flow can continue; /props/add may still fail if this insert didn’t happen.
+        pass
+
 
 @router.post("/prepareProp")
 async def prepare_prop(req: Request) -> Dict[str, Any]:
+    """
+    v2 'prepare' endpoint: take minimal user input and assemble the features/context
+    needed by /predict and later /props/add, without DB-first lookups.
+    """
     payload = await req.json()
-    inp = PreparePropInput(**payload)
+    inp = PrepareInput(**payload)
 
-    # 1) player_id
-    pid = inp.player_id or (get_player_id_by_name(inp.player_name) if inp.player_name else None)
-    if not pid:
-        raise HTTPException(400, "Provide playerId or playerName.")
+    # --- Resolve team_id if we only have an abbreviation ---
+    team_id = inp.team_id
+    if team_id is None:
+        if not inp.team_abbr:
+            raise HTTPException(400, "Provide team_id or team_abbr.")
+        team_id = get_team_id_from_abbr(inp.team_abbr)
+        if team_id is None:
+            raise HTTPException(400, f"Unknown team_abbr: {inp.team_abbr}")
 
-    engine = get_engine()
-    with engine.begin() as conn:
-        # 2) game_id (prefer provided; else look up by date)
-        gid = inp.game_id
-        if not gid:
-            if not inp.game_date:
-                raise HTTPException(400, "Provide gameId or gameDate.")
-            gid = conn.execute(
-                text("""
-                    SELECT game_id
-                    FROM public.player_stats
-                    WHERE player_id = :pid AND game_date = :gdt
-                    LIMIT 1
-                """),
-                {"pid": pid, "gdt": inp.game_date},
-            ).scalar()
-            if not gid:
-                raise HTTPException(404, f"No game found for playerId={pid} on {inp.game_date}")
+    # --- Minimal sanity: need player_id (client normally resolves it first) ---
+    if not inp.player_id:
+        raise HTTPException(400, "player_id is required (resolve name → id first).")
 
-        # 3) team_id + feature strings (single resolver; immutable ID + abbrs)
-        row = None
-        try:
-            # If SQL helper exists, prefer it
-            row = conn.execute(
-                text("SELECT team_id, team, opponent FROM public.resolve_team_context(:pid,:gid)"),
-                {"pid": pid, "gid": gid},
-            ).mappings().first()
-        except Exception:
-            row = None
+    # --- Pull schedule for date and pick game by team_id ---
+    sched = _fetch_schedule_one(inp.game_date)
+    game = _pick_team_game(sched, int(team_id))
+    g = _extract_game_summary(game)
 
-        if not row or row.get("team_id") is None:
-            # Inline fallback that coalesces across sources
-            row = conn.execute(
-                text("""
-                    WITH base AS (
-                      SELECT :pid::bigint AS player_id, :gid::bigint AS game_id
-                    )
-                    SELECT
-                      COALESCE(ptbg.team_id, mtp.team_id, tr.team_id) AS team_id,
-                      ps.team,
-                      ps.opponent
-                    FROM base b
-                    LEFT JOIN public.player_stats ps
-                      ON ps.player_id = b.player_id AND ps.game_id = b.game_id
-                    LEFT JOIN public.player_team_by_game ptbg
-                      ON ptbg.player_id = b.player_id AND ptbg.game_id = b.game_id
-                      AND ptbg.team_id IS NOT NULL
-                    LEFT JOIN LATERAL (
-                      SELECT m.team_id
-                      FROM public.model_training_props m
-                      WHERE m.player_id = b.player_id
-                        AND m.game_id   = b.game_id
-                        AND m.team_id IS NOT NULL
-                      ORDER BY m.created_at DESC
-                      LIMIT 1
-                    ) mtp ON TRUE
-                    LEFT JOIN public.teams_resolver tr
-                      ON tr.abbr = ps.team
-                    LIMIT 1
-                """),
-                {"pid": pid, "gid": gid},
-            ).mappings().first()
+    # --- Ensure FK target present for later insert (/props/add) ---
+    _ensure_game_info_row(g)
 
-        if not row or row.get("team_id") is None:
-            raise HTTPException(404, "Could not determine teamId for player/game")
+    # --- Opponent + home/away ---
+    is_home = (int(team_id) == int(g["home_team_id"]))
+    opponent_team_id = int(g["away_team_id"] if is_home else g["home_team_id"])
 
-        team_id   = int(row["team_id"])
-        team_abbr = (row.get("team") or "").strip() or None
-        opp_abbr  = (row.get("opponent") or "").strip() or None
+    # --- Abbreviations for model features (your hits model expects team/opponent strings) ---
+    team_abbr = g["home_abbr"] if is_home else g["away_abbr"]
+    opponent_abbr = g["away_abbr"] if is_home else g["home_abbr"]
 
-        # 4) optional enrichment (safe to send abbrs if enrich expects them)
-        ctx = enrich_game_context({
-            "player_id": pid,
-            "team_id": team_id,
-            "team": team_abbr,
-            "game_id": gid,
-            "game_date": inp.game_date,
-        })
+    # --- Time features (ET) ---
+    iso_time = g["game_time_et"]
+    game_day_of_week = getDayOfWeekET(iso_time[:10] if iso_time else inp.game_date)
+    time_of_day_bucket = getTimeOfDayBucketET(iso_time) if iso_time else "evening"
 
-    # Build features payload (line may be None)
-    features = {
-        "player_id": pid,
-        "game_id": gid,
+    # --- Probable starters (soft metadata only) ---
+    starting_pitcher_id = None
+    if inp.prop_type in PITCHING_PROPS:
+        starting_pitcher_id = g["sp_home_id"] if is_home else g["sp_away_id"]
+
+    # --- Build the features dict; keep it lean (predict fills missing with 0) ---
+    features: Dict[str, Any] = {
+        # IDs + core
+        "player_id": int(inp.player_id),
+        "team_id": int(team_id),
+        "game_id": int(g["game_id"]),
         "game_date": inp.game_date,
+
+        # model inputs (hits model includes these)
+        "team": team_abbr,
+        "opponent": opponent_abbr,
+
+        # context used by other models/analytics
+        "opponent_encoded": opponent_team_id,
+        "is_home": is_home,
+        "game_time": iso_time,
+        "game_day_of_week": game_day_of_week,
+        "time_of_day_bucket": time_of_day_bucket,
+
+        # user-entered prop details (use canonical field names)
         "prop_type": inp.prop_type,
-        "line": inp.line,
-        "team_id": team_id,   # immutable; for consistency only
-        "team": team_abbr,    # models expect these string features
-        "opponent": opp_abbr,
-        **(ctx or {}),
+        "line": inp.prop_value,          # some code still calls it 'line'
+        "prop_value": inp.prop_value,    # use this for inserts/dedupe
+        "over_under": (inp.over_under or "over"),
     }
+
+    # Pitching-only soft indicator
+    if inp.prop_type in PITCHING_PROPS:
+        features["starting_pitcher_id"] = starting_pitcher_id
+
+    # Optionally echo back helpful names (not required by model)
+    if inp.player_name:
+        features["player_name"] = inp.player_name
+    features["team_abbr"] = team_abbr
+    features["opponent_team_id"] = opponent_team_id
+
     return {"features": features}

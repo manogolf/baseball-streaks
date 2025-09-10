@@ -13,8 +13,8 @@ Env:
   SUPABASE_SERVICE_ROLE_KEY  (or SUPABASE_ANON_KEY for read-only)
   MODELS_DIR (optional, default /var/data/models)
 """
-
 from __future__ import annotations
+
 
 import os, io, json
 from typing import Any, Dict, List, Optional

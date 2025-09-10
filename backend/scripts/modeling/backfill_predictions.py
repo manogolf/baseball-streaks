@@ -10,8 +10,8 @@ Backfills model predictions into the `model_training_props` table.
 
 NOTE: No Supabase Storage calls. Disk-only models.
 """
-
 from __future__ import annotations
+
 
 import os
 import sys
