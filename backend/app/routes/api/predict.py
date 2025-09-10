@@ -26,15 +26,28 @@ def _models_root() -> Path:
     env = os.getenv("MODELS_ROOT") or os.getenv("MODELS_DIR") or os.getenv("MODEL_DIR")
     if env:
         return Path(env).resolve()
-    return Path(__file__).resolve().parents[3] / "ml" / "models"
+    # backend/app/routes/api/predict.py -> parents[4] is repo root
+    return Path(__file__).resolve().parents[4] / "ml" / "models"
+
+def _prop_folders(prop: str) -> List[Path]:
+    """
+    Candidate folders that may contain models/features for a prop.
+    """
+    root = _models_root()
+    return [
+        root / "batter" / prop,
+        root / "pitcher" / prop,
+        root / prop,  # last-resort
+    ]
 
 def _features_path_for(prop: str) -> Path:
     """
     Per-prop features JSON. Tries (in order):
       - FEATURE_META_PATH_<prop>
       - FEATURE_META_PATH
-      - <ROOT>/batter/<prop>/features_<prop>_v1.json
-      - <ROOT>/batter/<prop>/<prop>_features_v1.json   (compat)
+      - <ROOT>/{batter,pitcher}/<prop>/features_<prop>_v1.json
+      - <ROOT>/{batter,pitcher}/<prop>/<prop>_features_v1.json  (compat)
+      - any features*.json in the prop folder (fallback)
     """
     # explicit overrides
     env = os.getenv(f"FEATURE_META_PATH_{prop}") or os.getenv("FEATURE_META_PATH")
@@ -44,17 +57,27 @@ def _features_path_for(prop: str) -> Path:
             raise FileNotFoundError(f"Feature meta file not found: {p}")
         return p
 
-    root = _models_root()
-    cands = [
-        root / "batter" / prop / f"features_{prop}_v1.json",
-        root / "batter" / prop / f"{prop}_features_v1.json",
-    ]
-    for p in cands:
-        if p.exists():
-            return p
+    for folder in _prop_folders(prop):
+        cands = [
+            folder / f"features_{prop}_v1.json",
+            folder / f"{prop}_features_v1.json",
+        ]
+        for p in cands:
+            if p.exists():
+                return p
+        # fallback: any features*.json in that folder
+        if folder.exists():
+            any_feats = sorted(folder.glob("features*.json"))
+            if any_feats:
+                return any_feats[0]
+
+    tried = []
+    for folder in _prop_folders(prop):
+        tried.append(str(folder / f"features_{prop}_v1.json"))
+        tried.append(str(folder / f"{prop}_features_v1.json"))
+        tried.append(str(folder / "features*.json"))
     raise FileNotFoundError(
-        f"No features file for '{prop}'. "
-        f"Tried: {', '.join(str(c) for c in cands)} "
+        f"No features file for '{prop}'. Tried: {', '.join(tried)} "
         f"(or set FEATURE_META_PATH[_{prop}])."
     )
 
@@ -63,8 +86,8 @@ def _model_path_for(prop: str) -> Path:
     Per-prop model path. Tries (in order):
       - MODEL_FILE_<prop>
       - MODEL_FILE
-      - <ROOT>/batter/<prop>/<prop>_poisson_v1.joblib
-      - If not found, first *.joblib in that folder (fallback)
+      - <ROOT>/{batter,pitcher}/<prop>/<prop>_poisson_v1.joblib
+      - If not found, pick the most-recent *.joblib in that folder
     """
     env = os.getenv(f"MODEL_FILE_{prop}") or os.getenv("MODEL_FILE")
     if env:
@@ -73,27 +96,22 @@ def _model_path_for(prop: str) -> Path:
             return p
         raise FileNotFoundError(f"MODEL_FILE for '{prop}' not found: {p}")
 
-    folder = _models_root() / "batter" / prop
-    cands = [
-        folder / f"{prop}_poisson_v1.joblib",  # preferred full-name convention
-    ]
-    for p in cands:
-        if p.exists():
-            return p
+    for folder in _prop_folders(prop):
+        preferred = folder / f"{prop}_poisson_v1.joblib"
+        if preferred.exists():
+            return preferred
+        if folder.exists():
+            joblibs = [j for j in folder.glob("*.joblib") if j.is_file()]
+            if joblibs:
+                joblibs.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+                return joblibs[0]
 
-    # last-ditch: any single *.joblib in the folder (useful if names vary)
-    if folder.exists():
-        joblibs = sorted(folder.glob("*.joblib"))
-        if len(joblibs) == 1:
-            return joblibs[0]
-        if len(joblibs) > 1:
-            # pick the most recent modified
-            joblibs.sort(key=lambda x: x.stat().st_mtime, reverse=True)
-            return joblibs[0]
-
+    tried = []
+    for folder in _prop_folders(prop):
+        tried.append(str(folder / f"{prop}_poisson_v1.joblib"))
+        tried.append(str(folder / "*.joblib"))
     raise FileNotFoundError(
-        f"No model file for '{prop}'. Tried {cands[0]} and *.joblib in {folder} "
-        f"(or set MODEL_FILE[_{prop}])."
+        f"No model file for '{prop}'. Tried {', '.join(tried)} (or set MODEL_FILE[_{prop}])."
     )
 
 # -----------------------------

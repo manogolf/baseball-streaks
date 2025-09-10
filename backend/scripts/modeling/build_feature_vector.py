@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Iterable
 
 # Resolve models dir relative to this file
 MODELS_DIR = Path(os.getenv("MODELS_DIR", str(Path(__file__).resolve().parents[2] / "models")))
@@ -45,9 +45,18 @@ def _coerce_scalar(v: Any) -> float:
     except Exception:
         return 0.0
 
-def build_feature_vector(features: Dict[str, Any]) -> List[float]:
-    """
-    Pure, DB-free builder: order and coerce values to match training metadata.
-    Missing keys default to 0.0.
-    """
-    return [_coerce_scalar(features.get(name)) for name in FEATURE_NAMES]
+def load_feature_names(meta_path: str | Path) -> list[str]:
+    p = Path(meta_path)
+    with p.open("r", encoding="utf-8") as f:
+        meta = json.load(f)
+    if isinstance(meta, dict):
+        for key in ("feature_names", "features", "ordered_feature_names", "columns"):
+            if key in meta and isinstance(meta[key], list):
+                return list(meta[key])
+    # if file is already a simple list
+    if isinstance(meta, list):
+        return list(meta)
+    return []
+
+def build_feature_vector_for(features: Dict[str, Any], names: Iterable[str]) -> list[float]:
+    return [_coerce_scalar(features.get(name)) for name in names]
