@@ -1,24 +1,156 @@
 #  backend/app/routes/api/predict.py
-
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from pathlib import Path
-import os, json
-import joblib
-from scripts.modeling.build_feature_vector import FEATURE_NAMES, META_PATH
-from scripts.modeling.build_feature_vector import build_feature_vector
+import os, json, joblib
+
 from app.security.commit_token import mint_commit_token
 from app.config import COMMIT_TOKEN_SECRET, COMMIT_TOKEN_TTL
 
-
 router = APIRouter()
 
-# Resolve /backend/models from this file
-MODELS_DIR = Path(__file__).resolve().parents[3] / "models"
+# -----------------------------
+# Models/Features discovery
+# -----------------------------
+def _models_root() -> Path:
+    """
+    Single source of truth for model + feature discovery.
+    Priority:
+      1) MODELS_ROOT
+      2) MODELS_DIR or MODEL_DIR
+      3) repo default: <repo>/ml/models
+    """
+    env = os.getenv("MODELS_ROOT") or os.getenv("MODELS_DIR") or os.getenv("MODEL_DIR")
+    if env:
+        return Path(env).resolve()
+    return Path(__file__).resolve().parents[3] / "ml" / "models"
 
+def _features_path_for(prop: str) -> Path:
+    """
+    Per-prop features JSON. Tries (in order):
+      - FEATURE_META_PATH_<prop>
+      - FEATURE_META_PATH
+      - <ROOT>/batter/<prop>/features_<prop>_v1.json
+      - <ROOT>/batter/<prop>/<prop>_features_v1.json   (compat)
+    """
+    # explicit overrides
+    env = os.getenv(f"FEATURE_META_PATH_{prop}") or os.getenv("FEATURE_META_PATH")
+    if env:
+        p = Path(env).resolve()
+        if not p.exists():
+            raise FileNotFoundError(f"Feature meta file not found: {p}")
+        return p
+
+    root = _models_root()
+    cands = [
+        root / "batter" / prop / f"features_{prop}_v1.json",
+        root / "batter" / prop / f"{prop}_features_v1.json",
+    ]
+    for p in cands:
+        if p.exists():
+            return p
+    raise FileNotFoundError(
+        f"No features file for '{prop}'. "
+        f"Tried: {', '.join(str(c) for c in cands)} "
+        f"(or set FEATURE_META_PATH[_{prop}])."
+    )
+
+def _model_path_for(prop: str) -> Path:
+    """
+    Per-prop model path. Tries (in order):
+      - MODEL_FILE_<prop>
+      - MODEL_FILE
+      - <ROOT>/batter/<prop>/<prop>_poisson_v1.joblib
+      - If not found, first *.joblib in that folder (fallback)
+    """
+    env = os.getenv(f"MODEL_FILE_{prop}") or os.getenv("MODEL_FILE")
+    if env:
+        p = Path(env).resolve()
+        if p.exists():
+            return p
+        raise FileNotFoundError(f"MODEL_FILE for '{prop}' not found: {p}")
+
+    folder = _models_root() / "batter" / prop
+    cands = [
+        folder / f"{prop}_poisson_v1.joblib",  # preferred full-name convention
+    ]
+    for p in cands:
+        if p.exists():
+            return p
+
+    # last-ditch: any single *.joblib in the folder (useful if names vary)
+    if folder.exists():
+        joblibs = sorted(folder.glob("*.joblib"))
+        if len(joblibs) == 1:
+            return joblibs[0]
+        if len(joblibs) > 1:
+            # pick the most recent modified
+            joblibs.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+            return joblibs[0]
+
+    raise FileNotFoundError(
+        f"No model file for '{prop}'. Tried {cands[0]} and *.joblib in {folder} "
+        f"(or set MODEL_FILE[_{prop}])."
+    )
+
+# -----------------------------
+# Feature utilities
+# -----------------------------
+def _load_feature_names(prop: str) -> List[str]:
+    """
+    Load the ordered feature names from the per-prop JSON.
+    Accept any of these keys: feature_names, features, ordered_feature_names, columns
+    or a dict-of-props with <prop>.columns.
+    """
+    p = _features_path_for(prop)
+    data = json.loads(p.read_text())
+
+    if isinstance(data, dict):
+        for k in ("feature_names", "features", "ordered_feature_names", "columns"):
+            v = data.get(k)
+            if isinstance(v, list):
+                return list(v)
+        # Also allow nested mapping: {"hits": {"columns": [...]}, ...}
+        if prop in data and isinstance(data[prop], dict):
+            v = data[prop].get("columns")
+            if isinstance(v, list):
+                return list(v)
+        raise ValueError(f"Could not find a list of features in {p}")
+    elif isinstance(data, list):
+        return list(data)
+    else:
+        raise ValueError(f"Unsupported feature meta format in {p}")
+
+def _coerce_scalar(v: Any) -> float:
+    if v is None:
+        return 0.0
+    if isinstance(v, bool):
+        return 1.0 if v else 0.0
+    if isinstance(v, (int, float)):
+        return float(v)
+    s = str(v).strip().lower()
+    if s in {"true", "t", "yes", "y"}:
+        return 1.0
+    if s in {"false", "f", "no", "n"}:
+        return 0.0
+    try:
+        return float(s)
+    except Exception:
+        return 0.0
+
+def _vector_from_features(features: Dict[str, Any], ordered_names: List[str]) -> List[float]:
+    """
+    Build a numeric vector for the model, filling missing with 0.0,
+    preserving the exact order expected by training.
+    """
+    return [_coerce_scalar(features.get(name)) for name in ordered_names]
+
+# -----------------------------
+# API models
+# -----------------------------
 class PredictInput(BaseModel):
     prop_type: str
     features: Dict[str, Any]
@@ -27,30 +159,50 @@ class PredictInput(BaseModel):
     team_id: Optional[int] = None
     game_id: Optional[int] = None
 
-def _pick_model_path(prop_type: str) -> Optional[Path]:
-    import os
-    override = os.getenv(f"MODEL_FILE_{prop_type}") or os.getenv("MODEL_FILE")
-    if not override:
-        return None
-    p = Path(override)
-    return p if p.exists() else None
+# -----------------------------
+# Routes
+# -----------------------------
+@router.get("/featureMeta/{prop_type}")
+async def feature_meta(prop_type: str):
+    """
+    Debug helper: report which features file was loaded and the names/count.
+    Mirrors your existing response shape.
+    """
+    try:
+        path = _features_path_for(prop_type)
+        cols = _load_feature_names(prop_type)
+        return {
+            "prop_type": prop_type,
+            "meta_path": str(path),
+            "feature_names": cols,
+            "count": len(cols),
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Failed to load feature meta for '{prop_type}': {e}")
 
 @router.post("/predict")
 async def predict(req: Request) -> Dict[str, Any]:
     payload = await req.json()
     inp = PredictInput(**payload)
-    orig = dict(inp.features or {})                 # what client sent
-    base = {name: 0 for name in FEATURE_NAMES}      # defaults
-    base.update(orig)                               # client values override defaults
 
-    missing_features = [n for n in FEATURE_NAMES if n not in base]  # will be []
-    
-    model_path = _pick_model_path(inp.prop_type)
-    if not model_path:
-        raise HTTPException(404, f"Model file not found for prop_type '{inp.prop_type}'")
+    # Resolve artifacts
+    try:
+        feature_names = _load_feature_names(inp.prop_type)
+    except Exception as e:
+        raise HTTPException(500, f"Failed to load features: {e}")
 
-    # Build the ordered vector (missing values → 0.0)
-    X = [build_feature_vector(base)]
+    try:
+        model_path = _model_path_for(inp.prop_type)
+    except Exception as e:
+        raise HTTPException(404, f"Model file not found for prop_type '{inp.prop_type}': {e}")
+
+    # Fill missing with zeros for model input; also capture what's actually missing
+    orig = dict(inp.features or {})
+    missing_features = [name for name in feature_names if name not in orig]
+    base = {name: 0 for name in feature_names}
+    base.update(orig)
+
+    X = [_vector_from_features(base, feature_names)]
 
     # Load model
     try:
@@ -70,14 +222,8 @@ async def predict(req: Request) -> Dict[str, Any]:
     except Exception as e:
         raise HTTPException(500, f"Inference failed: {e}")
 
-    # inside predict(), right before the return
-    token_data = {
-        "prop_type": inp.prop_type,
-        "features": base,          # the prefilled dict you built
-        "probability": proba,
-    }
-    # base is the dict of features you’re actually sending to the model
-    commit_token = mint_commit_token(        
+    # Mint commit token (carry full prepared payload so /props/add can insert)
+    commit_token = mint_commit_token(
         prob=float(proba),
         prop_type=inp.prop_type,
         features=base,
@@ -89,18 +235,8 @@ async def predict(req: Request) -> Dict[str, Any]:
         "prop_type": inp.prop_type,
         "model": model_path.name,
         "probability": proba,
-        "features_used": len(X[0]),
+        "features_used": len(feature_names),
         "missing_features": missing_features,
         "missing_count": len(missing_features),
         "commit_token": commit_token,
-    }
-
-@router.get("/featureMeta/{prop_type}")
-async def feature_meta(prop_type: str):
-    # For now we expose whatever FEATURE_META_PATH points to (you set it per prop).
-    return {
-        "prop_type": prop_type,
-        "meta_path": str(META_PATH),
-        "feature_names": FEATURE_NAMES,
-        "count": len(FEATURE_NAMES),
     }
