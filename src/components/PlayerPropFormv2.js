@@ -1,10 +1,16 @@
 // src/components/PlayerPropFormv2.js
 import React, { useState, useEffect, useRef } from "react";
 
+const DEFAULT_API =
+  typeof window !== "undefined" &&
+  /proppadia\.com$/.test(window.location.hostname)
+    ? "https://baseball-streaks-sq44.onrender.com"
+    : "http://127.0.0.1:8001";
+
 const BASE_API =
   process.env.REACT_APP_API_BASE ||
   (typeof window !== "undefined" && window.__API_BASE__) ||
-  "http://127.0.0.1:8001";
+  DEFAULT_API;
 
 // Put near the top of PlayerPropFormv2.js (below BASE_API)
 async function prepareThenPredict({

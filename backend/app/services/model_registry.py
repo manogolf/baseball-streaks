@@ -15,31 +15,6 @@ Feature order preference (highest → lowest):
 from __future__ import annotations
 import os, json
 from pathlib import Path
-
-_FEATURE_META = None
-
-def _load_feature_metadata_repo():
-    global _FEATURE_META
-    if _FEATURE_META is not None:
-        return _FEATURE_META
-    # 1) Env override first
-    p = os.getenv("FEATURE_META_PATH")
-    if p and Path(p).exists():
-        _FEATURE_META = json.loads(Path(p).read_text())
-        return _FEATURE_META
-    # 2) Fall back to existing candidates
-    for path in _FEATURE_JSON_CANDIDATES:
-        if path.exists():
-            _FEATURE_META = json.loads(path.read_text())
-            return _FEATURE_META
-    _FEATURE_META = {}
-    return _FEATURE_META
-
-
-
-
-
-
 import os, json, threading, requests
 import logging
 from typing import Any, Dict, List, Optional, Tuple
@@ -63,12 +38,8 @@ if SUPABASE_URL and SUPABASE_KEY:
 MODELS_DIR = Path(os.getenv("MODELS_DIR") or os.getenv("MODEL_DIR") or "/var/data/models").resolve()
 MODEL_DIR = MODELS_DIR  # back-compat alias
 
-# Feature spec (repo JSON first; disk-deployed copy allowed)
-_FEATURE_JSON_CANDIDATES: List[Path] = [
-    MODELS_DIR / "feature_metadata.json",  # if you deploy the file to the Render disk
-    Path(__file__).resolve().parents[3] / "backend" / "scripts" / "modeling" / "feature_metadata.json",
-    Path(__file__).resolve().parents[3] / "backend" / "scripts" / "modeling" / "feature_metadata_backup.json",
-]
+# Do not probe env/paths for v2; leave empty to avoid accidental loads.
+_FEATURE_JSON_CANDIDATES: list = []
 
 def _latest_index_path() -> Path:
     return MODELS_DIR / "latest" / "MODEL_INDEX.json"
@@ -159,20 +130,15 @@ def canonicalize_prop_type(s: str) -> str:
     raise ValueError(f"Unknown prop_type '{s}'")
 
 # ── Feature metadata (repo JSON → model meta → index) ─────────────────────────
+# ── Feature metadata (deprecated in v2) ────────────────────────────────────────
+_FEATURE_META: Dict[str, Any] | None = {}
+
 def _load_feature_metadata_repo() -> Dict[str, Any]:
-    """Load the first available feature_metadata*.json from known locations."""
-    global _FEATURE_META
-    if _FEATURE_META is not None:
-        return _FEATURE_META
-    for p in _FEATURE_JSON_CANDIDATES:
-        try:
-            if p.exists():
-                _FEATURE_META = json.loads(p.read_text())
-                return _FEATURE_META
-        except Exception:
-            continue
-    _FEATURE_META = {}
-    return _FEATURE_META
+    """
+    DEPRECATED in v2: per-prop features are loaded by the predict route.
+    Keep this a safe no-op so any legacy import doesn't crash.
+    """
+    return {}
 
 def _features_from_model_meta(prop: str, prefer: str) -> List[str]:
     """Try reading features from the joblib payload's meta."""
@@ -303,50 +269,12 @@ def _looks_fitted(pipeline) -> bool:
         return False
 
 # ── Public: load_model ────────────────────────────────────────────────────────
-def load_model(prop_type: str, algo: str):
-    key = (prop_type, algo)
-    if key in _MODEL_CACHE:
-        return _MODEL_CACHE[key]
-
-    with _lock:
-        if key in _MODEL_CACHE:
-            return _MODEL_CACHE[key]
-
-        tried: List[str] = []
-
-        # 1) Disk-first
-        for p in _disk_candidates(prop_type, algo):
-            tried.append(str(p))
-            if p.exists():
-                obj = joblib_load(str(p))
-                model = _unwrap_model(obj, algo)
-                if model is not None and _looks_fitted(model):
-                    _MODEL_CACHE[key] = model
-                    return model
-                # else keep searching
-
-        # 2) Optional Supabase fallback (mirror same relative paths)
-        if _supabase:
-            last_err: Optional[Exception] = None
-            for p in _disk_candidates(prop_type, algo):
-                try:
-                    rel = p.relative_to(MODELS_DIR).as_posix()
-                except ValueError:
-                    rel = f"{prop_type}/{p.name}"
-                tried.append(f"supabase://models/{rel}")
-                try:
-                    blob = _download_from_supabase("models", rel)
-                    p.parent.mkdir(parents=True, exist_ok=True)
-                    with open(p, "wb") as f:
-                        f.write(blob)
-                    obj = joblib_load(str(p))
-                    model = _unwrap_model(obj, algo)
-                    if model is not None and _looks_fitted(model):
-                        _MODEL_CACHE[key] = model
-                        return model
-                except Exception as e:
-                    last_err = e
-                    continue
-
-        details = "; ".join(tried) or "(no paths attempted)"
-        raise RuntimeError(f"Model not found or unfitted for {prop_type}/{algo}. Tried: {details}")
+def load_model(prop: str, algo: str | None = None):
+    """
+    DEPRECATED in v2. Models are resolved in routes/api/predict.py.
+    This stub exists to avoid crashes if legacy code imports it.
+    """
+    raise RuntimeError(
+        "model_registry.load_model is deprecated in v2. "
+        "Use /api/predict (which auto-discovers per-prop models/features)."
+    )

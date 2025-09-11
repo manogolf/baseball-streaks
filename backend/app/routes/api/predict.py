@@ -42,76 +42,72 @@ def _prop_folders(prop: str) -> List[Path]:
 
 def _features_path_for(prop: str) -> Path:
     """
-    Per-prop features JSON. Tries (in order):
-      - FEATURE_META_PATH_<prop>
-      - FEATURE_META_PATH
-      - <ROOT>/{batter,pitcher}/<prop>/features_<prop>_v1.json
-      - <ROOT>/{batter,pitcher}/<prop>/<prop>_features_v1.json  (compat)
-      - any features*.json in the prop folder (fallback)
+    Per-prop features JSON. Only honors FEATURE_META_PATH_<prop>.
+    Then searches the prop folder for common names or any *features*.json.
     """
-    # explicit overrides
-    env = os.getenv(f"FEATURE_META_PATH_{prop}") or os.getenv("FEATURE_META_PATH")
+    # 🔒 Only per-prop override is allowed (prevents 'hits' bleed-over)
+    env = os.getenv(f"FEATURE_META_PATH_{prop}")
     if env:
         p = Path(env).resolve()
         if not p.exists():
             raise FileNotFoundError(f"Feature meta file not found: {p}")
         return p
 
-    for folder in _prop_folders(prop):
-        cands = [
-            folder / f"features_{prop}_v1.json",
-            folder / f"{prop}_features_v1.json",
-        ]
-        for p in cands:
-            if p.exists():
-                return p
-        # fallback: any features*.json in that folder
-        if folder.exists():
-            any_feats = sorted(folder.glob("features*.json"))
-            if any_feats:
-                return any_feats[0]
+    root = _models_root()
+    folder = root / "batter" / prop
 
-    tried = []
-    for folder in _prop_folders(prop):
-        tried.append(str(folder / f"features_{prop}_v1.json"))
-        tried.append(str(folder / f"{prop}_features_v1.json"))
-        tried.append(str(folder / "features*.json"))
+    # Preferred full-name conventions
+    cands = [
+        folder / f"features_{prop}_v1.json",
+        folder / f"{prop}_features_v1.json",
+    ]
+    for p in cands:
+        if p.exists():
+            return p
+
+    # Legacy / abbreviated fallbacks (pick most recent *features*.json)
+    if folder.exists():
+        any_json = sorted(folder.glob("*features*.json"))
+        if any_json:
+            any_json.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+            return any_json[0]
+
     raise FileNotFoundError(
-        f"No features file for '{prop}'. Tried: {', '.join(tried)} "
-        f"(or set FEATURE_META_PATH[_{prop}])."
+        f"No features file for '{prop}'. Looked in {folder}. "
+        f"Set FEATURE_META_PATH_{prop} to override."
     )
 
 def _model_path_for(prop: str) -> Path:
     """
-    Per-prop model path. Tries (in order):
-      - MODEL_FILE_<prop>
-      - MODEL_FILE
-      - <ROOT>/{batter,pitcher}/<prop>/<prop>_poisson_v1.joblib
-      - If not found, pick the most-recent *.joblib in that folder
+    Per-prop model path. Honors only MODEL_FILE_<prop>.
+    Then looks in <ROOT>/batter/<prop> for a sensible joblib.
     """
-    env = os.getenv(f"MODEL_FILE_{prop}") or os.getenv("MODEL_FILE")
+    env = os.getenv(f"MODEL_FILE_{prop}")
     if env:
         p = Path(env).resolve()
         if p.exists():
             return p
-        raise FileNotFoundError(f"MODEL_FILE for '{prop}' not found: {p}")
+        raise FileNotFoundError(f"MODEL_FILE_{prop} not found: {p}")
 
-    for folder in _prop_folders(prop):
-        preferred = folder / f"{prop}_poisson_v1.joblib"
-        if preferred.exists():
-            return preferred
-        if folder.exists():
-            joblibs = [j for j in folder.glob("*.joblib") if j.is_file()]
-            if joblibs:
-                joblibs.sort(key=lambda x: x.stat().st_mtime, reverse=True)
-                return joblibs[0]
+    folder = _models_root() / "batter" / prop
+    # Preferred full-name convention
+    cands = [
+        folder / f"{prop}_poisson_v1.joblib",
+    ]
+    for p in cands:
+        if p.exists():
+            return p
 
-    tried = []
-    for folder in _prop_folders(prop):
-        tried.append(str(folder / f"{prop}_poisson_v1.joblib"))
-        tried.append(str(folder / "*.joblib"))
+    # Fallback: most-recent *.joblib in the prop folder
+    if folder.exists():
+        joblibs = sorted(folder.glob("*.joblib"))
+        if joblibs:
+            joblibs.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+            return joblibs[0]
+
     raise FileNotFoundError(
-        f"No model file for '{prop}'. Tried {', '.join(tried)} (or set MODEL_FILE[_{prop}])."
+        f"No model file for '{prop}' in {folder}. "
+        f"Set MODEL_FILE_{prop} to override."
     )
 
 # -----------------------------
