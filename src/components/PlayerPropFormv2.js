@@ -82,6 +82,7 @@ async function prepareThenPredict({
   const prep = await postApi("/api/prepareProp", {
     player_id,
     team_id,
+    team_abbr,
     game_date,
     prop_type,
     prop_value,

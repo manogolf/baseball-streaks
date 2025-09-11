@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from typing import Any, Dict, Optional
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -56,22 +56,21 @@ PITCHING_PROPS = {
 }
 
 class PrepareInput(BaseModel):
-    # Frontend ALWAYS sends these two (authoritative IDs)
-    player_id: int
-    team_id: int
-
-    # Optional niceties / resilience
-    team_abbr: Optional[str] = None   # tolerated only if team_id is ever missing
+    # User-entered or resolved on the client
+    player_id: Optional[int] = None
     player_name: Optional[str] = None
+    team_id: Optional[int] = None           # ← OPTIONAL with default None
+    team_abbr: Optional[str] = None         # ← OPTIONAL with default None
 
-    game_date: str                    # 'YYYY-MM-DD'
+    game_date: str                          # 'YYYY-MM-DD'
     prop_type: str
-    prop_value: Optional[float] = None  # aka "line"
-    over_under: Optional[str] = None    # "over" | "under"
+    prop_value: Optional[float] = None
+    over_under: Optional[str] = None
 
     @field_validator("game_date")
     @classmethod
     def _validate_date(cls, v: str) -> str:
+        from datetime import datetime
         try:
             d = datetime.strptime(v[:10], "%Y-%m-%d")
             return d.strftime("%Y-%m-%d")
@@ -88,6 +87,18 @@ class PrepareInput(BaseModel):
             raise ValueError("over_under must be 'over' or 'under'")
         return s
 
+    @field_validator("team_abbr")
+    @classmethod
+    def _norm_abbr(cls, v: Optional[str]) -> Optional[str]:
+        from scripts.shared.team_name_map import normalize_team_abbreviation
+        return normalize_team_abbreviation(v) if v else v
+
+    @model_validator(mode="after")
+    def _require_team_id_or_abbr(self):
+        # Require at least one of (team_id, team_abbr)
+        if self.team_id is None and not (self.team_abbr and self.team_abbr.strip()):
+            raise ValueError("Provide team_id or team_abbr.")
+        return self
 
 def _fetch_schedule_one(date_yyyy_mm_dd: str) -> Dict[str, Any]:
     """Fetch MLB schedule for a single date via StatsAPI."""
