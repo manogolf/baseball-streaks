@@ -1,7 +1,6 @@
 // src/components/PlayerPropFormv2.js
 import React, { useState, useEffect, useRef } from "react";
 
-/** Resolve base API */
 const DEFAULT_API =
   typeof window !== "undefined" &&
   /proppadia\.com$/.test(window.location.hostname)
@@ -13,46 +12,12 @@ const BASE_API =
   (typeof window !== "undefined" && window.__API_BASE__) ||
   DEFAULT_API;
 
-/** Client-side mapping: team abbr -> MLB team_id (StatsAPI IDs) */
-const TEAM_ID_BY_ABBR = {
-  ATH: 133,
-  ATL: 144,
-  AZ: 109,
-  BAL: 110,
-  BOS: 111,
-  CHC: 112,
-  CWS: 145,
-  CIN: 113,
-  CLE: 114,
-  COL: 115,
-  DET: 116,
-  HOU: 117,
-  KC: 118,
-  LAA: 108,
-  LAD: 119,
-  MIA: 146,
-  MIL: 158,
-  MIN: 142,
-  NYM: 121,
-  NYY: 147,
-  PHI: 143,
-  PIT: 134,
-  SD: 135,
-  SEA: 136,
-  SF: 137,
-  STL: 138,
-  TB: 139,
-  TEX: 140,
-  TOR: 141,
-  WSH: 120,
-};
-
-/** Small fetch helpers */
+// ----- simple fetch helpers -----
 async function getApi(path, params = {}) {
   const url = new URL(BASE_API + path);
-  for (const [k, v] of Object.entries(params)) {
-    if (v != null) url.searchParams.set(k, v);
-  }
+  Object.entries(params).forEach(([k, v]) => {
+    if (v != null && v !== "") url.searchParams.set(k, v);
+  });
   const res = await fetch(url.toString(), { credentials: "include" });
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
   return res.json();
@@ -69,32 +34,35 @@ async function postApi(path, body) {
   return res.json();
 }
 
-/** Prepare → Predict pipeline (expects IDs) */
+// ----- prepare → predict (snake_case + team_abbr uppercased) -----
 async function prepareThenPredict({
-  player_id,
-  team_id,
-  game_date,
-  prop_type,
-  prop_value, // aka "line"
+  player_id, // number|string (required)
+  team_id, // number|undefined (optional)
+  team_abbr, // string|undefined (optional; sent uppercased)
+  game_date, // "YYYY-MM-DD"
+  prop_type, // e.g. "hits"
+  prop_value, // number or numeric string
   over_under, // "over" | "under"
 }) {
-  // 1) prepare
-  const prep = await postApi("/api/prepareProp", {
-    player_id,
-    team_id,
-    team_abbr,
+  const prepareBody = {
+    player_id: Number(player_id),
     game_date,
     prop_type,
-    prop_value,
+    prop_value: Number(prop_value),
     over_under,
-  });
+  };
+  if (team_id != null && team_id !== "") {
+    prepareBody.team_id = Number(team_id);
+  } else if (team_abbr) {
+    prepareBody.team_abbr = String(team_abbr).toUpperCase();
+  }
+
+  // 1) prepare
+  const prep = await postApi("/api/prepareProp", prepareBody);
   const features = prep.features;
 
   // 2) predict
-  const pred = await postApi("/api/predict", {
-    prop_type,
-    features,
-  });
+  const pred = await postApi("/api/predict", { prop_type, features });
 
   return {
     features,
@@ -104,67 +72,67 @@ async function prepareThenPredict({
   };
 }
 
-/** UI helpers */
 const pct = (p) => (p == null ? "—" : `${(p * 100).toFixed(1)}%`);
+
+const PROP_TYPES = [
+  "doubles",
+  "earned_runs",
+  "hits",
+  "hits_allowed",
+  "hits_runs_rbis",
+  "home_runs",
+  "outs_recorded",
+  "rbis",
+  "runs_rbis",
+  "runs_scored",
+  "singles",
+  "stolen_bases",
+  "strikeouts_batting",
+  "strikeouts_pitching",
+  "total_bases",
+  "triples",
+  "walks",
+  "walks_allowed",
+];
+
+const prettyProp = (key) => {
+  let label = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  label = label.replace(/\bRbis\b/i, "RBIs").replace(/\bRbi\b/i, "RBI");
+  return label;
+};
+
 const todayInET = () =>
   new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 
-/** Component */
 export default function PlayerPropFormV2() {
-  // user-facing fields
+  // user inputs
   const [playerName, setPlayerName] = useState("");
   const [teamAbbr, setTeamAbbr] = useState("");
-  const [gameDate, setGameDate] = useState(todayInET()); // invoke!
+  const [gameDate, setGameDate] = useState(todayInET);
   const [propType, setPropType] = useState("hits");
   const [overUnder, setOverUnder] = useState("under");
   const [propValue, setPropValue] = useState("0.5");
 
-  // resolved/hidden
-  const [playerId, setPlayerId] = useState(""); // string for display
+  // resolved/flow
+  const [playerId, setPlayerId] = useState("");
   const [commitToken, setCommitToken] = useState(null);
   const [prediction, setPrediction] = useState(null);
   const [prepPreview, setPrepPreview] = useState(null);
 
-  // flow/ux state
+  // ui state
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [resolving, setResolving] = useState(false);
+
+  // resolver stale-guard + team handling
   const lastReqId = useRef(0);
   const [teamTouched, setTeamTouched] = useState(false);
   const [lastResolvedPlayerId, setLastResolvedPlayerId] = useState("");
 
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
   useEffect(() => {
     console.info("[Props V2] mounted");
   }, []);
-
-  const PROP_TYPES = [
-    "doubles",
-    "earned_runs",
-    "hits",
-    "hits_allowed",
-    "hits_runs_rbis",
-    "home_runs",
-    "outs_recorded",
-    "rbis",
-    "runs_rbis",
-    "runs_scored",
-    "singles",
-    "stolen_bases",
-    "strikeouts_batting",
-    "strikeouts_pitching",
-    "total_bases",
-    "triples",
-    "walks",
-    "walks_allowed",
-  ];
-
-  const prettyProp = (key) => {
-    let label = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-    label = label.replace(/\bRbis\b/i, "RBIs").replace(/\bRbi\b/i, "RBI");
-    return label;
-  };
 
   const PROP_OPTIONS = React.useMemo(
     () =>
@@ -174,7 +142,7 @@ export default function PlayerPropFormV2() {
     []
   );
 
-  /** name → player_id (no team auto-fill) */
+  // ----- name → (player_id) resolver -----
   async function resolvePlayerByNameNow() {
     setError("");
     const name = (playerName || "").trim();
@@ -185,7 +153,7 @@ export default function PlayerPropFormV2() {
     try {
       const r = await getApi("/api/players/resolve", {
         name,
-        date: gameDate || undefined,
+        date: gameDate,
       });
 
       if (reqId !== lastReqId.current) return; // stale
@@ -193,7 +161,7 @@ export default function PlayerPropFormV2() {
       if (r?.player_id) {
         const newId = String(r.player_id);
         if (newId !== lastResolvedPlayerId && !teamTouched) {
-          // user changed player — clear prior team selection unless user touched it
+          // drop stale team if user hasn’t touched it
           setTeamAbbr("");
         }
         setPlayerId(newId);
@@ -201,7 +169,6 @@ export default function PlayerPropFormV2() {
       } else {
         setPlayerId("");
       }
-      // Intentionally do NOT set team from resolver (backend owns team_id resolution)
     } catch {
       setError("Couldn’t resolve player. Check spelling (or add team).");
     } finally {
@@ -209,50 +176,46 @@ export default function PlayerPropFormV2() {
     }
   }
 
-  // Debounce while typing name
+  // Debounce resolver as the user types
   useEffect(() => {
     const name = (playerName || "").trim();
     if (name.length < 3 || playerId) return;
     const t = setTimeout(resolvePlayerByNameNow, 600);
     return () => clearTimeout(t);
-  }, [playerName, gameDate, playerId, teamAbbr]); // re-resolve if date changes
+  }, [playerName, gameDate, playerId, teamAbbr]);
 
-  /** Predict flow */
-  async function handlePredict(e) {
-    e?.preventDefault?.();
+  // ----- predict flow (also used by form submit) -----
+  async function handlePredict() {
     setError("");
     setPrediction(null);
     setCommitToken(null);
     setPrepPreview(null);
 
-    // basic validation
+    // validation (player id OR name+team)
     if (!playerId && (!playerName.trim() || !teamAbbr.trim())) {
-      return setError("Enter player name + team, or resolve to get an ID.");
+      setError("Enter player name + team, or resolve to get an ID.");
+      return;
     }
     if (!gameDate) return setError("Pick a game date (YYYY-MM-DD).");
     if (!propType) return setError("Pick a prop type.");
     if (propValue === "") return setError("Enter a value.");
-    if (!playerId) return setError("Resolve a player first to get player_id.");
 
-    // derive team_id from abbr (authoritative IDs sent to backend)
-    const abbr = (teamAbbr || "").toUpperCase();
-    const team_id = TEAM_ID_BY_ABBR[abbr];
-    if (!team_id) {
-      return setError("Select a valid team (from the dropdown).");
-    }
+    // require resolved player_id
+    if (!playerId) return setError("Resolve a player first to get player_id.");
 
     setLoading(true);
     try {
       const { features, probability, commit_token } = await prepareThenPredict({
         player_id: Number(playerId),
-        team_id: Number(team_id),
+        // team_id: <omit; backend accepts team_abbr>
+        team_abbr: (teamAbbr || "").toUpperCase(),
         game_date: gameDate,
         prop_type: propType,
         prop_value: Number(propValue),
-        over_under: overUnder || "over",
+        over_under: overUnder,
       });
 
-      // reflect canonicalizations (harmless)
+      // reflect canonicalizations from backend
       if (features?.player_id) setPlayerId(String(features.player_id));
       if (features?.team) {
         setTeamAbbr(String(features.team).toUpperCase());
@@ -263,9 +226,7 @@ export default function PlayerPropFormV2() {
         sample: Object.fromEntries(Object.entries(features).slice(0, 12)),
       });
 
-      setPrediction({
-        probability_over: probability, // server is probability of OVER
-      });
+      setPrediction({ probability });
       setCommitToken(commit_token || null);
     } catch (err) {
       console.error("[Props V2] predict error:", err);
@@ -275,7 +236,13 @@ export default function PlayerPropFormV2() {
     }
   }
 
-  /** Save user_added prop with commit_token */
+  // Keep onSubmit working (v1 wiring)
+  async function handleSubmit(e) {
+    e?.preventDefault?.();
+    await handlePredict();
+  }
+
+  // ----- save prop (after predict) -----
   async function handleSaveProp() {
     setError("");
     if (!commitToken) return;
@@ -290,7 +257,7 @@ export default function PlayerPropFormV2() {
       } else if (res?.saved) {
         setPrediction((p) => (p ? { ...p, saved: true } : p));
       }
-      setCommitToken(null); // prevent resubmits
+      setCommitToken(null); // avoid repeat submits
     } catch (e) {
       setError(e.message || String(e));
     } finally {
@@ -300,7 +267,7 @@ export default function PlayerPropFormV2() {
 
   return (
     <form
-      onSubmit={handlePredict}
+      onSubmit={handleSubmit}
       className="space-y-4 p-4 bg-blue-100 rounded-xl shadow-md overflow-x-auto w-full max-w-5xl mx-auto"
     >
       <h2 className="text-2xl font-bold text-center">📋 Add Player Prop</h2>
@@ -353,8 +320,8 @@ export default function PlayerPropFormV2() {
           <select
             value={teamAbbr}
             onChange={(e) => {
-              setTeamAbbr(e.target.value.toUpperCase());
               setTeamTouched(true);
+              setTeamAbbr(e.target.value.toUpperCase());
             }}
             className="w-full p-2 bg-gray-50 border border-gray-300 rounded-md"
           >
@@ -424,7 +391,7 @@ export default function PlayerPropFormV2() {
             placeholder="e.g., 0.5"
             className="w-full p-2 bg-gray-50 border border-gray-300 rounded-md"
             inputMode="decimal"
-            step="0.5"
+            step="any"
           />
         </div>
 
@@ -490,55 +457,28 @@ export default function PlayerPropFormV2() {
       {/* Prediction summary */}
       {prediction && (
         <div className="p-3 rounded border space-y-2">
-          {(() => {
-            const pOver = prediction.probability_over ?? null;
-            const pick = pOver == null ? null : pOver >= 0.5 ? "Over" : "Under";
-            const conf = pOver == null ? null : Math.max(pOver, 1 - pOver);
+          <div className="font-medium">
+            🎯 Model (Probability of Over): {pct(prediction.probability)}
+          </div>
 
-            return (
-              <>
-                <div className="font-medium">
-                  🎯 Model (Probability of Over):{" "}
-                  {pOver != null ? pct(pOver) : "—"}
-                </div>
+          {!prediction.saved ? (
+            <div className="text-xs text-gray-600">
+              Not saved yet. Click Add Prop to store it.
+            </div>
+          ) : prediction.duplicate ? (
+            <div className="text-xs text-amber-700">Already saved.</div>
+          ) : (
+            <div className="text-xs text-green-700">Saved ✓</div>
+          )}
 
-                <div className="text-sm">
-                  {pick ? (
-                    <>
-                      Pick: <strong>{pick}</strong>
-                      {conf != null && (
-                        <>
-                          {" "}
-                          • Confidence: <strong>{pct(conf)}</strong>
-                        </>
-                      )}
-                    </>
-                  ) : (
-                    <span className="text-gray-600">No pick available</span>
-                  )}
-                </div>
-
-                {!prediction.saved ? (
-                  <div className="text-xs text-gray-600">
-                    Not saved yet. Click Add Prop to store it.
-                  </div>
-                ) : prediction.duplicate ? (
-                  <div className="text-xs text-amber-700">Already saved.</div>
-                ) : (
-                  <div className="text-xs text-green-700">Saved ✓</div>
-                )}
-
-                <button
-                  type="button"
-                  disabled={!commitToken || prediction?.saved}
-                  onClick={handleSaveProp}
-                  className="px-3 py-2 rounded bg-indigo-600 text-black disabled:opacity-50"
-                >
-                  {prediction?.saved ? "Saved" : "Add Prop"}
-                </button>
-              </>
-            );
-          })()}
+          <button
+            type="button"
+            disabled={!commitToken || prediction?.saved}
+            onClick={handleSaveProp}
+            className="px-3 py-2 rounded bg-indigo-600 text-black disabled:opacity-50"
+          >
+            {prediction?.saved ? "Saved" : "Add Prop"}
+          </button>
         </div>
       )}
     </form>
