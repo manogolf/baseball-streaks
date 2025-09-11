@@ -10,6 +10,9 @@ from app.services.supabase_queries import (
     players_search,
     players_by_team,
 )
+from scripts.shared.team_name_map import (
+    get_team_id_from_abbr,
+)
 from scripts.shared.prop_utils import get_latest_team_for_player
 from scripts.shared.supabase_utils import supabase
 
@@ -71,7 +74,7 @@ def players_by_team_route(
     data = players_by_team(team_id=team_id, team=team)
     return {"ok": True, "data": data}
 
-# Resolve by NAME → {player_id, team_abbr}
+# Resolve by NAME → {player_id, team_id}
 @router.get("/players/resolve")
 def resolve_player(
     name: str = Query(..., min_length=2),
@@ -89,11 +92,16 @@ def resolve_player(
     # If a numeric string sneaks in, treat it as an id shortcut
     if raw.isdigit():
         pid = int(raw)
-        team_abbr, _ = get_latest_team_for_player(pid)
-        if not team_abbr:
-            raise HTTPException(404, "Team not found for player")
-        return {"player_id": pid, "name": raw, "team_abbr": team_abbr}
-
+        team_id = None
+        try:
+            _abbr, tid = get_latest_team_for_player(pid)
+            if tid:
+                team_id = int(tid)
+        except Exception:
+            team_id = None
+        if team_id is None:
+            raise HTTPException(status_code=404, detail="Team not found for player")
+        return {"player_id": pid, "name": raw, "team_id": team_id}
     # 1) Broad ILIKE on raw (fast path)
     rows: List[Dict[str, Any]] = []
     try:
@@ -148,10 +156,34 @@ def resolve_player(
         raise HTTPException(status_code=404, detail="Player not found")
 
     pid = int(cand["player_id"])
-    team_abbr, _team_id = get_latest_team_for_player(pid)
-    if not team_abbr:
-        team_abbr = (cand.get("team") or "").strip() or None
-    if not team_abbr:
+    # Prefer a definitive TEAM ID; fall back through several sources
+    team_id: Optional[int] = None
+    try:
+        _abbr, latest_tid = get_latest_team_for_player(pid)
+        if latest_tid:
+            team_id = int(latest_tid)
+    except Exception:
+        team_id = None
+
+    if team_id is None and cand.get("team_id") is not None:
+        try:
+            team_id = int(cand["team_id"])
+        except Exception:
+            team_id = None
+
+    if team_id is None and cand.get("team"):
+        try:
+            mapped_tid = get_team_id_from_abbr(str(cand["team"]).strip())
+            if mapped_tid is not None:
+                team_id = int(mapped_tid)
+        except Exception:
+            team_id = None
+
+    if team_id is None:
         raise HTTPException(status_code=404, detail="Team not found for player")
-    
-    return {"player_id": pid, "name": cand.get("player_name") or raw, "team_abbr": team_abbr}
+
+    return {
+        "player_id": pid,
+        "name": cand.get("player_name") or raw,
+        "team_id": team_id,
+    }
