@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, field_validator
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 import requests
@@ -11,33 +11,25 @@ import requests
 # Supabase client (used only to ensure FK target in game_info)
 from scripts.shared.supabase_utils import supabase
 
-# Team + time helpers (stable, file you provided)
+# Team + time helpers (stable)
 from scripts.shared.team_name_map import (
-    get_team_id_from_abbr,
+    get_team_id_from_abbr,   # kept only as a resilience fallback
     get_team_info_by_id,
-    normalize_team_abbreviation,
 )
 
-# If these utilities exist in your repo; we fall back to local helpers if import fails
+# If these utilities exist in your repo; fallback shims otherwise
 try:
     from scripts.shared.time_utils_backend import (
         getDayOfWeekET,
         getTimeOfDayBucketET,
     )
 except Exception:
-    # Fallbacks if your util module is missing in local runs
     def getDayOfWeekET(date_or_iso: str) -> str:
-        """
-        Accept 'YYYY-MM-DD' or ISO datetime; return e.g. 'Mon', 'Tue'...
-        """
         s = (date_or_iso or "").strip()
-        dt = None
         try:
-            # ISO datetime
             dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
         except Exception:
             try:
-                # Date only
                 dt = datetime.strptime(s[:10], "%Y-%m-%d").replace(tzinfo=ZoneInfo("America/New_York"))
             except Exception:
                 return "Mon"
@@ -45,9 +37,6 @@ except Exception:
         return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][dt_et.weekday()]
 
     def getTimeOfDayBucketET(iso_et: Optional[str]) -> str:
-        """
-        Very light bucketization like v1: 'day' (<17:00 ET) else 'evening'.
-        """
         if not iso_et:
             return "evening"
         try:
@@ -66,15 +55,16 @@ PITCHING_PROPS = {
     "hits_allowed", "walks_allowed"
 }
 
-
 class PrepareInput(BaseModel):
-    # User-entered or resolved on the client
-    player_id: Optional[int] = None
-    player_name: Optional[str] = None
-    team_id: Optional[int] = None
-    team_abbr: Optional[str] = None
+    # Frontend ALWAYS sends these two (authoritative IDs)
+    player_id: int
+    team_id: int
 
-    game_date: str  # 'YYYY-MM-DD' (today or future)
+    # Optional niceties / resilience
+    team_abbr: Optional[str] = None   # tolerated only if team_id is ever missing
+    player_name: Optional[str] = None
+
+    game_date: str                    # 'YYYY-MM-DD'
     prop_type: str
     prop_value: Optional[float] = None  # aka "line"
     over_under: Optional[str] = None    # "over" | "under"
@@ -83,7 +73,6 @@ class PrepareInput(BaseModel):
     @classmethod
     def _validate_date(cls, v: str) -> str:
         try:
-            # Normalize to 'YYYY-MM-DD'
             d = datetime.strptime(v[:10], "%Y-%m-%d")
             return d.strftime("%Y-%m-%d")
         except Exception:
@@ -99,16 +88,9 @@ class PrepareInput(BaseModel):
             raise ValueError("over_under must be 'over' or 'under'")
         return s
 
-    @field_validator("team_abbr")
-    @classmethod
-    def _norm_abbr(cls, v: Optional[str]) -> Optional[str]:
-        return normalize_team_abbreviation(v) if v else v
-
 
 def _fetch_schedule_one(date_yyyy_mm_dd: str) -> Dict[str, Any]:
-    """
-    Fetch MLB schedule for a single date via StatsAPI.
-    """
+    """Fetch MLB schedule for a single date via StatsAPI."""
     url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date_yyyy_mm_dd}"
     r = requests.get(url, timeout=10)
     if not r.ok:
@@ -117,10 +99,7 @@ def _fetch_schedule_one(date_yyyy_mm_dd: str) -> Dict[str, Any]:
 
 
 def _pick_team_game(schedule_json: Dict[str, Any], team_id: int) -> Dict[str, Any]:
-    """
-    From a schedule day payload, return the game object involving team_id.
-    Raises if none.
-    """
+    """From a schedule day payload, return the game object involving team_id."""
     dates = schedule_json.get("dates") or []
     for day in dates:
         for g in day.get("games", []):
@@ -128,22 +107,21 @@ def _pick_team_game(schedule_json: Dict[str, Any], team_id: int) -> Dict[str, An
             away = g.get("teams", {}).get("away", {}).get("team", {}) or {}
             if int(home.get("id", -1)) == int(team_id) or int(away.get("id", -1)) == int(team_id):
                 return g
-    raise HTTPException(404, f"No scheduled game for team_id {team_id} on {schedule_json.get('dates',[{'date':'?'}])[0].get('date','?')}.")
+    raise HTTPException(
+        404,
+        f"No scheduled game for team_id {team_id} on {schedule_json.get('dates',[{'date':'?'}])[0].get('date','?')}."
+    )
 
 
 def _utc_to_et_iso(utc_iso: str) -> str:
-    """
-    Convert MLB 'gameDate' (UTC) to ET ISO string (no microseconds).
-    """
+    """Convert MLB 'gameDate' (UTC) to ET ISO string (no microseconds)."""
     dt_utc = datetime.fromisoformat(utc_iso.replace("Z", "+00:00")).astimezone(timezone.utc)
     dt_et = dt_utc.astimezone(ZoneInfo("America/New_York"))
     return dt_et.replace(microsecond=0).isoformat()
 
 
 def _extract_game_summary(g: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Build a compact summary from schedule game object.
-    """
+    """Build a compact summary from schedule game object."""
     game_id = int(g.get("gamePk"))
     teams = g.get("teams", {})
     home_team = teams.get("home", {}).get("team", {}) or {}
@@ -207,13 +185,13 @@ def _ensure_game_info_row(summary: Dict[str, Any]) -> None:
             "away_team_id": summary["away_team_id"],
             "home_team_abbr": summary["home_abbr"],
             "away_team_abbr": summary["away_abbr"],
-            "game_time": summary["game_time_et"],  # timezone-aware string ok for timestamptz
+            "game_time": summary["game_time_et"],  # timestamptz-friendly
             "starting_pitcher_id_home": summary.get("sp_home_id"),
             "starting_pitcher_id_away": summary.get("sp_away_id"),
         }
         supabase.from_("game_info").upsert(payload, on_conflict="game_id").execute()
     except Exception:
-        # Non-fatal: prediction flow can continue; /props/add may still fail if this insert didn’t happen.
+        # Non-fatal for prepare; /props/add may still fail if this didn't land.
         pass
 
 
@@ -226,46 +204,46 @@ async def prepare_prop(req: Request) -> Dict[str, Any]:
     payload = await req.json()
     inp = PrepareInput(**payload)
 
-    # --- Resolve team_id if we only have an abbreviation ---
-    team_id = inp.team_id
-    if team_id is None:
-        if not inp.team_abbr:
-            raise HTTPException(400, "Provide team_id or team_abbr.")
-        team_id = get_team_id_from_abbr(inp.team_abbr)
-        if team_id is None:
+    # Authoritative: team_id (frontend sends this)
+    team_id = int(inp.team_id) if inp.team_id is not None else None
+
+    # Resilience only: accept abbr if someone hits the API without team_id
+    if team_id is None and inp.team_abbr:
+        tid = get_team_id_from_abbr(inp.team_abbr)
+        if tid is None:
             raise HTTPException(400, f"Unknown team_abbr: {inp.team_abbr}")
+        team_id = int(tid)
 
-    # --- Minimal sanity: need player_id (client normally resolves it first) ---
-    if not inp.player_id:
-        raise HTTPException(400, "player_id is required (resolve name → id first).")
+    if team_id is None:
+        raise HTTPException(400, "team_id required")
 
-    # --- Pull schedule for date and pick game by team_id ---
+    # Pull schedule for the date and pick this team's game
     sched = _fetch_schedule_one(inp.game_date)
     game = _pick_team_game(sched, int(team_id))
     g = _extract_game_summary(game)
 
-    # --- Ensure FK target present for later insert (/props/add) ---
+    # Ensure FK target present for later insert (/props/add)
     _ensure_game_info_row(g)
 
-    # --- Opponent + home/away ---
+    # Opponent + home/away
     is_home = (int(team_id) == int(g["home_team_id"]))
     opponent_team_id = int(g["away_team_id"] if is_home else g["home_team_id"])
 
-    # --- Abbreviations for model features (your hits model expects team/opponent strings) ---
+    # Abbreviations for model features (string cols expected by batter models)
     team_abbr = g["home_abbr"] if is_home else g["away_abbr"]
     opponent_abbr = g["away_abbr"] if is_home else g["home_abbr"]
 
-    # --- Time features (ET) ---
+    # Time features (ET)
     iso_time = g["game_time_et"]
     game_day_of_week = getDayOfWeekET(iso_time[:10] if iso_time else inp.game_date)
     time_of_day_bucket = getTimeOfDayBucketET(iso_time) if iso_time else "evening"
 
-    # --- Probable starters (soft metadata only) ---
+    # Probable starters (soft metadata only)
     starting_pitcher_id = None
     if inp.prop_type in PITCHING_PROPS:
         starting_pitcher_id = g["sp_home_id"] if is_home else g["sp_away_id"]
 
-    # --- Build the features dict; keep it lean (predict fills missing with 0) ---
+    # Build features dict (lean; /predict fills missing with 0)
     features: Dict[str, Any] = {
         # IDs + core
         "player_id": int(inp.player_id),
@@ -273,31 +251,31 @@ async def prepare_prop(req: Request) -> Dict[str, Any]:
         "game_id": int(g["game_id"]),
         "game_date": inp.game_date,
 
-        # model inputs (hits model includes these)
+        # model inputs (strings used by trained models)
         "team": team_abbr,
         "opponent": opponent_abbr,
 
-        # context used by other models/analytics
+        # context used elsewhere
         "opponent_encoded": opponent_team_id,
         "is_home": is_home,
         "game_time": iso_time,
         "game_day_of_week": game_day_of_week,
         "time_of_day_bucket": time_of_day_bucket,
 
-        # user-entered prop details (use canonical field names)
+        # user-entered prop details (canonical names)
         "prop_type": inp.prop_type,
-        "line": inp.prop_value,          # some code still calls it 'line'
-        "prop_value": inp.prop_value,    # use this for inserts/dedupe
+        "line": inp.prop_value,          # legacy name still seen in some code
+        "prop_value": inp.prop_value,    # used for inserts/dedupe
         "over_under": (inp.over_under or "over"),
     }
 
-    # Pitching-only soft indicator
-    if inp.prop_type in PITCHING_PROPS:
+    if inp.prop_type in PITCHING_PROPS and starting_pitcher_id is not None:
         features["starting_pitcher_id"] = starting_pitcher_id
 
-    # Optionally echo back helpful names (not required by model)
     if inp.player_name:
-        features["player_name"] = inp.player_name
+        features["player_name"] = inp.player_name  # optional echo for UI
+
+    # Echo for UI convenience
     features["team_abbr"] = team_abbr
     features["opponent_team_id"] = opponent_team_id
 
