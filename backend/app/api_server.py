@@ -23,14 +23,15 @@ app = FastAPI()
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    os.getenv("FRONTEND_ORIGIN", "").rstrip("/"),
+    "https://proppadia.com",
+    "https://www.proppadia.com",
 ]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o for o in ALLOWED_ORIGINS if o],
-    allow_credentials=False,
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
 
 # 5) Import routers AFTER app/env are set up
