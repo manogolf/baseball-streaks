@@ -9,6 +9,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+
 # --- logging (optional but helpful) ---
 log = logging.getLogger("precompute")
 if not log.handlers:
@@ -69,82 +70,111 @@ def _prop_folders(prop: str) -> List[Path]:
     ]
 
 
-def features_path_for(prop: str, feature_tag: str = "v1") -> Path:
+from pathlib import Path
+import os
+
+def _models_root() -> Path:
     """
-    Looks for a features file for `prop` across batter/pitcher folders.
-    Accepts several filename shapes, e.g.:
-      - features_<prop>_v1.json
-      - <prop>_features_v1.json
-      - <prop>_features.json
-      - features_<prop>.json
-      - features.json
-    Search order (first hit wins):
-      1) ml/models/batter/<prop>/
-      2) ml/models/pitcher/<prop>/
-      3) ml/models/<prop>/            (generic fallback)
-    If exact matches missing, falls back to glob matches and prefers `<feature_tag>`
-    if present, otherwise returns the lexicographically last match.
+    Resolve the models root. Honors env overrides for CI/cron.
     """
-    root = Path(__file__).resolve().parents[1]  # repo root
-    base = root / "ml" / "models"
+    env = os.getenv("MODELS_ROOT") or os.getenv("MODELS_DIR") or os.getenv("MODEL_DIR")
+    if env:
+        return Path(env).resolve()
+    # this file lives in ml/, models live in ml/models
+    return Path(__file__).resolve().parent / "models"
 
-    search_dirs = [
-        base / "batter" / prop,
-        base / "pitcher" / prop,
-        base / prop,
-    ]
+def _prop_folders(prop: str) -> list[Path]:
+    root = _models_root()
+    return [root / "batter" / prop, root / "pitcher" / prop, root / prop]
 
-    # Precise filenames we’ll try first
-    exact_names = []
-    if feature_tag:
-        exact_names += [
-            f"features_{prop}_{feature_tag}.json",
-            f"{prop}_features_{feature_tag}.json",
-        ]
-    exact_names += [
-        f"{prop}_features.json",
-        f"features_{prop}.json",
-        "features.json",
-    ]
 
-    tried = []
+def _models_root() -> Path:
+    """
+    Resolve the models root. Honors env overrides for CI/cron.
+    """
+    env = os.getenv("MODELS_ROOT") or os.getenv("MODELS_DIR") or os.getenv("MODEL_DIR")
+    if env:
+        return Path(env).resolve()
+    # this file lives in ml/, models live in ml/models
+    return Path(__file__).resolve().parent / "models"
 
-    # 1) Try exact filenames in priority order
-    for d in search_dirs:
-        for name in exact_names:
-            p = d / name
+def _prop_folders(prop: str) -> list[Path]:
+    root = _models_root()
+    return [root / "batter" / prop, root / "pitcher" / prop, root / prop]
+
+def features_path_for(prop: str) -> Path:
+    """
+    Find the per-prop features JSON with robust fallbacks:
+      - FEATURE_META_PATH_<prop> or FEATURE_META_PATH (env overrides)
+      - <ROOT>/{batter,pitcher}/<prop>/{features_<prop>_<tag>.json | <prop>_features_<tag>.json}
+      - <ROOT>/{batter,pitcher}/<prop>/{features_<prop>.json | <prop>_features.json}
+      - fallback globs in the prop folder(s), preferring *_<tag>.json
+      - skip calibrator files
+    """
+    # explicit overrides
+    env = os.getenv(f"FEATURE_META_PATH_{prop}") or os.getenv("FEATURE_META_PATH")
+    if env:
+        p = Path(env).resolve()
+        if not p.exists():
+            raise FileNotFoundError(f"Feature meta file not found: {p}")
+        return p
+
+    tag = os.getenv("FEATURE_SET_TAG", "v1")
+    tried: list[str] = []
+
+    # exact preferred names
+    for folder in _prop_folders(prop):
+        for name in (
+            f"features_{prop}_{tag}.json",
+            f"{prop}_features_{tag}.json",
+            f"features_{prop}.json",
+            f"{prop}_features.json",
+        ):
+            p = folder / name
             tried.append(str(p))
             if p.exists():
                 return p
 
-    # 2) Fall back to globs, prefer tag if available, else pick last lexicographically
-    def pick_best(candidates):
-        if not candidates:
+    # fallback: glob in priority order, filter out calibrator files
+    def collect(folder: Path) -> list[Path]:
+        if not folder.exists():
+            return []
+        pats = (
+            f"{prop}_features_*.json",
+            f"features_{prop}_*.json",
+            "*features*.json",
+            "*.json",
+        )
+        out: list[Path] = []
+        for pat in pats:
+            tried.append(str(folder / pat))
+            out.extend(folder.glob(pat))
+        # avoid grabbing calibrator files
+        out = [x for x in out if "calibrator" not in x.name and "calibrators" not in x.name]
+        return out
+
+    def pick_best(cands: list[Path]) -> Path | None:
+        if not cands:
             return None
-        if feature_tag:
-            for c in candidates:
-                if f"_{feature_tag}." in c.name:
-                    return c
-        return sorted(candidates)[-1]
+        # 1 prefer files containing _{tag}.
+        tagged = [c for c in cands if f"_{tag}." in c.name]
+        if tagged:
+            return sorted(tagged)[-1]
+        # 2 prefer names that include the prop in a common pattern
+        pref = [c for c in cands if f"{prop}_features" in c.name or f"features_{prop}" in c.name]
+        if pref:
+            return sorted(pref)[-1]
+        # 3 otherwise, last available feature-like json
+        feats = [c for c in cands if "feature" in c.name]
+        if feats:
+            return sorted(feats)[-1]
+        return sorted(cands)[-1]
 
-    glob_patterns = [
-        f"{prop}_features_*.json",
-        f"features_{prop}_*.json",
-        "features_*.json",
-        "*.json",
-    ]
-
-    for d in search_dirs:
-        if not d.exists():
-            continue
-        matches = []
-        for pat in glob_patterns:
-            matches.extend(d.glob(pat))
-        best = pick_best(matches)
+    for folder in _prop_folders(prop):
+        best = pick_best(collect(folder))
         if best:
             return best
 
-    # 3) Nothing found → raise with helpful info
     raise FileNotFoundError(
         f"No features file for '{prop}'. Tried: {', '.join(tried)}."
     )
