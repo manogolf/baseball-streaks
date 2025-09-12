@@ -354,8 +354,24 @@ def run_for_date(game_date: str, feature_tag: str = "v1"):
                            lineup_slot=idx, is_prob_sp=False, model_tag="poisson_v1")
 
 if __name__ == "__main__":
-    # Usage:
-    #   python backend/scripts/precompute/precompute_props_daily.py 2025-09-10
-    # or default to today in ET
-    date_arg = sys.argv[1] if len(sys.argv) > 1 else datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
-    run_for_date(date_arg, feature_tag="v1")
+    import sys, os, datetime
+    try:
+        from zoneinfo import ZoneInfo  # py3.9+
+    except Exception:  # fallback if zoneinfo missing
+        ZoneInfo = None
+
+    # Use ET as the canonical baseball date when no arg is given
+    if len(sys.argv) >= 2 and sys.argv[1]:
+        date_arg = sys.argv[1]
+    else:
+        if ZoneInfo is not None:
+            now_et = datetime.datetime.now(ZoneInfo("America/New_York"))
+            date_arg = now_et.date().isoformat()
+        else:
+            # fallback to local date if zoneinfo unavailable
+            date_arg = datetime.date.today().isoformat()
+
+    feature_tag = os.getenv("FEATURE_SET_TAG", "v1")
+    print(f"[precompute] running for date={date_arg} tag={feature_tag}")
+
+    run_for_date(date_arg, feature_tag=feature_tag)
