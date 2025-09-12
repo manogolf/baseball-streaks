@@ -2,15 +2,17 @@ name: Precompute MLB Props
 
 on:
   schedule:
-    - cron: "10 10-23 * * *" # hourly at :10 from 10:00–23:00 UTC (~6am–7pm ET) – tweak as needed
+    - cron: "10 10-23 * * *" # hourly at :10 from 10:00–23:00 UTC (~6am–7pm ET)
   workflow_dispatch: {}
 
 jobs:
   precompute:
     runs-on: ubuntu-latest
     env:
+      PYTHONPATH: backend
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+      FEATURE_SET_TAG: v1
     steps:
       - uses: actions/checkout@v4
 
@@ -23,6 +25,31 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
+      # Runs for *today in ET* automatically (no date arg needed)
       - name: Precompute today (ET)
+        run: python -m scripts.precompute.precompute_props_daily
+
+      # Fail the job if nothing was written (so you notice)
+      - name: Verify rows were written for today (ET)
         run: |
-          PYTHONPATH=backend python -m scripts.precompute.precompute_props_daily
+          python - <<'PY'
+          import os, datetime
+          from zoneinfo import ZoneInfo
+          from scripts.shared.supabase_utils import supabase
+
+          DATE = datetime.datetime.now(ZoneInfo("America/New_York")).date().isoformat()
+          TAG  = os.getenv("FEATURE_SET_TAG","v1")
+
+          res = (
+              supabase
+              .from_("prop_features_precomputed")
+              .select("prop_type", count="exact")
+              .eq("game_date", DATE)
+              .eq("feature_set_tag", TAG)
+              .execute()
+          )
+          total = res.count or 0
+          print(f"[verify] game_date={DATE} tag={TAG} rows={total}")
+          if total == 0:
+              raise SystemExit(1)
+          PY
