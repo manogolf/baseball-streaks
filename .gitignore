@@ -1,4 +1,6 @@
+# ----------------
 # Logs
+# ----------------
 logs
 *.log
 npm-debug.log*
@@ -7,17 +9,20 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# ----------------
+# Node / build output
+# ----------------
 node_modules
 dist
 dist-ssr
-*.local
 dist/
 build/
 .next/
 out/
 
-
-# Editor directories and files
+# ----------------
+# Editor & OS files
+# ----------------
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -27,47 +32,69 @@ out/
 *.njsproj
 *.sln
 *.sw?
-venv/
-archive/backfillOaklandGameIds.js
+
+# ----------------
+# Python
+# ----------------
+.venv/
 __pycache__/
 *.pyc
+
+# ----------------
+# Env & lockfiles
+# ----------------
 .env
 .env.local
 .env.production
 npm-shrinkwrap.json
 
-# Ignore training data and generated files
+# ----------------
+# Project-specific ignores
+# ----------------
+archive/backfillOaklandGameIds.js
+
+# Training / data dumps
 training_data/
 data/
 *.csv
-- *.json
-+ *.json
-+ !package.json
-+ !package-lock.json
+
+# ----------------
+# Model artifacts (heavy)
+# ----------------
+# Root-level models directory (if present)
+models/
 models/*.pkl
 
-# Virtual environment
-.venv/
-
-# MacOS junk
-.DS_Store
-
-
-# Model artifacts
-models/
+# Ignore heavy binaries anywhere
+*.joblib
 *.pkl
-build/
+*.tar.gz
 
-# .gitignore
+# Outputs / local model dirs
 models_out/
+var/data/models/
+# (keep both with/without leading slash for safety)
+models_out/
+ /var/data/models/
+
+# ----------------
+# Backend training env
+# ----------------
 backend/.env.train
-models_out/
-*.joblib
-*.pkl
-*.tar.gz
-/var/data/models/
-models_out/
-*.joblib
-*.pkl
-*.tar.gz
-/var/data/models/
+
+# ----------------
+# Track feature metadata JSON under ml/models/**
+# while still ignoring binaries/calibrators
+# ----------------
+# Ignore everything under ml/models by default…
+ml/models/**
+
+# …but re-allow the directories and feature JSON files
+!ml/models/
+!ml/models/**/
+!ml/models/**/features*.json
+!ml/models/**/**_features*.json
+
+# Re-ignore calibrator JSONs if they exist
+ml/models/**/*calibrator*.json
+ml/models/**/*calibrators*.json
