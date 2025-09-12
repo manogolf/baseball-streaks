@@ -1,0 +1,28 @@
+name: Precompute MLB Props
+
+on:
+  schedule:
+    - cron: "10 10-23 * * *" # hourly at :10 from 10:00–23:00 UTC (~6am–7pm ET) – tweak as needed
+  workflow_dispatch: {}
+
+jobs:
+  precompute:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Precompute today (ET)
+        run: |
+          python backend/scripts/precompute/precompute_props_daily.py

@@ -45,6 +45,51 @@ def _get_player_name_by_id(pid: int | str) -> Optional[str]:
         pass
     return None
 
+def _ensure_game_info_fk(game_id: int, features: Dict[str, Any]) -> None:
+    """
+    Upsert a minimal row into game_info so player_props FK succeeds.
+    Uses whatever we have in features: game_date, team_id, opponent_team_id, is_home.
+    """
+    try:
+        gid = int(game_id)
+    except Exception:
+        return
+
+    game_date = str(features.get("game_date") or "")[:10] or None
+    team_id = features.get("team_id")
+    opp_id = features.get("opponent_team_id") or features.get("opponent_encoded")
+    is_home = features.get("is_home")
+
+    home_team_id = None
+    away_team_id = None
+    try:
+        if isinstance(is_home, (bool, int)):
+            if bool(is_home):
+                home_team_id = int(team_id) if team_id is not None else None
+                away_team_id = int(opp_id) if opp_id is not None else None
+            else:
+                home_team_id = int(opp_id) if opp_id is not None else None
+                away_team_id = int(team_id) if team_id is not None else None
+    except Exception:
+        home_team_id = home_team_id or None
+        away_team_id = away_team_id or None
+
+    row = {"game_id": gid}
+    if game_date:
+        row["game_date"] = game_date
+    if home_team_id is not None:
+        row["home_team_id"] = home_team_id
+    if away_team_id is not None:
+        row["away_team_id"] = away_team_id
+
+    # drop Nones
+    row = {k: v for k, v in row.items() if v is not None}
+
+    try:
+        supabase.from_("game_info").upsert(row, on_conflict="game_id").execute()
+    except Exception:
+        # If this fails (e.g., stricter NOT NULLs), leave it to the caller to surface the error.
+        pass
 
 # --- duplicate check: mirror DB UNIQUE(prop_source, player_id, game_id, prop_type, prop_value) ---
 def _dup_exists(
@@ -201,6 +246,12 @@ async def add_prop(req: Request):
 
     # Insert (upsert against the DB unique columns)
     try:
+        # Preflight: ensure game_info exists so the FK passes
+        try:
+            _ensure_game_info_fk(game_id=game_id, features=features)
+        except Exception:
+            pass
+
         res = (
             supabase.from_(TABLE)
             .upsert(
@@ -213,7 +264,33 @@ async def add_prop(req: Request):
             raise HTTPException(status_code=500, detail=f"DB insert failed: {res.error}")
         return {"saved": True, "row": row_clean}
     except PostgrestAPIError as e:  # pragma: no cover
-        text = f"{getattr(e, 'message', '')} {getattr(e, 'details', '')}"
+        msg = getattr(e, "message", "") or ""
+        code = getattr(e, "code", "") or ""
+        details = getattr(e, "details", "") or ""
+        text = f"{msg} {details}".strip()
+
+        # Duplicate?
         if "duplicate" in text.lower() or "unique" in text.lower():
             return {"saved": False, "duplicate": True}
+
+        # FK to game_info missing? Try to backfill once, then retry insert.
+        if code == "23503" or "player_props_game_id_fkey" in text:
+            try:
+                _ensure_game_info_fk(game_id=game_id, features=features)
+                res2 = (
+                    supabase.from_(TABLE)
+                    .upsert(
+                        row_clean,
+                        on_conflict="prop_source,player_id,game_id,prop_type,prop_value",
+                    )
+                    .execute()
+                )
+                if getattr(res2, "error", None):
+                    raise HTTPException(status_code=500, detail=f"DB insert failed: {res2.error}")
+                return {"saved": True, "row": row_clean, "backfilled_game_info": True}
+            except Exception:
+                # fall through to raise original
+                pass
+
+        # Anything else: bubble up
         raise

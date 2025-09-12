@@ -35,6 +35,7 @@ app.add_middleware(
 )
 
 # 5) Import routers AFTER app/env are set up
+from app.routes.api.get_game_pk import router as get_game_pk_router
 from app.routes.api.prepare_prop import router as prepare_router
 from app.routes.api.predict import router as predict_router
 from app.routes.api.players import router as players_router
@@ -48,7 +49,7 @@ from app.routes.api.props import router as props_router
 # from app.routes.api.score_prop import router as score_prop_router
 
 # 6) Register routes
-
+app.include_router(get_game_pk_router, prefix="/api")
 app.include_router(prepare_router, prefix="/api")
 app.include_router(predict_router, prefix="/api")
 app.include_router(players_router, prefix="/api")

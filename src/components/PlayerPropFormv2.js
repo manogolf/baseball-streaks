@@ -34,6 +34,15 @@ async function postApi(path, body) {
   return res.json();
 }
 
+async function requestPrediction({ prop_type, player_id, game_id }) {
+  return postApi("/api/predict", {
+    prop_type: String(prop_type).toLowerCase().trim(),
+    player_id: Number(player_id),
+    game_id: Number(game_id),
+    features: {}, // backend merges precomputed here
+  });
+}
+
 // ----- prepare → predict (snake_case + team_abbr uppercased) -----
 async function prepareThenPredict({
   player_id, // number|string (required)
@@ -205,29 +214,28 @@ export default function PlayerPropFormV2() {
 
     setLoading(true);
     try {
-      const { features, probability, commit_token } = await prepareThenPredict({
-        player_id: Number(playerId),
-        // team_id: <omit; backend accepts team_abbr>
-        team_abbr: (teamAbbr || "").toUpperCase(),
-        game_date: gameDate,
-        prop_type: propType,
-        prop_value: Number(propValue),
-        over_under: overUnder,
+      const pid = Number(playerId);
+      const prop = String(propType).toLowerCase().trim();
+
+      // Resolve game_id for this player/date using your existing backend route
+      // (supports common key variants returned by older handlers)
+      const g = await getApi("/api/getGamePk", {
+        player_id: pid,
+        date: gameDate,
+      });
+      const gid = Number(g?.game_id ?? g?.gamePk ?? g?.game_pk);
+      if (!gid)
+        throw new Error("Could not resolve game_id for this player/date.");
+
+      // Fast path: backend pulls precomputed features by (prop, pid, gid)
+      const pred = await requestPrediction({
+        prop_type: prop,
+        player_id: pid,
+        game_id: gid,
       });
 
-      // reflect canonicalizations from backend
-      if (features?.player_id) setPlayerId(String(features.player_id));
-      if (features?.team) {
-        setTeamAbbr(String(features.team).toUpperCase());
-        setTeamTouched(false);
-      }
-
-      setPrepPreview({
-        sample: Object.fromEntries(Object.entries(features).slice(0, 12)),
-      });
-
-      setPrediction({ probability });
-      setCommitToken(commit_token || null);
+      setPrediction({ probability: pred.probability });
+      setCommitToken(pred.commit_token || null);
     } catch (err) {
       console.error("[Props V2] predict error:", err);
       setError(err.message || "Unknown error");

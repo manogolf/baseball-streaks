@@ -1,4 +1,4 @@
-#  backend/app/routes/api/predict.py
+# backend/app/routes/api/predict.py
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
@@ -7,111 +7,127 @@ from typing import Any, Dict, List, Optional
 from pathlib import Path
 import os, json, joblib
 
-from app.security.commit_token import mint_commit_token
+from app.security.commit_token import mint_commit_token, verify_commit_token
 from app.config import COMMIT_TOKEN_SECRET, COMMIT_TOKEN_TTL
+
+try:
+    from backend.scripts.shared.supabase_utils import supabase
+except Exception:
+    try:
+        from scripts.shared.supabase_utils import supabase  # fallback
+    except Exception:
+        supabase = None
 
 router = APIRouter()
 
 # -----------------------------
-# Models/Features discovery
+# Models/Features discovery (no ml.* imports)
 # -----------------------------
 def _models_root() -> Path:
-    """
-    Single source of truth for model + feature discovery.
-    Priority:
-      1) MODELS_ROOT
-      2) MODELS_DIR or MODEL_DIR
-      3) repo default: <repo>/ml/models
-    """
     env = os.getenv("MODELS_ROOT") or os.getenv("MODELS_DIR") or os.getenv("MODEL_DIR")
     if env:
         return Path(env).resolve()
-    # backend/app/routes/api/predict.py -> parents[4] is repo root
     return Path(__file__).resolve().parents[4] / "ml" / "models"
 
 def _prop_folders(prop: str) -> List[Path]:
-    """
-    Candidate folders that may contain models/features for a prop.
-    """
     root = _models_root()
-    return [
-        root / "batter" / prop,
-        root / "pitcher" / prop,
-        root / prop,  # last-resort
-    ]
+    return [root / "batter" / prop, root / "pitcher" / prop, root / prop]
 
 def _features_path_for(prop: str) -> Path:
-    """
-    Per-prop features JSON. Only honors FEATURE_META_PATH_<prop>.
-    Then searches the prop folder for common names or any *features*.json.
-    """
-    # 🔒 Only per-prop override is allowed (prevents 'hits' bleed-over)
-    env = os.getenv(f"FEATURE_META_PATH_{prop}")
+    # env override
+    env = os.getenv(f"FEATURE_META_PATH_{prop}") or os.getenv("FEATURE_META_PATH")
     if env:
         p = Path(env).resolve()
         if not p.exists():
             raise FileNotFoundError(f"Feature meta file not found: {p}")
         return p
 
-    root = _models_root()
-    folder = root / "batter" / prop
+    tag = os.getenv("FEATURE_SET_TAG", "v1")
 
-    # Preferred full-name conventions
-    cands = [
-        folder / f"features_{prop}_v1.json",
-        folder / f"{prop}_features_v1.json",
-    ]
-    for p in cands:
+    # prefer "<prop>_features_<tag>.json" then "<prop>_features.json"
+    for folder in _prop_folders(prop):
+        p = folder / f"{prop}_features_{tag}.json"
+        if p.exists():
+            return p
+        p = folder / f"{prop}_features.json"
         if p.exists():
             return p
 
-    # Legacy / abbreviated fallbacks (pick most recent *features*.json)
-    if folder.exists():
-        any_json = sorted(folder.glob("*features*.json"))
-        if any_json:
-            any_json.sort(key=lambda x: x.stat().st_mtime, reverse=True)
-            return any_json[0]
+    # fallback: globs, prefer files containing _{tag}
+    def pick_best(cands: List[Path]) -> Optional[Path]:
+        if not cands:
+            return None
+        if tag:
+            for c in cands:
+                if f"_{tag}." in c.name:
+                    return c
+        return sorted(cands)[-1]
+
+    tried: List[str] = []
+    glob_patterns = [
+        f"{prop}_features_*.json",
+        f"features_{prop}_*.json",
+        "*features*.json",
+        "*.json",
+    ]
+
+    for folder in _prop_folders(prop):
+        if not folder.exists():
+            continue
+        matches: List[Path] = []
+        for pat in glob_patterns:
+            tried.append(str(folder / pat))
+            matches.extend(folder.glob(pat))
+        best = pick_best(matches)
+        if best:
+            return best
 
     raise FileNotFoundError(
-        f"No features file for '{prop}'. Looked in {folder}. "
-        f"Set FEATURE_META_PATH_{prop} to override."
+        f"No features file for '{prop}'. Tried: {', '.join(tried)} "
+        f"(or set FEATURE_META_PATH[_{prop}])."
     )
 
 def _model_path_for(prop: str) -> Path:
-    """
-    Per-prop model path. Honors only MODEL_FILE_<prop>.
-    Then looks in <ROOT>/batter/<prop> for a sensible joblib.
-    """
-    env = os.getenv(f"MODEL_FILE_{prop}")
+    env = os.getenv(f"MODEL_FILE_{prop}") or os.getenv("MODEL_FILE")
     if env:
         p = Path(env).resolve()
         if p.exists():
             return p
-        raise FileNotFoundError(f"MODEL_FILE_{prop} not found: {p}")
-
-    folder = _models_root() / "batter" / prop
-    # Preferred full-name convention
-    cands = [
-        folder / f"{prop}_poisson_v1.joblib",
-    ]
-    for p in cands:
-        if p.exists():
-            return p
-
-    # Fallback: most-recent *.joblib in the prop folder
-    if folder.exists():
-        joblibs = sorted(folder.glob("*.joblib"))
-        if joblibs:
-            joblibs.sort(key=lambda x: x.stat().st_mtime, reverse=True)
-            return joblibs[0]
-
+        raise FileNotFoundError(f"MODEL_FILE for '{prop}' not found: {p}")
+    for folder in _prop_folders(prop):
+        preferred = folder / f"{prop}_poisson_v1.joblib"
+        if preferred.exists():
+            return preferred
+        if folder.exists():
+            joblibs = [j for j in folder.glob("*.joblib") if j.is_file()]
+            if joblibs:
+                joblibs.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+                return joblibs[0]
+    tried = []
+    for folder in _prop_folders(prop):
+        tried.append(str(folder / f"{prop}_poisson_v1.joblib"))
+        tried.append(str(folder / "*.joblib"))
     raise FileNotFoundError(
-        f"No model file for '{prop}' in {folder}. "
-        f"Set MODEL_FILE_{prop} to override."
+        f"No model file for '{prop}'. Tried {', '.join(tried)} (or set MODEL_FILE[_{prop}])."
     )
 
 # -----------------------------
-# Feature utilities
+# API models
+# -----------------------------
+class PredictInput(BaseModel):
+    prop_type: str
+    features: Dict[str, Any] = {}
+    player_id: Optional[int] = None
+    team_id: Optional[int] = None
+    game_id: Optional[int] = None
+    # allow the client to pass line + context for commit
+    prop_value: Optional[float] = None      # e.g., 0.5
+    over_under: Optional[str] = None        # "over" | "under"
+    team_abbr: Optional[str] = None         # e.g., "NYY"
+    game_date: Optional[str] = None         # "YYYY-MM-DD"
+
+# -----------------------------
+# Feature utilities (embedded)
 # -----------------------------
 def _load_feature_names(prop: str) -> List[str]:
     """
@@ -138,6 +154,34 @@ def _load_feature_names(prop: str) -> List[str]:
     else:
         raise ValueError(f"Unsupported feature meta format in {p}")
 
+def _fetch_precomputed_features(prop_type: str, player_id: int | str, game_id: int | str, tag: str = "v1"):
+    """
+    Return the precomputed features dict for (prop_type, player_id, game_id, tag),
+    or None if not found. Works with either 'features_json' or 'features' column.
+    """
+    if supabase is None:
+        return None
+    try:
+        res = (
+            supabase
+            .from_("prop_features_precomputed")
+            .select("features, features_json")
+            .eq("prop_type", prop_type)
+            .eq("player_id", str(player_id))
+            .eq("game_id", str(game_id))
+            .eq("feature_set_tag", tag)
+            .limit(1)
+            .execute()
+        )
+        rows = getattr(res, "data", None) or []
+        if not rows:
+            return None
+        row = rows[0]
+        feats = row.get("features_json") or row.get("features")
+        return feats if isinstance(feats, dict) else None
+    except Exception:
+        return None
+
 def _coerce_scalar(v: Any) -> float:
     if v is None:
         return 0.0
@@ -161,17 +205,6 @@ def _vector_from_features(features: Dict[str, Any], ordered_names: List[str]) ->
     preserving the exact order expected by training.
     """
     return [_coerce_scalar(features.get(name)) for name in ordered_names]
-
-# -----------------------------
-# API models
-# -----------------------------
-class PredictInput(BaseModel):
-    prop_type: str
-    features: Dict[str, Any]
-    # Optional legacy fields tolerated but unused here
-    player_id: Optional[int] = None
-    team_id: Optional[int] = None
-    game_id: Optional[int] = None
 
 # -----------------------------
 # Routes
@@ -199,32 +232,44 @@ async def predict(req: Request) -> Dict[str, Any]:
     payload = await req.json()
     inp = PredictInput(**payload)
 
-    # Resolve artifacts
+    # 1) Load per-prop feature names
     try:
         feature_names = _load_feature_names(inp.prop_type)
     except Exception as e:
         raise HTTPException(500, f"Failed to load features: {e}")
 
+    # 2) Fast path: pull precomputed features if we have ids
+    tag = os.getenv("FEATURE_SET_TAG", "v1")
+    pid_attr = getattr(inp, "player_id", None)
+    gid_attr = getattr(inp, "game_id", None)
+    pre = None
+    if pid_attr is not None and gid_attr is not None:
+        pre = _fetch_precomputed_features(inp.prop_type, pid_attr, gid_attr, tag=tag)
+
+    # Merge order: precomputed base, then request overrides
+    merged_features: Dict[str, Any] = {}
+    if isinstance(pre, dict):
+        merged_features.update(pre)
+    if isinstance(inp.features, dict):
+        merged_features.update(inp.features)
+
+    # 3) Build zero-filled features for model inference
+    missing_features = [name for name in feature_names if name not in merged_features]
+    model_features = {name: 0 for name in feature_names}
+    model_features.update(merged_features)
+    X = [_vector_from_features(model_features, feature_names)]
+
+    # 4) Resolve/load model
     try:
         model_path = _model_path_for(inp.prop_type)
     except Exception as e:
         raise HTTPException(404, f"Model file not found for prop_type '{inp.prop_type}': {e}")
-
-    # Fill missing with zeros for model input; also capture what's actually missing
-    orig = dict(inp.features or {})
-    missing_features = [name for name in feature_names if name not in orig]
-    base = {name: 0 for name in feature_names}
-    base.update(orig)
-
-    X = [_vector_from_features(base, feature_names)]
-
-    # Load model
     try:
         model = joblib.load(str(model_path))
     except Exception as e:
         raise HTTPException(500, f"Failed to load model: {e}")
-
-    # Predict
+    
+    # 5) Predict
     try:
         if hasattr(model, "predict_proba"):
             proba = float(model.predict_proba(X)[0][1])
@@ -236,14 +281,73 @@ async def predict(req: Request) -> Dict[str, Any]:
     except Exception as e:
         raise HTTPException(500, f"Inference failed: {e}")
 
-    # Mint commit token (carry full prepared payload so /props/add can insert)
+    # --- build a compact payload for /api/props/add ---
+    pid = int(getattr(inp, "player_id", 0) or 0)
+    gid = int(getattr(inp, "game_id", 0) or 0)
+    team_id_inp = getattr(inp, "team_id", None)
+    game_date_inp = getattr(inp, "game_date", None)
+    prop_value_inp = getattr(inp, "prop_value", None)
+    over_under_inp = getattr(inp, "over_under", None)
+    team_abbr_inp = getattr(inp, "team_abbr", None)
+
+    # team_id: prefer provided, else derive from latest team (safe fallback)
+    team_id = None
+    if team_id_inp is not None:
+        try:
+            team_id = int(team_id_inp)
+        except Exception:
+            team_id = None
+    if team_id is None and pid:
+        try:
+            from scripts.shared.prop_utils import get_latest_team_for_player  # lazy import
+            _, team_id = get_latest_team_for_player(pid)  # (abbr, id)
+        except Exception:
+            team_id = None
+
+    # normalize game_date
+    game_date = (str(game_date_inp or "").strip() or None)
+    if game_date:
+        game_date = game_date[:10]  # YYYY-MM-DD
+
+    token_features = {
+        "player_id": pid,
+        "team_id": team_id,
+        "game_id": gid,
+        "game_date": game_date,
+        "prop_type": inp.prop_type,
+        "prop_value": float(prop_value_inp) if prop_value_inp is not None else None,
+        "over_under": (str(over_under_inp or "over")),
+        "team": (str(team_abbr_inp or "").upper() or None),
+        # helpful context
+        "probability": float(proba),
+    }
+
+    # Mint token with these features (NOT the numeric vector)
     commit_token = mint_commit_token(
         prob=float(proba),
         prop_type=inp.prop_type,
-        features=base,
+        features=token_features,
         ttl_seconds=COMMIT_TOKEN_TTL,
         secret=COMMIT_TOKEN_SECRET,
     )
+
+    # normalize to str
+    if isinstance(commit_token, dict):
+        commit_token = commit_token.get("token") or commit_token.get("commit_token")
+    if isinstance(commit_token, bytes):
+        commit_token = commit_token.decode("utf-8")
+    if not isinstance(commit_token, str) or not commit_token:
+        raise HTTPException(500, "mint_commit_token returned unexpected type")
+
+    # verify with the SAME secret
+    try:
+        verify_commit_token(commit_token, secret=COMMIT_TOKEN_SECRET)
+    except TypeError:
+        import app.security.commit_token as ct
+        setattr(ct, "COMMIT_TOKEN_SECRET", COMMIT_TOKEN_SECRET)
+        verify_commit_token(commit_token)
+    except Exception as e:
+        raise HTTPException(500, f"Internal token round-trip failed: {e}")
 
     return {
         "prop_type": inp.prop_type,
