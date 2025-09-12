@@ -25,20 +25,27 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
-      - name: Debug env presence (non-secret)
-        run: |
-          python - <<'PY'
-          import os
-          print("SUPABASE_URL set? ", bool(os.getenv("SUPABASE_URL")))
-          print("Key present?       ", bool(os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")))
-          PY
+          - name: Debug env presence (non-secret)
+          run: |
+            python - <<'PY'
+            import os
+            got_url = bool(os.getenv("SUPABASE_URL"))
+            got_key = bool(os.getenv("SUPABASE_KEY")
+                           or os.getenv("SUPABASE_SERVICE_ROLE")
+                           or os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
+            which = ("SUPABASE_KEY" if os.getenv("SUPABASE_KEY") else
+                     "SUPABASE_SERVICE_ROLE" if os.getenv("SUPABASE_SERVICE_ROLE") else
+                     "SUPABASE_SERVICE_ROLE_KEY" if os.getenv("SUPABASE_SERVICE_ROLE_KEY") else "none")
+            print("SUPABASE_URL set? ", got_url)
+            print("Key present?       ", got_key, "via", which)
+            PY
 
       # Runs for *today in ET* automatically (no date arg needed)
       - name: Precompute today (ET)
         env:
           PYTHONPATH: backend
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }} # <-- pass this one
           FEATURE_SET_TAG: v1
         run: python -m scripts.precompute.precompute_props_daily
 
