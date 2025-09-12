@@ -25,4 +25,4 @@ jobs:
 
       - name: Precompute today (ET)
         run: |
-          python backend/scripts/precompute/precompute_props_daily.py
+          PYTHONPATH=backend python -m scripts.precompute.precompute_props_daily
