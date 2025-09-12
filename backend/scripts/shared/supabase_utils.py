@@ -1,34 +1,46 @@
 # backend/scripts/shared/supabase_utils.py
+from __future__ import annotations
 
 import os
 from functools import lru_cache
 
-# Optional for local dev; harmless in prod
+# Optional for local dev; harmless in CI/Prod
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except Exception:
     pass
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+
+def _load_env() -> tuple[str, str]:
+    """
+    Resolve Supabase credentials from environment.
+    Accepts SUPABASE_KEY, SUPABASE_SERVICE_ROLE, or SUPABASE_SERVICE_ROLE_KEY.
+    """
+    url = os.getenv("SUPABASE_URL")
+    key = (
+        os.getenv("SUPABASE_KEY")
+        or os.getenv("SUPABASE_SERVICE_ROLE")
+        or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    )
+    if not url or not key:
+        raise RuntimeError(
+            "Missing Supabase env. Set SUPABASE_URL and SUPABASE_KEY "
+            "(or SUPABASE_SERVICE_ROLE / SUPABASE_SERVICE_ROLE_KEY)."
+        )
+    return url, key
+
 
 @lru_cache(maxsize=1)
 def get_supabase():
     """
-    Lazily create a single Supabase client using the SERVICE ROLE key.
-    Raises if required env vars are missing.
+    Lazily create a single Supabase client. Raises if env is missing.
     """
-    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
-        raise EnvironmentError("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")
+    from supabase import create_client  # import here to make errors clearer
+    url, key = _load_env()
+    return create_client(url, key)
 
-    from supabase import create_client
-    return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-# Back-compat for older code: still allow `from ... import supabase`
-# (This will create the client at import time; safe on server where env is set.)
-try:
-    supabase = get_supabase()
-except Exception:
-    # If env isn't set in some contexts, leave it None to avoid crashing on import.
-    supabase = None
+# Export a live client at import time so callers can:
+#   from scripts.shared.supabase_utils import supabase
+supabase = get_supabase()
