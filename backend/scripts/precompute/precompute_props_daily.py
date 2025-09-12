@@ -7,6 +7,9 @@ import requests
 from zoneinfo import ZoneInfo
 
 from scripts.shared.supabase_utils import supabase
+from scripts.shared.supabase_utils import get_supabase
+
+
 from scripts.shared.team_name_map import get_team_info_by_id
 from ml.feature_utils import load_feature_names
 import logging
@@ -300,7 +303,7 @@ def upsert_row(prop: str,
 
     # drop nulls
     row = {k: v for k, v in row.items() if v is not None}
-    supabase.from_("prop_features_precomputed").upsert(
+    get_supabase().from_("prop_features_precomputed").upsert(
         row,
         on_conflict="prop_type,player_id,game_id,feature_set_tag"
     ).execute()

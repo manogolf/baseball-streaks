@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 
+
 # Optional for local dev; harmless in CI/Prod
 try:
     from dotenv import load_dotenv
