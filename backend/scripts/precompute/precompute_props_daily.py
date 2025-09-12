@@ -41,7 +41,7 @@ def boxscore(game_pk: int) -> Dict[str, Any]:
 
 def iso_to_et(utc_iso: str | None) -> str | None:
     if not utc_iso: return None
-    dt_utc = datetime.fromisoformat(utc_iso.replace("Z","+00:00")).astimezone(timezone.utc)
+    dt_utc = datetime.datetime.fromisoformat(utc_iso.replace("Z", "+00:00")).astimezone(datetime.timezone.utc)
     dt_et = dt_utc.astimezone(ZoneInfo("America/New_York"))
     return dt_et.replace(microsecond=0).isoformat()
 
