@@ -2,17 +2,12 @@ name: Precompute MLB Props
 
 on:
   schedule:
-    - cron: "10 10-23 * * *" # hourly at :10 from 10:00–23:00 UTC (~6am–7pm ET)
+    - cron: "10 10-23 * * *" # hourly :10 (10:00–23:00 UTC)
   workflow_dispatch: {}
 
 jobs:
   precompute:
     runs-on: ubuntu-latest
-    env:
-      PYTHONPATH: backend
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE }}
-      FEATURE_SET_TAG: v1
     steps:
       - uses: actions/checkout@v4
 
@@ -25,51 +20,37 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
-          - name: Debug env presence (non-secret)
-          run: |
-            python - <<'PY'
-            import os
-            got_url = bool(os.getenv("SUPABASE_URL"))
-            got_key = bool(os.getenv("SUPABASE_KEY")
-                           or os.getenv("SUPABASE_SERVICE_ROLE")
-                           or os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
-            which = ("SUPABASE_KEY" if os.getenv("SUPABASE_KEY") else
-                     "SUPABASE_SERVICE_ROLE" if os.getenv("SUPABASE_SERVICE_ROLE") else
-                     "SUPABASE_SERVICE_ROLE_KEY" if os.getenv("SUPABASE_SERVICE_ROLE_KEY") else "none")
-            print("SUPABASE_URL set? ", got_url)
-            print("Key present?       ", got_key, "via", which)
-            PY
+      - name: Debug env presence (non-secret)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: >
+          python -c "import os;
+          print('SUPABASE_URL set? ', bool(os.getenv('SUPABASE_URL')));
+          print('Key present?       ', bool(os.getenv('SUPABASE_SERVICE_ROLE_KEY')))"
 
-      # Runs for *today in ET* automatically (no date arg needed)
       - name: Precompute today (ET)
         env:
           PYTHONPATH: backend
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }} # <-- pass this one
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           FEATURE_SET_TAG: v1
         run: python -m scripts.precompute.precompute_props_daily
 
-      # Fail the job if nothing was written (so you notice)
       - name: Verify rows were written for today (ET)
-        run: |
-          python - <<'PY'
-          import os, datetime
-          from zoneinfo import ZoneInfo
-          from scripts.shared.supabase_utils import supabase
-
-          DATE = datetime.datetime.now(ZoneInfo("America/New_York")).date().isoformat()
-          TAG  = os.getenv("FEATURE_SET_TAG","v1")
-
-          res = (
-              supabase
-              .from_("prop_features_precomputed")
-              .select("prop_type", count="exact")
-              .eq("game_date", DATE)
-              .eq("feature_set_tag", TAG)
-              .execute()
-          )
-          total = res.count or 0
-          print(f"[verify] game_date={DATE} tag={TAG} rows={total}")
-          if total == 0:
-              raise SystemExit(1)
-          PY
+        env:
+          PYTHONPATH: backend
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FEATURE_SET_TAG: v1
+        run: >
+          python -c "import os, sys, datetime;
+          from zoneinfo import ZoneInfo;
+          from scripts.shared.supabase_utils import get_supabase;
+          DATE=str(datetime.datetime.now(ZoneInfo('America/New_York')).date());
+          TAG=os.getenv('FEATURE_SET_TAG','v1');
+          res=(get_supabase().from_('prop_features_precomputed')
+              .select('prop_type', count='exact')
+              .eq('game_date', DATE).eq('feature_set_tag', TAG).execute());
+          total=res.count or 0; print(f'[verify] game_date={DATE} tag={TAG} rows={total}');
+          sys.exit(0 if total>0 else 1)"
