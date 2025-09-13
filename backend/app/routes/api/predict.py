@@ -403,33 +403,34 @@ async def predict(req: Request) -> Dict[str, Any]:
     except Exception as e:
         raise HTTPException(500, f"Inference failed: {e}")
 
-    # --- build a compact payload for /api/props/add ---
-    pid = int(getattr(inp, "player_id", 0) or 0)
-    gid = int(getattr(inp, "game_id", 0) or 0)
-    team_id_inp = getattr(inp, "team_id", None)
-    game_date_inp = getattr(inp, "game_date", None)
-    prop_value_inp = getattr(inp, "prop_value", None)
-    over_under_inp = getattr(inp, "over_under", None)
-    team_abbr_inp = getattr(inp, "team_abbr", None)
+    # --- build token payload from merged features first (so /props/add has what it needs) ---
+    f = merged_features  # shorthand
 
-    # team_id: prefer provided, else derive from latest team (safe fallback)
-    team_id = None
-    if team_id_inp is not None:
-        try:
-            team_id = int(team_id_inp)
-        except Exception:
-            team_id = None
-    if team_id is None and pid:
-        try:
-            from scripts.shared.prop_utils import get_latest_team_for_player  # lazy import
-            _, team_id = get_latest_team_for_player(pid)  # (abbr, id)
-        except Exception:
-            team_id = None
+    def _to_int(x):
+        try: return int(x)
+        except: return None
 
-    # normalize game_date
-    game_date = (str(game_date_inp or "").strip() or None)
-    if game_date:
+    def _to_float(x):
+        try: return float(x)
+        except: return None
+
+    pid = _to_int(f.get("player_id")) or _to_int(getattr(inp, "player_id", None)) or 0
+    gid = _to_int(f.get("game_id"))   or _to_int(getattr(inp, "game_id", None))   or 0
+    team_id = _to_int(f.get("team_id")) or _to_int(getattr(inp, "team_id", None))
+
+    game_date = f.get("game_date") or getattr(inp, "game_date", None)
+    if isinstance(game_date, str):
         game_date = game_date[:10]  # YYYY-MM-DD
+
+    prop_value = f.get("prop_value")
+    if prop_value is None:
+        prop_value = f.get("line")  # legacy alias
+    prop_value = _to_float(prop_value)
+
+    over_under = (f.get("over_under") or getattr(inp, "over_under", None) or "over")
+
+    team_abbr = f.get("team") or getattr(inp, "team_abbr", None)
+    team_abbr = (str(team_abbr).upper() if team_abbr else None)
 
     token_features = {
         "player_id": pid,
@@ -437,11 +438,18 @@ async def predict(req: Request) -> Dict[str, Any]:
         "game_id": gid,
         "game_date": game_date,
         "prop_type": inp.prop_type,
-        "prop_value": float(prop_value_inp) if prop_value_inp is not None else None,
-        "over_under": (str(over_under_inp or "over")),
-        "team": (str(team_abbr_inp or "").upper() or None),
-        # helpful context
+        "prop_value": prop_value,
+        "over_under": over_under,
+        "team": team_abbr,
+        # useful context (optional in props/add)
         "probability": float(proba),
+        "is_home": f.get("is_home"),
+        "opponent_encoded": f.get("opponent_encoded"),
+        "game_time": f.get("game_time"),
+        "game_day_of_week": f.get("game_day_of_week"),
+        "time_of_day_bucket": f.get("time_of_day_bucket"),
+        "opponent": f.get("opponent"),
+        "starting_pitcher_id": f.get("starting_pitcher_id"),
     }
 
     # Mint token with these features (NOT the numeric vector)
