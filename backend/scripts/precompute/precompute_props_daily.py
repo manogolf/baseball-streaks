@@ -339,21 +339,21 @@ def run_for_date(game_date: str, feature_tag: str = "v1"):
         for sp, team_id, opp_id in [(sp_home, home, away), (sp_away, away, home)]:
             if not sp: continue
             for prop in PITCHER_PROPS:
-                feats = build_features_for_pitcher(prop, sp, team_id, opp_id, gid, g["game_date"])
-                upsert_row(prop, sp, gid, g["game_date"], feature_tag, feats,
+                feats = build_features_for_pitcher(prop, sp, team_id, opp_id, gid, game_date)
+                upsert_row(prop, sp, gid, game_date, feature_tag, feats,
                            lineup_slot=None, is_prob_sp=True, model_tag="poisson_v1")
 
         # Hitter props (starters: slots 1–9)
         for idx, pid in enumerate(home_lineup, start=1):
             for prop in BATTER_PROPS:
-                feats = build_features_for_batter(prop, pid, home, away, sp_away, gid, g["game_date"])
-                upsert_row(prop, pid, gid, g["game_date"], feature_tag, feats,
+                feats = build_features_for_batter(prop, pid, home, away, sp_away, gid, game_date)
+                upsert_row(prop, pid, gid, game_date, feature_tag, feats,
                            lineup_slot=idx, is_prob_sp=False, model_tag="poisson_v1")
 
         for idx, pid in enumerate(away_lineup, start=1):
             for prop in BATTER_PROPS:
-                feats = build_features_for_batter(prop, pid, away, home, sp_home, gid, g["game_date"])
-                upsert_row(prop, pid, gid, g["game_date"], feature_tag, feats,
+                feats = build_features_for_batter(prop, pid, away, home, sp_home, gid, game_date)
+                upsert_row(prop, pid, gid, game_date, feature_tag, feats,
                            lineup_slot=idx, is_prob_sp=False, model_tag="poisson_v1")
 
 if __name__ == "__main__":

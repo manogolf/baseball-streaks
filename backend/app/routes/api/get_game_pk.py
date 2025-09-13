@@ -1,45 +1,80 @@
+# backend/app/routes/api/get_game_pk.py
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+import os
 from typing import Optional
 
-# Supabase client
-try:
-    from backend.scripts.shared.supabase_utils import supabase
-except Exception:
-    try:
-        from scripts.shared.supabase_utils import supabase  # fallback if PYTHONPATH differs
-    except Exception:
-        supabase = None
+from fastapi import APIRouter, HTTPException, Query
+
+from scripts.shared.supabase_utils import get_supabase
+from scripts.shared.prop_utils import get_latest_team_for_player  # returns (abbr, team_id)
 
 router = APIRouter()
 
 @router.get("/getGamePk")
-async def get_game_pk(player_id: int, date: str, feature_tag: str = "v1"):
+async def get_game_pk(
+    player_id: int = Query(..., description="MLB player_id"),
+    date: str = Query(..., description="Game date in YYYY-MM-DD (ET)"),
+    tag: Optional[str] = Query(None, description="feature set tag (default env FEATURE_SET_TAG or v1)"),
+):
     """
-    Return the game_id ('gamePk') for a player on a given date by looking up
-    precomputed features. This matches what /api/predict (fast path) expects.
-    """
-    if supabase is None:
-        raise HTTPException(500, "Supabase client not available on server.")
+    Resolve game_id (game_pk) for a player and date.
 
-    # Prefer newest row if multiple exist
+    Tries:
+      1) precomputed rows (prop_features_precomputed)
+      2) fallback via player's latest team -> game_info on that date
+    """
+    supa = get_supabase()
+    tag = tag or os.getenv("FEATURE_SET_TAG", "v1")
+
+    # 1) Fast path: any precomputed row for that player/date/tag
     try:
-        res = (
-            supabase
-            .from_("prop_features_precomputed")
+        r = (
+            supa.from_("prop_features_precomputed")
             .select("game_id")
             .eq("player_id", str(player_id))
             .eq("game_date", date)
-            .eq("feature_set_tag", feature_tag)
+            .eq("feature_set_tag", tag)
             .limit(1)
             .execute()
         )
-    except Exception as e:
-        raise HTTPException(500, f"Supabase error: {e}")
+        rows = getattr(r, "data", []) or []
+        if rows and rows[0].get("game_id"):
+            return {"game_id": int(rows[0]["game_id"]), "source": "precomputed"}
+    except Exception:
+        # fall through to fallback
+        pass
 
-    rows = getattr(res, "data", None) or []
-    if not rows or not rows[0].get("game_id"):
-        raise HTTPException(404, f"No precomputed features for player_id={player_id} on {date} (tag={feature_tag}).")
+    # 2) Fallback: use player's latest team, then find the team's game in game_info
+    team_id = None
+    try:
+        _, team_id = get_latest_team_for_player(int(player_id))
+    except Exception:
+        team_id = None
 
-    return {"game_id": int(rows[0]["game_id"])}
+    if team_id:
+        try:
+            r2 = (
+                supa.from_("game_info")
+                .select("game_id,home_team_id,away_team_id")
+                .eq("game_date", date)
+                .or_(f"home_team_id.eq.{team_id},away_team_id.eq.{team_id}")
+                .order("game_id", desc=True)
+                .limit(1)
+                .execute()
+            )
+            rows2 = getattr(r2, "data", []) or []
+            if rows2 and rows2[0].get("game_id"):
+                return {
+                    "game_id": int(rows2[0]["game_id"]),
+                    "source": "game_info",
+                    "team_id": int(team_id),
+                }
+        except Exception:
+            pass
+
+    # nothing found
+    raise HTTPException(
+        status_code=404,
+        detail=f"No game found for player_id={player_id} on {date} (tag={tag}).",
+    )
