@@ -193,7 +193,7 @@ export default function PlayerPropFormV2() {
     return () => clearTimeout(t);
   }, [playerName, gameDate, playerId, teamAbbr]);
 
-  // ----- predict flow (also used by form submit) -----
+  // ----- predict flow (fast path with on-demand fallback) -----
   async function handlePredict() {
     setError("");
     setPrediction(null);
@@ -217,8 +217,8 @@ export default function PlayerPropFormV2() {
       const pid = Number(playerId);
       const prop = String(propType).toLowerCase().trim();
 
-      // Resolve game_id for this player/date using your existing backend route
-      // (supports common key variants returned by older handlers)
+      // --- 1) FAST PATH: use precomputed features by (prop, pid, gid) ---
+      // Resolve game_id quickly (your existing backend route)
       const g = await getApi("/api/getGamePk", {
         player_id: pid,
         date: gameDate,
@@ -227,15 +227,49 @@ export default function PlayerPropFormV2() {
       if (!gid)
         throw new Error("Could not resolve game_id for this player/date.");
 
-      // Fast path: backend pulls precomputed features by (prop, pid, gid)
-      const pred = await requestPrediction({
-        prop_type: prop,
+      try {
+        const fast = await requestPrediction({
+          prop_type: prop,
+          player_id: pid,
+          game_id: gid,
+        });
+        setPrediction({ probability: fast.probability });
+        setCommitToken(fast.commit_token || null);
+        return; // success, we’re done
+      } catch (e) {
+        // Only fall back on the specific “no precomputed” case; rethrow other errors
+        const msg = String(e?.message || "");
+        if (
+          !(
+            msg.includes("404:") && msg.toLowerCase().includes("no precomputed")
+          )
+        ) {
+          throw e;
+        }
+      }
+
+      // --- 2) FALLBACK: prepare on demand, then predict ---
+      const { features, probability, commit_token } = await prepareThenPredict({
         player_id: pid,
-        game_id: gid,
+        team_abbr: (teamAbbr || "").toUpperCase(),
+        game_date: gameDate,
+        prop_type: prop,
+        prop_value: Number(propValue),
+        over_under: overUnder,
       });
 
-      setPrediction({ probability, model });
-      setCommitToken(pred.commit_token || null);
+      // reflect canonicalizations from backend
+      if (features?.player_id) setPlayerId(String(features.player_id));
+      if (features?.team) {
+        setTeamAbbr(String(features.team).toUpperCase());
+        setTeamTouched(false);
+      }
+
+      setPrepPreview({
+        sample: Object.fromEntries(Object.entries(features).slice(0, 12)),
+      });
+      setPrediction({ probability });
+      setCommitToken(commit_token || null);
     } catch (err) {
       console.error("[Props V2] predict error:", err);
       setError(err.message || "Unknown error");

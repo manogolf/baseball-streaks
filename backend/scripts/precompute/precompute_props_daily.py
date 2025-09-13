@@ -7,7 +7,6 @@ import logging
 
 from zoneinfo import ZoneInfo
 from typing import Dict, Any, List, Tuple, Optional
-from scripts.shared.supabase_utils import supabase
 from scripts.shared.supabase_utils import get_supabase
 from scripts.shared.team_name_map import get_team_info_by_id
 from ml.feature_utils import load_feature_names

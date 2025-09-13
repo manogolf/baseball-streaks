@@ -1,4 +1,5 @@
 # backend/app/routes/api/prepare_prop.py
+
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
@@ -7,9 +8,50 @@ from typing import Any, Dict, Optional
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 import requests
+import os
 
 # Supabase client (used only to ensure FK target in game_info)
 from scripts.shared.supabase_utils import supabase
+
+def _stash_features_for_training(
+    *,
+    prop_type: str,
+    player_id: int,
+    game_id: int,
+    game_date: str,
+    features: Dict[str, Any],
+    feature_tag: str = "v1",
+    lineup_slot: Optional[int] = None,
+    is_prob_sp: Optional[bool] = None,
+    model_tag: Optional[str] = None,
+) -> bool:
+    """
+    Persist the prepared feature vector so training has a single source of truth,
+    regardless of whether the row came from cron or ad-hoc prepare.
+    Silent no-op if Supabase isn’t configured in this process.
+    """
+    if supabase is None:
+        return False
+
+    row = {
+        "prop_type": str(prop_type),
+        "player_id": int(player_id),
+        "game_id": int(game_id),
+        "game_date": str(game_date)[:10],
+        "feature_set_tag": str(feature_tag or "v1"),
+        "features": features,  # jsonb
+        "lineup_slot": lineup_slot,
+        "is_probable_sp": bool(is_prob_sp) if is_prob_sp is not None else None,
+        "model_tag": model_tag,
+    }
+    row = {k: v for k, v in row.items() if v is not None}
+
+    supabase.from_("prop_features_precomputed").upsert(
+        row,
+        on_conflict="prop_type,player_id,game_id,feature_set_tag",
+    ).execute()
+    return True
+
 
 # Team + time helpers (stable)
 from scripts.shared.team_name_map import (
@@ -278,6 +320,7 @@ async def prepare_prop(req: Request) -> Dict[str, Any]:
         "line": inp.prop_value,          # legacy name still seen in some code
         "prop_value": inp.prop_value,    # used for inserts/dedupe
         "over_under": (inp.over_under or "over"),
+
     }
 
     if inp.prop_type in PITCHING_PROPS and starting_pitcher_id is not None:
@@ -289,5 +332,22 @@ async def prepare_prop(req: Request) -> Dict[str, Any]:
     # Echo for UI convenience
     features["team_abbr"] = team_abbr
     features["opponent_team_id"] = opponent_team_id
+
+        # Best-effort: stash features for training/consistency with cron output.
+    try:
+        _stash_features_for_training(
+            prop_type=features["prop_type"],
+            player_id=int(features["player_id"]),
+            game_id=int(features["game_id"]),
+            game_date=str(features["game_date"]),
+            features=features,  # keep as-is; models ignore extras
+            feature_tag=os.getenv("FEATURE_SET_TAG", "v1"),
+            lineup_slot=None,  # no lineup dependency here
+            is_prob_sp=(features.get("starting_pitcher_id") is not None) if inp.prop_type in PITCHING_PROPS else False,
+            model_tag="poisson_v1",
+        )
+    except Exception:
+        # never block prepare() on training stash
+        pass
 
     return {"features": features}
