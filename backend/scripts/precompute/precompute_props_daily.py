@@ -1,18 +1,17 @@
 from __future__ import annotations
+
 import os, sys, json, math
-from datetime import datetime, timezone
-from typing import Dict, Any, List, Tuple, Optional
-
+import datetime as dt
 import requests
-from zoneinfo import ZoneInfo
+import logging
 
+from zoneinfo import ZoneInfo
+from typing import Dict, Any, List, Tuple, Optional
 from scripts.shared.supabase_utils import supabase
 from scripts.shared.supabase_utils import get_supabase
-
-
 from scripts.shared.team_name_map import get_team_info_by_id
 from ml.feature_utils import load_feature_names
-import logging
+
 log = logging.getLogger("precompute")
 
 PROCESSED_KEYS: set[str] = set()
@@ -29,6 +28,8 @@ PITCHER_PROPS = [
     "strikeouts_pitching","outs_recorded","earned_runs","hits_allowed","walks_allowed",
 ]
 
+MLB_API = "https://statsapi.mlb.com"
+
 STATS_BASE = "https://statsapi.mlb.com/api/v1"
 
 def _get(url: str, timeout: int = 15) -> Dict[str, Any]:
@@ -43,8 +44,13 @@ def boxscore(game_pk: int) -> Dict[str, Any]:
     return _get(f"{STATS_BASE}/game/{game_pk}/boxscore")
 
 def iso_to_et(utc_iso: str | None) -> str | None:
-    if not utc_iso: return None
-    dt_utc = datetime.datetime.fromisoformat(utc_iso.replace("Z", "+00:00")).astimezone(datetime.timezone.utc)
+    """
+    Convert an MLB API UTC ISO timestamp to ISO string in America/New_York.
+    Returns None if input is falsey.
+    """
+    if not utc_iso:
+        return None
+    dt_utc = dt.datetime.fromisoformat(utc_iso.replace("Z", "+00:00")).astimezone(dt.timezone.utc)
     dt_et = dt_utc.astimezone(ZoneInfo("America/New_York"))
     return dt_et.replace(microsecond=0).isoformat()
 
@@ -58,16 +64,21 @@ def extract_games(sched: Dict[str, Any]) -> List[Dict[str, Any]]:
             home_id = int(home_t.get("id", 0))
             away_id = int(away_t.get("id", 0))
             pk = int(g.get("gamePk"))
+
             game_time_et = iso_to_et(g.get("gameDate"))
+            game_date_et = (game_time_et or "")[:10]  # <-- ET, not UTC
+
             # probable pitchers
             sp_home = (teams.get("home", {}).get("probablePitcher", {}) or {}).get("id")
             sp_away = (teams.get("away", {}).get("probablePitcher", {}) or {}).get("id")
+
             # abbr fallback from map
             home_abbr = home_t.get("abbreviation") or (get_team_info_by_id(home_id) or {}).get("abbr")
             away_abbr = away_t.get("abbreviation") or (get_team_info_by_id(away_id) or {}).get("abbr")
+
             out.append({
                 "game_id": pk,
-                "game_date": (g.get("gameDate") or "")[:10],
+                "game_date": game_date_et,   # <-- ET date here
                 "home_team_id": home_id,
                 "away_team_id": away_id,
                 "home_abbr": home_abbr,
@@ -133,6 +144,31 @@ def _extract_last(stats_data: Dict[str, Any], want_type: str, field: str) -> flo
     except Exception:
         return 0.0
     return 0.0
+
+def _team_active_hitters(team_id: int, date_iso: str) -> list[int]:
+    """
+    Return active roster hitter IDs (exclude pitchers) for a team on date_iso (YYYY-MM-DD).
+    No lineup dependency.
+    """
+    if not team_id:
+        return []
+    try:
+        url = f"{MLB_API}/api/v1/teams/{team_id}/roster?rosterType=active&date={date_iso}"
+        data = _get(url) or {}
+        hitters: list[int] = []
+        for r in data.get("roster", []):
+            person = (r or {}).get("person") or {}
+            pos     = (r or {}).get("position") or {}
+            pid = person.get("id")
+            code = (pos.get("code") or "").upper()
+            if not pid:
+                continue
+            if code == "P":
+                continue  # pitchers are excluded here; this is the hitters list
+            hitters.append(int(pid))
+        return hitters
+    except Exception:
+        return []
 
 def _bvp_vs_pitcher(hitter_id: int, pitcher_id: int) -> Dict[str, float]:
     # career vs pitcher
@@ -283,7 +319,7 @@ def upsert_row(prop: str,
                lineup_slot: Optional[int] = None,
                is_prob_sp: Optional[bool] = None,
                model_tag: Optional[str] = None):
-        # idempotency: skip if we've already handled this (prop, player, game)
+    # idempotency: skip if we've already handled this (prop, player, game)
     k = _work_key(prop, player_id, game_id)
     if k in PROCESSED_KEYS:
         return False  # already processed in this run
@@ -300,79 +336,112 @@ def upsert_row(prop: str,
         "model_tag": model_tag,
     }
 
-
     # drop nulls
-    row = {k: v for k, v in row.items() if v is not None}
+    row = {k2: v for k2, v in row.items() if v is not None}
+
+    # single cached client; raises cleanly if env missing
     get_supabase().from_("prop_features_precomputed").upsert(
         row,
         on_conflict="prop_type,player_id,game_id,feature_set_tag"
     ).execute()
 
-        # ... your supabase upsert call ...
     PROCESSED_KEYS.add(k)
     return True
-
+   
 def run_for_date(game_date: str, feature_tag: str = "v1"):
     PROCESSED_KEYS.clear()
+
     sched = schedule(game_date)
     games = extract_games(sched)
 
-   
-
     for g in games:
         gid = g["game_id"]
-        home = g["home_team_id"]; away = g["away_team_id"]
+        home = g["home_team_id"]
+        away = g["away_team_id"]
 
         # probable SPs
         sp_home = g.get("prob_sp_home")
         sp_away = g.get("prob_sp_away")
 
-        # hitters → only when lineups have posted
-        home_lineup, away_lineup = [], []
-        try:
-            bx = boxscore(gid)
-            home_lineup, away_lineup = extract_lineup_ids(bx)
-        except Exception:
-            pass
+        # =========================================================
+        # BATTERS: use ACTIVE ROSTERS (no lineup dependency)
+        # =========================================================
+        home_hitters = _team_active_hitters(home, game_date)
+        away_hitters = _team_active_hitters(away, game_date)
 
-        # Pitcher props for probable SPs
-        for sp, team_id, opp_id in [(sp_home, home, away), (sp_away, away, home)]:
-            if not sp: continue
-            for prop in PITCHER_PROPS:
-                feats = build_features_for_pitcher(prop, sp, team_id, opp_id, gid, game_date)
-                upsert_row(prop, sp, gid, game_date, feature_tag, feats,
-                           lineup_slot=None, is_prob_sp=True, model_tag="poisson_v1")
+        # preserve order: all home hitters, then away hitters not already in list
+        home_set = set(home_hitters)
+        batters = home_hitters + [pid for pid in away_hitters if pid not in home_set]
 
-        # Hitter props (starters: slots 1–9)
-        for idx, pid in enumerate(home_lineup, start=1):
+        for pid in batters:
+            is_home = pid in home_set
+            team_id     = home if is_home else away
+            opp_team_id = away if is_home else home
+            opp_prob_sp = sp_away if is_home else sp_home  # opposing probable SP (may be None)
+
             for prop in BATTER_PROPS:
-                feats = build_features_for_batter(prop, pid, home, away, sp_away, gid, game_date)
-                upsert_row(prop, pid, gid, game_date, feature_tag, feats,
-                           lineup_slot=idx, is_prob_sp=False, model_tag="poisson_v1")
+                try:
+                    feats = build_features_for_batter(
+                        prop=prop,
+                        hitter_id=pid,
+                        team_id=team_id,
+                        opp_team_id=opp_team_id,
+                        opp_prob_sp=opp_prob_sp,
+                        game_id=gid,
+                        game_date=game_date,
+                    )
+                    upsert_row(
+                        prop=prop,
+                        player_id=pid,
+                        game_id=gid,
+                        game_date=game_date,
+                        feature_tag=feature_tag,
+                        features=feats,
+                        lineup_slot=None,      # no lineup dependency
+                        is_prob_sp=False,      # batter rows
+                        model_tag="poisson_v1" # keep your existing tag
+                    )
+                except Exception:
+                    # keep going even if a single player/prop fails
+                    pass
 
-        for idx, pid in enumerate(away_lineup, start=1):
-            for prop in BATTER_PROPS:
-                feats = build_features_for_batter(prop, pid, away, home, sp_home, gid, game_date)
-                upsert_row(prop, pid, gid, game_date, feature_tag, feats,
-                           lineup_slot=idx, is_prob_sp=False, model_tag="poisson_v1")
+        # =========================================================
+        # PITCHERS: PROBABLE STARTERS ONLY
+        # =========================================================
+        for sp, team_id, opp_id in ((sp_home, home, away), (sp_away, away, home)):
+            if not sp:
+                continue
+            for pprop in PITCHER_PROPS:
+                try:
+                    pfeats = build_features_for_pitcher(
+                        prop=pprop,
+                        pitcher_id=sp,
+                        team_id=team_id,
+                        opp_team_id=opp_id,
+                        game_id=gid,
+                        game_date=game_date,
+                    )
+                    upsert_row(
+                        prop=pprop,
+                        player_id=sp,
+                        game_id=gid,
+                        game_date=game_date,
+                        feature_tag=feature_tag,
+                        features=pfeats,
+                        lineup_slot=None,
+                        is_prob_sp=True,       # tag as probable starter
+                        model_tag="poisson_v1"
+                    )
+                except Exception:
+                    pass
 
 if __name__ == "__main__":
-    import sys, os, datetime
-    try:
-        from zoneinfo import ZoneInfo  # py3.9+
-    except Exception:  # fallback if zoneinfo missing
-        ZoneInfo = None
-
     # Use ET as the canonical baseball date when no arg is given
     if len(sys.argv) >= 2 and sys.argv[1]:
         date_arg = sys.argv[1]
     else:
-        if ZoneInfo is not None:
-            now_et = datetime.datetime.now(ZoneInfo("America/New_York"))
-            date_arg = now_et.date().isoformat()
-        else:
-            # fallback to local date if zoneinfo unavailable
-            date_arg = datetime.date.today().isoformat()
+        now_et = dt.datetime.now(ZoneInfo("America/New_York"))
+        date_arg = now_et.date().isoformat()
 
     feature_tag = os.getenv("FEATURE_SET_TAG", "v1")
     print(f"[precompute] running for date={date_arg} tag={feature_tag}")
