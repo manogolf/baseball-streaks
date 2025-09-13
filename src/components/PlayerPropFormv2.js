@@ -234,7 +234,7 @@ export default function PlayerPropFormV2() {
         game_id: gid,
       });
 
-      setPrediction({ probability: pred.probability });
+      setPrediction({ probability, model });
       setCommitToken(pred.commit_token || null);
     } catch (err) {
       console.error("[Props V2] predict error:", err);
