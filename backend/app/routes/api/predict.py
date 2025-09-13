@@ -6,7 +6,6 @@ from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 import os, json, joblib
-
 from app.security.commit_token import mint_commit_token, verify_commit_token
 from app.config import COMMIT_TOKEN_SECRET, COMMIT_TOKEN_TTL
 
@@ -29,9 +28,55 @@ def _models_root() -> Path:
         return Path(env).resolve()
     return Path(__file__).resolve().parents[4] / "ml" / "models"
 
+
 def _prop_folders(prop: str) -> List[Path]:
-    root = _models_root()
-    return [root / "batter" / prop, root / "pitcher" / prop, root / prop]
+    """
+    Look for models/features under a VAR root (first), then the repo.
+    Under the VAR root, also scan release subfolders like: props/, latest/, v*/ , backup_*/ , archive/
+    """
+    # VAR first (your canonical store)
+    env = os.getenv("MODELS_ROOT") or os.getenv("MODELS_DIR") or os.getenv("MODEL_DIR") or "/var/data/models"
+    var_root = Path(env).resolve()
+
+    # repo fallback
+    repo_root = Path(__file__).resolve().parents[4] / "ml" / "models"
+
+    def candidates_for_root(root: Path) -> List[Path]:
+        cand: List[Path] = []
+        # top-level common layouts
+        cand += [
+            root / "props" / "batter" / prop,
+            root / "props" / "pitcher" / prop,
+            root / "props" / prop,  # flat
+            root / "batter" / prop,
+            root / "pitcher" / prop,
+            root / prop,
+        ]
+        # release subfolders (latest/, vYYYYMMDD..., backup_..., archive/)
+        if root.exists():
+            try:
+                for child in root.iterdir():
+                    if not child.is_dir():
+                        continue
+                    name = child.name.lower()
+                    if name in {"latest"} or name.startswith("v") or "backup" in name or "archive" in name:
+                        cand += [
+                            child / "batter" / prop,
+                            child / "pitcher" / prop,
+                            child / "props" / "batter" / prop,
+                            child / "props" / "pitcher" / prop,
+                            child / "props" / prop,
+                            child / prop,
+                        ]
+            except Exception:
+                pass
+        return cand
+
+    folders: List[Path] = []
+    folders += candidates_for_root(var_root)
+    if repo_root != var_root:
+        folders += candidates_for_root(repo_root)
+    return folders
 
 def _features_path_for(prop: str) -> Path:
     # env override
@@ -110,6 +155,59 @@ def _model_path_for(prop: str) -> Path:
     raise FileNotFoundError(
         f"No model file for '{prop}'. Tried {', '.join(tried)} (or set MODEL_FILE[_{prop}])."
     )
+
+def _read_feature_names_from_file(p: Path, prop: str) -> List[str]:
+    """
+    Parse a features JSON file into an ordered list of column names.
+    Accepts several common schemas and nested {prop: {columns: [...]}}.
+    """
+    data = json.loads(p.read_text())
+    if isinstance(data, dict):
+        for k in ("feature_names", "features", "ordered_feature_names", "columns"):
+            v = data.get(k)
+            if isinstance(v, list):
+                return list(v)
+        if prop in data and isinstance(data[prop], dict):
+            v = data[prop].get("columns")
+            if isinstance(v, list):
+                return list(v)
+        raise ValueError(f"Could not find a list of features in {p}")
+    elif isinstance(data, list):
+        return list(data)
+    else:
+        raise ValueError(f"Unsupported feature meta format in {p}")
+
+def _features_path_adjacent_to_model(model_path: Path, prop: str) -> Optional[Path]:
+    """
+    Prefer a features JSON stored *next to* the selected model.
+    This keeps the feature spec paired with the trained pipeline.
+    """
+    try:
+        folder = model_path.parent
+    except Exception:
+        return None
+
+    tag = (os.getenv("FEATURE_SET_TAG") or "").strip()
+    tried: List[str] = []
+    patterns = [
+        f"{prop}_features_{tag}.json" if tag else None,
+        f"{prop}_features.json",
+        f"features_{prop}_{tag}.json" if tag else None,
+        f"features_{prop}.json",
+        "*features*.json",
+        "*.json",
+    ]
+    for pat in [p for p in patterns if p]:
+        cands = [f for f in folder.glob(pat) if "calibrator" not in f.name.lower()]
+        tried.append(str(folder / pat))
+        if cands:
+            # if tag is set, prefer a name containing _{tag}.
+            if tag:
+                tagged = [c for c in cands if f"_{tag}." in c.name]
+                if tagged:
+                    return tagged[0]
+            return sorted(cands)[-1]
+    return None
 
 # -----------------------------
 # API models
@@ -212,15 +310,34 @@ def _vector_from_features(features: Dict[str, Any], ordered_names: List[str]) ->
 @router.get("/featureMeta/{prop_type}")
 async def feature_meta(prop_type: str):
     """
-    Debug helper: report which features file was loaded and the names/count.
-    Mirrors your existing response shape.
+    Report which features file will be used (prefer the JSON adjacent to the model),
+    and list the names/count.
     """
     try:
-        path = _features_path_for(prop_type)
-        cols = _load_feature_names(prop_type)
+        # 1) Try to resolve the model so we can pick the paired spec
+        model_path = None
+        try:
+            model_path = _model_path_for(prop_type)
+        except Exception:
+            model_path = None  # still allow fallback
+
+        # 2) Prefer a features file adjacent to the chosen model; else fallback discovery
+        if model_path:
+            adj = _features_path_adjacent_to_model(model_path, prop_type)
+        else:
+            adj = None
+
+        if adj is not None:
+            cols = _read_feature_names_from_file(adj, prop_type)
+            meta_path = adj
+        else:
+            p = _features_path_for(prop_type)
+            cols = _read_feature_names_from_file(p, prop_type)  # consistent parser
+            meta_path = p
+
         return {
             "prop_type": prop_type,
-            "meta_path": str(path),
+            "meta_path": str(meta_path),
             "feature_names": cols,
             "count": len(cols),
         }
@@ -232,13 +349,23 @@ async def predict(req: Request) -> Dict[str, Any]:
     payload = await req.json()
     inp = PredictInput(**payload)
 
-    # 1) Load per-prop feature names
+    # 1 Resolve the model FIRST (so we can pair its adjacent feature spec)
     try:
-        feature_names = _load_feature_names(inp.prop_type)
+        model_path = _model_path_for(inp.prop_type)
+    except Exception as e:
+        raise HTTPException(404, f"Model file not found for prop_type '{inp.prop_type}': {e}")
+
+    # 2 Choose feature names, preferring a JSON next to the selected model; fallback to discovery
+    try:
+        adj = _features_path_adjacent_to_model(model_path, inp.prop_type)
+        if adj is not None:
+            feature_names = _read_feature_names_from_file(adj, inp.prop_type)
+        else:
+            feature_names = _load_feature_names(inp.prop_type)
     except Exception as e:
         raise HTTPException(500, f"Failed to load features: {e}")
 
-    # 2) Fast path: pull precomputed features if we have ids
+    # 3 Fast path: pull precomputed features if we have ids
     tag = os.getenv("FEATURE_SET_TAG", "v1")
     pid_attr = getattr(inp, "player_id", None)
     gid_attr = getattr(inp, "game_id", None)
@@ -253,23 +380,18 @@ async def predict(req: Request) -> Dict[str, Any]:
     if isinstance(inp.features, dict):
         merged_features.update(inp.features)
 
-    # 3) Build zero-filled features for model inference
+    # 4 Build zero-filled vector for inference (ordered exactly like training)
     missing_features = [name for name in feature_names if name not in merged_features]
     model_features = {name: 0 for name in feature_names}
     model_features.update(merged_features)
     X = [_vector_from_features(model_features, feature_names)]
 
-    # 4) Resolve/load model
-    try:
-        model_path = _model_path_for(inp.prop_type)
-    except Exception as e:
-        raise HTTPException(404, f"Model file not found for prop_type '{inp.prop_type}': {e}")
+    # 5 Load model & predict
     try:
         model = joblib.load(str(model_path))
     except Exception as e:
         raise HTTPException(500, f"Failed to load model: {e}")
-    
-    # 5) Predict
+
     try:
         if hasattr(model, "predict_proba"):
             proba = float(model.predict_proba(X)[0][1])
