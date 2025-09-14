@@ -401,6 +401,15 @@ async def predict(req: Request) -> Dict[str, Any]:
     if pid_attr is not None and gid_attr is not None:
         pre = _fetch_precomputed_features(inp.prop_type, pid_attr, gid_attr, tag=tag)
 
+         # 3.5 Build model input vector (zero-fill → ordered vector)
+    missing_features = [name for name in feature_names if name not in merged_features]
+    model_features = {name: 0 for name in feature_names}
+    model_features.update(merged_features)
+    try:
+        X_mat = [_vector_from_features(model_features, feature_names)]  # 2D row
+    except Exception as e:
+        raise HTTPException(500, f"Feature vector build failed: {e}")
+
     # Merge order: precomputed base, then request overrides
     merged_features: Dict[str, Any] = {}
     if isinstance(pre, dict):
@@ -420,9 +429,9 @@ async def predict(req: Request) -> Dict[str, Any]:
         is_poisson = "poisson" in model_name
 
         if hasattr(model, "predict_proba") and not is_poisson:
-            proba = float(model.predict_proba(X)[0][1])
+            proba = float(model.predict_proba(X_mat)[0][1])
         else:
-            y = model.predict(X)
+            y = model.predict(X_mat)
             val = float(y[0]) if isinstance(y, (list, tuple)) else float(y)
             if is_poisson:
                 line = float(inp.prop_value) if inp.prop_value is not None else 0.5
@@ -430,6 +439,8 @@ async def predict(req: Request) -> Dict[str, Any]:
             else:
                 # fallback for regressors that directly emit a prob
                 proba = val
+    except Exception as e:
+        raise HTTPException(500, f"Inference failed: {e}")
 
         # sanity clamp
         proba = max(0.0, min(1.0, proba))
