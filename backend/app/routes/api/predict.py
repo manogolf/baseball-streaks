@@ -268,8 +268,6 @@ def _stash_precomputed_features(
         # never block inference on bookkeeping
         pass
 
-
-
 def _coerce_scalar(v: Any) -> float:
     if v is None:
         return 0.0
@@ -286,6 +284,93 @@ def _coerce_scalar(v: Any) -> float:
         return float(s)
     except Exception:
         return 0.0
+    
+def _ensure_minimal_context(merged: Dict[str, Any], inp) -> Dict[str, Any]:
+    """
+    If the client skipped /prepareProp (or precompute row is absent),
+    fill critical categorical/time context so model pipelines with OHE won’t break.
+    """
+    # (a) TEAM abbr
+    if "team" not in merged:
+        if getattr(inp, "team_abbr", None):
+            merged["team"] = str(inp.team_abbr).upper()
+        elif getattr(inp, "team_id", None):
+            try:
+                from scripts.shared.team_name_map import get_team_info_by_id
+                info = get_team_info_by_id(int(inp.team_id))
+                if info and info.get("abbr"):
+                    merged["team"] = info["abbr"]
+            except Exception:
+                pass
+
+    # (b) From game feed, infer opponent + game_time if we know game_id
+    if ("opponent" not in merged or "game_time" not in merged) and getattr(inp, "game_id", None):
+        try:
+            import requests
+            from datetime import datetime, timezone
+            from zoneinfo import ZoneInfo
+            r = requests.get(f"https://statsapi.mlb.com/api/v1/game/{int(inp.game_id)}/feed/live", timeout=8)
+            if r.ok:
+                js = r.json() or {}
+                gd = js.get("gameData", {}) or {}
+                teams = gd.get("teams", {}) or {}
+                home_id = (teams.get("home") or {}).get("id")
+                away_id = (teams.get("away") or {}).get("id")
+                dt = (gd.get("datetime") or {}).get("dateTime")
+
+                # map team ids -> abbr
+                try:
+                    from scripts.shared.team_name_map import get_team_info_by_id
+                    home_abbr = (get_team_info_by_id(int(home_id)) or {}).get("abbr") if home_id else None
+                    away_abbr = (get_team_info_by_id(int(away_id)) or {}).get("abbr") if away_id else None
+                except Exception:
+                    home_abbr = away_abbr = None
+
+                # opponent if we already have 'team'
+                t = merged.get("team")
+                if t and home_abbr and away_abbr and "opponent" not in merged:
+                    if t.upper() == str(home_abbr).upper():
+                        merged["opponent"] = away_abbr
+                    elif t.upper() == str(away_abbr).upper():
+                        merged["opponent"] = home_abbr
+
+                # game_time in ET
+                if dt and "game_time" not in merged:
+                    try:
+                        dt_et = datetime.fromisoformat(dt.replace("Z", "+00:00")).astimezone(ZoneInfo("America/New_York"))
+                        merged["game_time"] = dt_et.replace(microsecond=0).isoformat()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+    # (c) Day-of-week & time-of-day
+    if ("game_day_of_week" not in merged or "time_of_day_bucket" not in merged):
+        try:
+            from scripts.shared.time_utils_backend import getDayOfWeekET, getTimeOfDayBucketET
+        except Exception:
+            def getDayOfWeekET(s: str) -> str:
+                try:
+                    d = (s or "")[:10]
+                    from datetime import datetime
+                    return ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][datetime.strptime(d, "%Y-%m-%d").weekday()]
+                except Exception:
+                    return "Mon"
+            def getTimeOfDayBucketET(iso_et: str | None) -> str:
+                try:
+                    if not iso_et: return "evening"
+                    from datetime import datetime
+                    from zoneinfo import ZoneInfo
+                    dt = datetime.fromisoformat(iso_et.replace("Z","+00:00")).astimezone(ZoneInfo("America/New_York"))
+                    return "day" if dt.hour < 17 else "evening"
+                except Exception:
+                    return "evening"
+
+        if "game_time" in merged and merged["game_time"]:
+            merged.setdefault("game_day_of_week", getDayOfWeekET(merged["game_time"][:10]))
+            merged.setdefault("time_of_day_bucket", getTimeOfDayBucketET(merged["game_time"]))
+
+    return merged
 
 def _build_X(feature_names: list[str], merged: dict[str, any]):
     row = {name: _coerce_scalar(merged.get(name, 0.0)) for name in feature_names}
@@ -386,22 +471,23 @@ async def predict(req: Request) -> Dict[str, Any]:
     if isinstance(inp.features, dict):
         merged_features.update(inp.features)
 
+    merged_features = _ensure_minimal_context(merged_features, inp)
+
     # 3.2 Build model input matrix in the exact feature order
     X_mat, row_dict = _build_X(feature_names, merged_features)
 
     # Normalize dtypes for sklearn pipeline (avoid int↔float SimpleImputer issues)
     # Also guard against ±inf coming from any division-based features.
     X_mat = X_mat.replace([np.inf, -np.inf], np.nan)
-    try:
-        X_mat = X_mat.astype("float64")
-    except Exception:
-        # last-resort: coerce everything numeric and fill NaNs
-        X_mat = (
-            X_mat.apply(pd.to_numeric, errors="coerce")
-                .fillna(0.0)
-                .astype("float64")
-        )
-    X_mat = X_mat.fillna(0.0)
+    # Keep mixed dtypes: pipelines may expect string categoricals (e.g., 'team','opponent').
+    # Only coerce columns that are already numeric-like; leave object/string columns intact.
+    for col in X_mat.columns:
+        try:
+            if pd.api.types.is_bool_dtype(X_mat[col]) or pd.api.types.is_numeric_dtype(X_mat[col]):
+                X_mat[col] = pd.to_numeric(X_mat[col], errors="coerce").fillna(0.0)
+        except Exception:
+            pass
+        X_mat = X_mat.fillna(0.0)
 
         # Persist on-the-fly features so next calls can load them quickly
     tag = os.getenv("FEATURE_SET_TAG", "v1")
