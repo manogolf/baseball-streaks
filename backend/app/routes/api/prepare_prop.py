@@ -1,14 +1,18 @@
 # backend/app/routes/api/prepare_prop.py
 
 from __future__ import annotations
+import requests
+import os
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, field_validator, model_validator
 from typing import Any, Dict, Optional
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
-import requests
-import os
+from types import SimpleNamespace
+from app.services.game_info import ensure_game_info
+
+
 
 # Supabase client (used only to ensure FK target in game_info)
 from scripts.shared.supabase_utils import supabase
@@ -213,41 +217,6 @@ def _extract_game_summary(g: Dict[str, Any]) -> Dict[str, Any]:
         "sp_away_id": sp_away_id,
     }
 
-
-def _ensure_game_info_row(summary: Dict[str, Any]) -> None:
-    """
-    Best-effort upsert into public.game_info so /props/add won’t violate FK.
-    Safe no-op on conflict. Swallows errors (non-fatal for prepareProp).
-    """
-    try:
-        # Exists?
-        ex = (
-            supabase.from_("game_info")
-            .select("game_id")
-            .eq("game_id", summary["game_id"])
-            .limit(1)
-            .execute()
-        )
-        if getattr(ex, "data", []) or []:
-            return
-
-        payload = {
-            "game_id": summary["game_id"],
-            "game_date": summary["game_date"],
-            "home_team_id": summary["home_team_id"],
-            "away_team_id": summary["away_team_id"],
-            "home_team_abbr": summary["home_abbr"],
-            "away_team_abbr": summary["away_abbr"],
-            "game_time": summary["game_time_et"],  # timestamptz-friendly
-            "starting_pitcher_id_home": summary.get("sp_home_id"),
-            "starting_pitcher_id_away": summary.get("sp_away_id"),
-        }
-        supabase.from_("game_info").upsert(payload, on_conflict="game_id").execute()
-    except Exception:
-        # Non-fatal for prepare; /props/add may still fail if this didn't land.
-        pass
-
-
 @router.post("/prepareProp")
 async def prepare_prop(req: Request) -> Dict[str, Any]:
     """
@@ -275,8 +244,19 @@ async def prepare_prop(req: Request) -> Dict[str, Any]:
     game = _pick_team_game(sched, int(team_id))
     g = _extract_game_summary(game)
 
-    # Ensure FK target present for later insert (/props/add)
-    _ensure_game_info_row(g)
+    # Ensure FK target present for later insert (/props/add) — idempotent/minimal
+    ensure_game_info(
+        SimpleNamespace(
+            game_id=int(g["game_id"]),
+            game_time=g.get("game_time_et"),  # ET ISO if available
+            # the service ignores missing/extra attrs safely
+            game_date=g.get("game_date"),
+            home_team_id=g.get("home_team_id"),
+            away_team_id=g.get("away_team_id"),
+            sp_home_id=g.get("sp_home_id"),
+            sp_away_id=g.get("sp_away_id"),
+        )
+    )
 
     # Opponent + home/away
     is_home = (int(team_id) == int(g["home_team_id"]))

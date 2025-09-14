@@ -6,6 +6,8 @@ import requests
 import os
 import logging
 from datetime import datetime, timezone
+from types import SimpleNamespace
+from app.services.game_info import ensure_game_info
 from zoneinfo import ZoneInfo
 from scripts.shared.team_name_map import get_team_info_by_id
 from typing import Any, Dict, Optional
@@ -389,12 +391,14 @@ async def add_prop(req: Request):
     row_clean = {k: v for k, v in row.items() if v is not None}
 
     # Insert (upsert against the DB unique columns)
+# Preflight: ensure game_info exists so the FK passes (works with legacy schema)
     try:
-        # Preflight: try to ensure game_info exists so the FK passes
-        try:
-            _ensure_game_info_fk(game_id=game_id, features=features)
-        except Exception:
-            pass
+        ensure_game_info(SimpleNamespace(
+            game_id=game_id,
+            game_time=features.get("game_time"),  # tz-aware ISO ok; service will normalize
+        ))
+    except Exception:
+        pass
 
         # 1st attempt
         res = (
@@ -411,9 +415,23 @@ async def add_prop(req: Request):
         if res_err:
             err_text = str(res_err)
             # If it’s an FK failure, try to backfill game_info and retry once
-            if "player_props_game_id_fkey" in err_text or "foreign key constraint" in err_text or "23503" in err_text.lower():
+            if (
+                "player_props_game_id_fkey" in err_text
+                or "foreign key constraint" in err_text.lower()
+                or "23503" in err_text
+            ):
                 try:
-                    _ensure_game_info_fk(game_id=game_id, features=features)
+                    # New: ensure the FK target exists, then retry once
+                    from types import SimpleNamespace
+                    from app.services.game_info import ensure_game_info
+
+                    ensure_game_info(
+                        SimpleNamespace(
+                            game_id=game_id,
+                            game_time=features.get("game_time"),  # ISO ok; service normalizes
+                        )
+                    )
+
                     res2 = (
                         supabase.from_(TABLE)
                         .upsert(
@@ -428,6 +446,7 @@ async def add_prop(req: Request):
                 except Exception:
                     # fall through to raise original
                     raise HTTPException(status_code=400, detail=err_text)
+
             # Not an FK error → bubble up
             raise HTTPException(status_code=500, detail=f"DB insert failed: {res_err}")
 
