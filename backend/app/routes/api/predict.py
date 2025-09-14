@@ -10,6 +10,7 @@ import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
+from scripts.shared.team_name_map import get_team_info_by_id
 from pathlib import Path
 from app.security.commit_token import mint_commit_token, verify_commit_token
 from app.config import COMMIT_TOKEN_SECRET, COMMIT_TOKEN_TTL
@@ -199,6 +200,14 @@ def _load_feature_names(prop: str) -> List[str]:
     p = _features_path_for(prop)
     return _read_feature_names_from_file(p, prop)
 
+def _abbr_for_team_id(tid: Any) -> Optional[str]:
+    try:
+        if tid is None:
+            return None
+        info = get_team_info_by_id(int(tid))
+        return (info or {}).get("abbr")
+    except Exception:
+        return None
 
 def _poisson_over_prob(mu: float, line: float) -> float:
     """Convert Poisson mean to P(X > line) with sportsbook-style lines."""
@@ -294,6 +303,40 @@ def _ensure_minimal_context(merged: Dict[str, Any], inp) -> Dict[str, Any]:
     fill critical categorical/time context so OHE pipelines won’t break.
     Reads from merged features first, then inp, then MLB APIs as needed.
     """
+        # --- Cheap, no-network fallbacks first ---
+
+    # TEAM as uppercase abbr
+    if isinstance(merged.get("team"), str) and merged["team"].strip():
+        merged["team"] = merged["team"].strip().upper()
+    elif not merged.get("team"):
+        ab = merged.get("team_abbr")
+        if isinstance(ab, str) and ab.strip():
+            merged["team"] = ab.strip().upper()
+        else:
+            tid = merged.get("team_id") or getattr(inp, "team_id", None)
+            if tid is not None:
+                try:
+                    from scripts.shared.team_name_map import get_team_info_by_id
+                    info = get_team_info_by_id(int(tid)) or {}
+                    if info.get("abbr"):
+                        merged["team"] = info["abbr"]
+                except Exception:
+                    pass
+
+    # OPPONENT as uppercase abbr
+    if isinstance(merged.get("opponent"), str) and merged["opponent"].strip():
+        merged["opponent"] = merged["opponent"].strip().upper()
+    elif not merged.get("opponent"):
+        opp_tid = merged.get("opponent_team_id") or merged.get("opponent_encoded")
+        if opp_tid is not None:
+            try:
+                from scripts.shared.team_name_map import get_team_info_by_id
+                info = get_team_info_by_id(int(opp_tid)) or {}
+                if info.get("abbr"):
+                    merged["opponent"] = info["abbr"]
+            except Exception:
+                pass
+
     # --- TEAM (abbr) ---
     if not merged.get("team"):
         # try from merged fields
@@ -426,6 +469,14 @@ def _ensure_minimal_context(merged: Dict[str, Any], inp) -> Dict[str, Any]:
             merged.setdefault("game_day_of_week", getDayOfWeekET(merged["game_time"][:10]))
             merged.setdefault("time_of_day_bucket", getTimeOfDayBucketET(merged["game_time"]))
 
+        else:
+            # Derive from game_date when we don't have an exact time
+            d = str(merged.get("game_date") or "")[:10]
+            if d:
+                merged.setdefault("game_day_of_week", getDayOfWeekET(d))
+            merged.setdefault("time_of_day_bucket", "evening")
+
+
     return merged
 
 def _build_X(feature_names: list[str], merged: dict[str, Any]):
@@ -549,10 +600,9 @@ async def predict(req: Request) -> Dict[str, Any]:
     for col in X_mat.columns:
         try:
             if pd.api.types.is_object_dtype(X_mat[col]):
-                continue  # leave strings (e.g., 'team','opponent') for OHE in the pipeline
+                continue  # don't touch strings like 'team','opponent'
             X_mat[col] = pd.to_numeric(X_mat[col], errors="coerce").fillna(0.0)
         except Exception:
-            # Best effort; don't block inference on a single column
             pass
 
     # Persist on-the-fly features so next calls can load them quickly
