@@ -581,29 +581,42 @@ async def predict(req: Request) -> Dict[str, Any]:
     if isinstance(inp.features, dict):
         merged_features.update(inp.features)
 
-    # Ensure team/opponent etc. are present (fills from inp if needed)
+    # Ensure team/opponent/etc. are present (fills from inp/MLB if needed)
     merged_features = _ensure_minimal_context(merged_features, inp)
 
     # As a last resort, ensure every expected column exists
+    # (use existing STR_FEATURES if defined; otherwise default set)
+    DEFAULT_STR_FEATURES = {"team", "opponent", "game_day_of_week", "time_of_day_bucket", "home_away"}
+    STRS = DEFAULT_STR_FEATURES
+    try:
+        # if file defines STR_FEATURES, prefer it
+        if isinstance(STR_FEATURES, (set, list, tuple)):
+            STRS = set(STR_FEATURES)
+    except NameError:
+        pass
+
     for name in feature_names:
         if name not in merged_features:
-            merged_features[name] = "" if name in STR_FEATURES else 0
+            merged_features[name] = "" if name in STRS else 0
 
     # 3.2 Build model input matrix in the exact feature order
     X_mat, row_dict = _build_X(feature_names, merged_features)
 
-    # Normalize dtypes for sklearn pipeline (avoid int↔float SimpleImputer issues)
-    # Also guard against ±inf coming from any division-based features.
+    # ---- normalize dtypes for the pipeline (single pass) ----
+    # keep known categoricals as strings/objects; make all other numeric columns float64
+    CATEGORICAL_FEATURES = {"team", "opponent", "game_day_of_week", "time_of_day_bucket", "home_away"}
+
+    X_mat = X_mat.copy()
     X_mat = X_mat.replace([np.inf, -np.inf], np.nan)
 
-    # Coerce only numeric-like columns; keep categoricals (object) as strings
-    for col in X_mat.columns:
-        try:
-            if pd.api.types.is_object_dtype(X_mat[col]):
-                continue  # don't touch strings like 'team','opponent'
-            X_mat[col] = pd.to_numeric(X_mat[col], errors="coerce").fillna(0.0)
-        except Exception:
-            pass
+    cat_cols = [c for c in CATEGORICAL_FEATURES if c in X_mat.columns]
+    for c in cat_cols:
+        X_mat[c] = X_mat[c].astype("object")
+
+    num_cols = [c for c in X_mat.columns if c not in cat_cols]
+    for c in num_cols:
+        X_mat[c] = pd.to_numeric(X_mat[c], errors="coerce")
+    X_mat[num_cols] = X_mat[num_cols].fillna(0.0).astype("float64")
 
     # Persist on-the-fly features so next calls can load them quickly
     tag = os.getenv("FEATURE_SET_TAG", "v1")
@@ -615,13 +628,11 @@ async def predict(req: Request) -> Dict[str, Any]:
             player_id=int(pid_for_stash),
             game_id=int(gid_for_stash),
             tag=tag,
-            # store the exact ordered vector we fed to the model (still useful),
-            # but row_dict keeps name->value mapping for clarity
-            features=row_dict,
+            features=row_dict,  # exactly what was fed to the model (name->value)
         )
 
-    # 3.3 For debugging/telemetry (OPTIONAL): which features are effectively missing/zero
-    missing_features = [name for name in feature_names if row_dict.get(name, 0) in (0, None, "")]
+    # 3.3 For debugging/telemetry
+    missing_features = [n for n in feature_names if merged_features.get(n) in (None, "")]
     missing_count = len(missing_features)
 
     # 4 Resolve/load model (unchanged)
