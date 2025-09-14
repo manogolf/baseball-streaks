@@ -3,6 +3,9 @@ from __future__ import annotations
 
 import os, json, joblib
 import math
+import numpy as np
+import pandas as pd
+
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -416,6 +419,35 @@ async def predict(req: Request) -> Dict[str, Any]:
         merged_features.update(pre)
     if isinstance(inp.features, dict):
         merged_features.update(inp.features)
+
+            # ---- Build one-row design matrix in feature_names order ----
+    missing = []
+    # Option A: pandas DataFrame (keeps column names, avoids sklearn warning)
+    row_dict = {}
+    for name in feature_names:
+        v = merged_features.get(name, 0)
+        if v in (None, ""):
+            missing.append(name)
+            v = 0
+        try:
+            row_dict[name] = float(v)
+        except Exception:
+            row_dict[name] = 0.0
+    X_mat = pd.DataFrame([row_dict], columns=feature_names)
+
+    # If you prefer pure NumPy, replace the block above with:
+    # row = []
+    # for name in feature_names:
+    #     v = merged_features.get(name, 0)
+    #     if v in (None, ""):
+    #         missing.append(name)
+    #         v = 0
+    #     try:
+    #         row.append(float(v))
+    #     except Exception:
+    #         row.append(0.0)
+    # X_mat = np.array([row], dtype=float)
+
 
     # 4 Resolve/load model  (unchanged right above)
     try:

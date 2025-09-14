@@ -145,10 +145,6 @@ def _extract_last(stats_data: Dict[str, Any], want_type: str, field: str) -> flo
     return 0.0
 
 def _team_active_hitters(team_id: int, date_iso: str) -> list[int]:
-    """
-    Return active roster hitter IDs (exclude pitchers) for a team on date_iso (YYYY-MM-DD).
-    No lineup dependency.
-    """
     if not team_id:
         return []
     try:
@@ -159,11 +155,13 @@ def _team_active_hitters(team_id: int, date_iso: str) -> list[int]:
             person = (r or {}).get("person") or {}
             pos     = (r or {}).get("position") or {}
             pid = person.get("id")
-            code = (pos.get("code") or "").upper()
             if not pid:
                 continue
-            if code == "P":
-                continue  # pitchers are excluded here; this is the hitters list
+            abbr = (pos.get("abbreviation") or "").upper()
+            code = str(pos.get("code") or "").upper()   # can be "1" for P
+            name = (pos.get("name") or "").upper()
+            if abbr == "P" or code == "1" or "PITCHER" in name:
+                continue
             hitters.append(int(pid))
         return hitters
     except Exception:
