@@ -25,39 +25,27 @@ except Exception:
 router = APIRouter()
 
 # -----------------------------
-# Models/Features discovery (no ml.* imports)
+# Models & Features: discovery + parsing (consolidated)
 # -----------------------------
-def _models_root() -> Path:
-    env = os.getenv("MODELS_ROOT") or os.getenv("MODELS_DIR") or os.getenv("MODEL_DIR")
-    if env:
-        return Path(env).resolve()
-    return Path(__file__).resolve().parents[4] / "ml" / "models"
-
-
 def _prop_folders(prop: str) -> List[Path]:
     """
     Look for models/features under a VAR root (first), then the repo.
-    Under the VAR root, also scan release subfolders like: props/, latest/, v*/ , backup_*/ , archive/
+    Under the VAR root, also scan release subfolders: latest/, v*, backup_*, archive/.
     """
-    # VAR first (your canonical store)
     env = os.getenv("MODELS_ROOT") or os.getenv("MODELS_DIR") or os.getenv("MODEL_DIR") or "/var/data/models"
     var_root = Path(env).resolve()
-
-    # repo fallback
     repo_root = Path(__file__).resolve().parents[4] / "ml" / "models"
 
     def candidates_for_root(root: Path) -> List[Path]:
         cand: List[Path] = []
-        # top-level common layouts
         cand += [
             root / "props" / "batter" / prop,
             root / "props" / "pitcher" / prop,
-            root / "props" / prop,  # flat
+            root / "props" / prop,
             root / "batter" / prop,
             root / "pitcher" / prop,
             root / prop,
         ]
-        # release subfolders (latest/, vYYYYMMDD..., backup_..., archive/)
         if root.exists():
             try:
                 for child in root.iterdir():
@@ -83,8 +71,9 @@ def _prop_folders(prop: str) -> List[Path]:
         folders += candidates_for_root(repo_root)
     return folders
 
+
 def _features_path_for(prop: str) -> Path:
-    # env override
+    """Resolve the feature meta JSON path for a prop (env override → VAR/Repo)."""
     env = os.getenv(f"FEATURE_META_PATH_{prop}") or os.getenv("FEATURE_META_PATH")
     if env:
         p = Path(env).resolve()
@@ -94,7 +83,7 @@ def _features_path_for(prop: str) -> Path:
 
     tag = os.getenv("FEATURE_SET_TAG", "v1")
 
-    # prefer "<prop>_features_<tag>.json" then "<prop>_features.json"
+    # Prefer explicit names
     for folder in _prop_folders(prop):
         p = folder / f"{prop}_features_{tag}.json"
         if p.exists():
@@ -103,7 +92,7 @@ def _features_path_for(prop: str) -> Path:
         if p.exists():
             return p
 
-    # fallback: globs, prefer files containing _{tag}
+    # Fallback: glob & prefer _{tag}
     def pick_best(cands: List[Path]) -> Optional[Path]:
         if not cands:
             return None
@@ -114,18 +103,12 @@ def _features_path_for(prop: str) -> Path:
         return sorted(cands)[-1]
 
     tried: List[str] = []
-    glob_patterns = [
-        f"{prop}_features_*.json",
-        f"features_{prop}_*.json",
-        "*features*.json",
-        "*.json",
-    ]
-
+    patterns = [f"{prop}_features_*.json", f"features_{prop}_*.json", "*features*.json", "*.json"]
     for folder in _prop_folders(prop):
         if not folder.exists():
             continue
         matches: List[Path] = []
-        for pat in glob_patterns:
+        for pat in patterns:
             tried.append(str(folder / pat))
             matches.extend(folder.glob(pat))
         best = pick_best(matches)
@@ -137,13 +120,16 @@ def _features_path_for(prop: str) -> Path:
         f"(or set FEATURE_META_PATH[_{prop}])."
     )
 
+
 def _model_path_for(prop: str) -> Path:
+    """Resolve the model .joblib path for a prop (env override → newest in folder)."""
     env = os.getenv(f"MODEL_FILE_{prop}") or os.getenv("MODEL_FILE")
     if env:
         p = Path(env).resolve()
         if p.exists():
             return p
         raise FileNotFoundError(f"MODEL_FILE for '{prop}' not found: {p}")
+
     for folder in _prop_folders(prop):
         preferred = folder / f"{prop}_poisson_v1.joblib"
         if preferred.exists():
@@ -153,6 +139,7 @@ def _model_path_for(prop: str) -> Path:
             if joblibs:
                 joblibs.sort(key=lambda x: x.stat().st_mtime, reverse=True)
                 return joblibs[0]
+
     tried = []
     for folder in _prop_folders(prop):
         tried.append(str(folder / f"{prop}_poisson_v1.joblib"))
@@ -161,39 +148,15 @@ def _model_path_for(prop: str) -> Path:
         f"No model file for '{prop}'. Tried {', '.join(tried)} (or set MODEL_FILE[_{prop}])."
     )
 
-def _read_feature_names_from_file(p: Path, prop: str) -> List[str]:
-    """
-    Parse a features JSON file into an ordered list of column names.
-    Accepts several common schemas and nested {prop: {columns: [...]}}.
-    """
-    data = json.loads(p.read_text())
-    if isinstance(data, dict):
-        for k in ("feature_names", "features", "ordered_feature_names", "columns"):
-            v = data.get(k)
-            if isinstance(v, list):
-                return list(v)
-        if prop in data and isinstance(data[prop], dict):
-            v = data[prop].get("columns")
-            if isinstance(v, list):
-                return list(v)
-        raise ValueError(f"Could not find a list of features in {p}")
-    elif isinstance(data, list):
-        return list(data)
-    else:
-        raise ValueError(f"Unsupported feature meta format in {p}")
 
 def _features_path_adjacent_to_model(model_path: Path, prop: str) -> Optional[Path]:
-    """
-    Prefer a features JSON stored *next to* the selected model.
-    This keeps the feature spec paired with the trained pipeline.
-    """
+    """Prefer a features JSON stored next to the selected model."""
     try:
         folder = model_path.parent
     except Exception:
         return None
 
     tag = (os.getenv("FEATURE_SET_TAG") or "").strip()
-    tried: List[str] = []
     patterns = [
         f"{prop}_features_{tag}.json" if tag else None,
         f"{prop}_features.json",
@@ -204,9 +167,7 @@ def _features_path_adjacent_to_model(model_path: Path, prop: str) -> Optional[Pa
     ]
     for pat in [p for p in patterns if p]:
         cands = [f for f in folder.glob(pat) if "calibrator" not in f.name.lower()]
-        tried.append(str(folder / pat))
         if cands:
-            # if tag is set, prefer a name containing _{tag}.
             if tag:
                 tagged = [c for c in cands if f"_{tag}." in c.name]
                 if tagged:
@@ -214,25 +175,38 @@ def _features_path_adjacent_to_model(model_path: Path, prop: str) -> Optional[Pa
             return sorted(cands)[-1]
     return None
 
+
+def _read_feature_names_from_file(p: Path, prop: str) -> List[str]:
+    """Parse a features JSON into an ordered list of column names."""
+    data = json.loads(p.read_text())
+    if isinstance(data, dict):
+        for k in ("feature_names", "features", "ordered_feature_names", "columns"):
+            v = data.get(k)
+            if isinstance(v, list):
+                return list(v)
+        if prop in data and isinstance(data[prop], dict):
+            v = data[prop].get("columns")
+            if isinstance(v, list):
+                return list(v)
+        raise ValueError(f"Could not find a list of features in {p}")
+    if isinstance(data, list):
+        return list(data)
+    raise ValueError(f"Unsupported feature meta format in {p}")
+
+
+def _load_feature_names(prop: str) -> List[str]:
+    """Thin wrapper: resolve path, then parse via the single parser above."""
+    p = _features_path_for(prop)
+    return _read_feature_names_from_file(p, prop)
+
+
 def _poisson_over_prob(mu: float, line: float) -> float:
-    """
-    Convert a Poisson mean (mu) into P(X > line) for sportsbook-style lines.
-    For half lines (n+0.5), this is P(X >= n+1).
-    For integer lines (n), this is P(X >= n+1).
-    """
+    """Convert Poisson mean to P(X > line) with sportsbook-style lines."""
     if mu <= 0 or not math.isfinite(mu):
         return 0.0
-
-    # threshold k = smallest integer strictly greater than line
-    if abs(line - round(line)) < 1e-9:
-        k = int(round(line)) + 1
-    else:
-        k = int(math.floor(line)) + 1
+    k = (int(round(line)) + 1) if abs(line - round(line)) < 1e-9 else (int(math.floor(line)) + 1)
     k = max(1, k)
-
-    # P(X >= k) = 1 - P(X <= k-1) with X~Poisson(mu)
-    # compute CDF up to k-1 via stable iterative terms
-    term = math.exp(-mu)  # i = 0
+    term = math.exp(-mu)  # i=0
     cdf = term
     for i in range(1, k):
         term *= mu / i
@@ -240,53 +214,11 @@ def _poisson_over_prob(mu: float, line: float) -> float:
     p = 1.0 - cdf
     return max(0.0, min(1.0, p))
 
-# -----------------------------
-# API models
-# -----------------------------
-class PredictInput(BaseModel):
-    prop_type: str
-    features: Dict[str, Any] = {}
-    player_id: Optional[int] = None
-    team_id: Optional[int] = None
-    game_id: Optional[int] = None
-    # allow the client to pass line + context for commit
-    prop_value: Optional[float] = None      # e.g., 0.5
-    over_under: Optional[str] = None        # "over" | "under"
-    team_abbr: Optional[str] = None         # e.g., "NYY"
-    game_date: Optional[str] = None         # "YYYY-MM-DD"
-
-# -----------------------------
-# Feature utilities (embedded)
-# -----------------------------
-def _load_feature_names(prop: str) -> List[str]:
-    """
-    Load the ordered feature names from the per-prop JSON.
-    Accept any of these keys: feature_names, features, ordered_feature_names, columns
-    or a dict-of-props with <prop>.columns.
-    """
-    p = _features_path_for(prop)
-    data = json.loads(p.read_text())
-
-    if isinstance(data, dict):
-        for k in ("feature_names", "features", "ordered_feature_names", "columns"):
-            v = data.get(k)
-            if isinstance(v, list):
-                return list(v)
-        # Also allow nested mapping: {"hits": {"columns": [...]}, ...}
-        if prop in data and isinstance(data[prop], dict):
-            v = data[prop].get("columns")
-            if isinstance(v, list):
-                return list(v)
-        raise ValueError(f"Could not find a list of features in {p}")
-    elif isinstance(data, list):
-        return list(data)
-    else:
-        raise ValueError(f"Unsupported feature meta format in {p}")
 
 def _fetch_precomputed_features(prop_type: str, player_id: int | str, game_id: int | str, tag: str = "v1"):
     """
     Return the precomputed features dict for (prop_type, player_id, game_id, tag),
-    or None if not found. Works with either 'features_json' or 'features' column.
+    or None if not found. Works with either 'features_json' or 'features'.
     """
     if supabase is None:
         return None
@@ -311,13 +243,14 @@ def _fetch_precomputed_features(prop_type: str, player_id: int | str, game_id: i
     except Exception:
         return None
 
+
 def _coerce_scalar(v: Any) -> float:
     if v is None:
         return 0.0
-    if isinstance(v, bool):
-        return 1.0 if v else 0.0
     if isinstance(v, (int, float)):
         return float(v)
+    if isinstance(v, bool):
+        return 1.0 if v else 0.0
     s = str(v).strip().lower()
     if s in {"true", "t", "yes", "y"}:
         return 1.0
@@ -328,13 +261,16 @@ def _coerce_scalar(v: Any) -> float:
     except Exception:
         return 0.0
 
+
 def _vector_from_features(features: Dict[str, Any], ordered_names: List[str]) -> List[float]:
-    """
-    Build a numeric vector for the model, filling missing with 0.0,
-    preserving the exact order expected by training.
-    """
+    """Legacy helper (safe to remove if unused)."""
     return [_coerce_scalar(features.get(name)) for name in ordered_names]
 
+
+def _build_X(feature_names: List[str], merged: Dict[str, Any]):
+    """Build a 1-row DataFrame in the model's expected feature order."""
+    row = {name: merged.get(name, 0) for name in feature_names}
+    return pd.DataFrame([row]), row
 # -----------------------------
 # Routes
 # -----------------------------
@@ -374,12 +310,28 @@ async def feature_meta(prop_type: str):
         }
     except Exception as e:
         raise HTTPException(500, f"Failed to load feature meta for '{prop_type}': {e}")
+    
+    # -----------------------------
+# API models
+# -----------------------------
+class PredictInput(BaseModel):
+    prop_type: str
+    features: Dict[str, Any] = {}   # merged with precomputed
+    player_id: Optional[int] = None
+    team_id: Optional[int] = None
+    game_id: Optional[int] = None
+    # carry line/context for commit token
+    prop_value: Optional[float] = None      # e.g., 0.5
+    over_under: Optional[str] = None        # "over" | "under"
+    team_abbr: Optional[str] = None         # "NYY"
+    game_date: Optional[str] = None         # "YYYY-MM-DD"
+
 
 @router.post("/predict")
 async def predict(req: Request) -> Dict[str, Any]:
     payload = await req.json()
     inp = PredictInput(**payload)
-
+    
     # 1 Resolve the model FIRST (so we can pair its adjacent feature spec)
     try:
         model_path = _model_path_for(inp.prop_type)
@@ -404,52 +356,21 @@ async def predict(req: Request) -> Dict[str, Any]:
     if pid_attr is not None and gid_attr is not None:
         pre = _fetch_precomputed_features(inp.prop_type, pid_attr, gid_attr, tag=tag)
 
-         # 3.5 Build model input vector (zero-fill → ordered vector)
-    missing_features = [name for name in feature_names if name not in merged_features]
-    model_features = {name: 0 for name in feature_names}
-    model_features.update(merged_features)
-    try:
-        X_mat = [_vector_from_features(model_features, feature_names)]  # 2D row
-    except Exception as e:
-        raise HTTPException(500, f"Feature vector build failed: {e}")
-
-    # Merge order: precomputed base, then request overrides
+    # 3.1 Merge order: precomputed base, then request overrides
     merged_features: Dict[str, Any] = {}
     if isinstance(pre, dict):
         merged_features.update(pre)
     if isinstance(inp.features, dict):
         merged_features.update(inp.features)
 
-            # ---- Build one-row design matrix in feature_names order ----
-    missing = []
-    # Option A: pandas DataFrame (keeps column names, avoids sklearn warning)
-    row_dict = {}
-    for name in feature_names:
-        v = merged_features.get(name, 0)
-        if v in (None, ""):
-            missing.append(name)
-            v = 0
-        try:
-            row_dict[name] = float(v)
-        except Exception:
-            row_dict[name] = 0.0
-    X_mat = pd.DataFrame([row_dict], columns=feature_names)
+    # 3.2 Build model input matrix in the exact feature order
+    X_mat, row_dict = _build_X(feature_names, merged_features)
 
-    # If you prefer pure NumPy, replace the block above with:
-    # row = []
-    # for name in feature_names:
-    #     v = merged_features.get(name, 0)
-    #     if v in (None, ""):
-    #         missing.append(name)
-    #         v = 0
-    #     try:
-    #         row.append(float(v))
-    #     except Exception:
-    #         row.append(0.0)
-    # X_mat = np.array([row], dtype=float)
+    # 3.3 For debugging/telemetry (OPTIONAL): which features are effectively missing/zero
+    missing_features = [name for name in feature_names if row_dict.get(name, 0) in (0, None, "")]
+    missing_count = len(missing_features)
 
-
-    # 4 Resolve/load model  (unchanged right above)
+    # 4 Resolve/load model (unchanged)
     try:
         model = joblib.load(str(model_path))
     except Exception as e:
@@ -471,11 +392,6 @@ async def predict(req: Request) -> Dict[str, Any]:
             else:
                 # fallback for regressors that directly emit a prob
                 proba = val
-    except Exception as e:
-        raise HTTPException(500, f"Inference failed: {e}")
-
-        # sanity clamp
-        proba = max(0.0, min(1.0, proba))
     except Exception as e:
         raise HTTPException(500, f"Inference failed: {e}")
 
