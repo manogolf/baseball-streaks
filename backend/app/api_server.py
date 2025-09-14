@@ -41,6 +41,7 @@ from app.routes.api.predict import router as predict_router
 from app.routes.api.players import router as players_router
 from app.routes.api.player_profile import router as player_profile_router
 from app.routes.api.props import router as props_router
+from app.routes.api.prepare_prop import router as prepare_prop_router
 # from app.routes.api.model_metrics import router as model_metrics_router
 # from app.routes.api.user_vs_model_accuracy import router as user_vs_model_accuracy_router
 # from app.routes.api.user_vs_model_accuracy_weekly import router as user_vs_model_weekly_router
@@ -55,6 +56,7 @@ app.include_router(predict_router, prefix="/api")
 app.include_router(players_router, prefix="/api")
 app.include_router(player_profile_router, prefix="/api")
 app.include_router(props_router, prefix="/api")
+app.include_router(prepare_prop_router, prefix="/api")
 # app.include_router(model_metrics_router, prefix="/api")
 # app.include_router(user_vs_model_accuracy_router, prefix="/api")
 # app.include_router(user_vs_model_weekly_router, prefix="/api")

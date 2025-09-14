@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import requests
 import os
 import logging
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+from scripts.shared.team_name_map import get_team_info_by_id
 from typing import Any, Dict, Optional
-
 from fastapi import APIRouter, HTTPException, Request
-
-# Repo-local imports (run server with: uvicorn app.api_server:app --reload --port 8001 --app-dir backend)
 from scripts.shared.supabase_utils import supabase
 from app.config import COMMIT_TOKEN_SECRET, COMMIT_TOKEN_TTL
 from app.security.commit_token import verify_commit_token
@@ -18,12 +19,17 @@ from scripts.shared.prop_utils import (
 )
 
 try:
-    from postgrest.exceptions import APIError as PostgrestAPIError
+    from postgrest.exceptions import APIError as PostgrestAPIError  # new
 except Exception:  # pragma: no cover
-    PostgrestAPIError = Exception
+    try:
+        from postgrest import APIError as PostgrestAPIError          # old
+    except Exception:
+        PostgrestAPIError = Exception
 
 log = logging.getLogger(__name__)
+
 router = APIRouter()
+
 TABLE = "player_props"
 
 
@@ -45,52 +51,6 @@ def _get_player_name_by_id(pid: int | str) -> Optional[str]:
         pass
     return None
 
-def _ensure_game_info_fk(game_id: int, features: Dict[str, Any]) -> None:
-    """
-    Upsert a minimal row into game_info so player_props FK succeeds.
-    Uses whatever we have in features: game_date, team_id, opponent_team_id, is_home.
-    """
-    try:
-        gid = int(game_id)
-    except Exception:
-        return
-
-    game_date = str(features.get("game_date") or "")[:10] or None
-    team_id = features.get("team_id")
-    opp_id = features.get("opponent_team_id") or features.get("opponent_encoded")
-    is_home = features.get("is_home")
-
-    home_team_id = None
-    away_team_id = None
-    try:
-        if isinstance(is_home, (bool, int)):
-            if bool(is_home):
-                home_team_id = int(team_id) if team_id is not None else None
-                away_team_id = int(opp_id) if opp_id is not None else None
-            else:
-                home_team_id = int(opp_id) if opp_id is not None else None
-                away_team_id = int(team_id) if team_id is not None else None
-    except Exception:
-        home_team_id = home_team_id or None
-        away_team_id = away_team_id or None
-
-    row = {"game_id": gid}
-    if game_date:
-        row["game_date"] = game_date
-    if home_team_id is not None:
-        row["home_team_id"] = home_team_id
-    if away_team_id is not None:
-        row["away_team_id"] = away_team_id
-
-    # drop Nones
-    row = {k: v for k, v in row.items() if v is not None}
-
-    try:
-        supabase.from_("game_info").upsert(row, on_conflict="game_id").execute()
-    except Exception:
-        # If this fails (e.g., stricter NOT NULLs), leave it to the caller to surface the error.
-        pass
-
 # --- duplicate check: mirror DB UNIQUE(prop_source, player_id, game_id, prop_type, prop_value) ---
 def _dup_exists(
     *,
@@ -100,18 +60,192 @@ def _dup_exists(
     prop_type: str,
     prop_value: float,
 ) -> bool:
-    key: Dict[str, Any] = {
-        "prop_source": prop_source,
-        "player_id": int(player_id),     # BIGINT in schema
-        "game_id": int(game_id),         # BIGINT in schema
-        "prop_type": prop_type,
-        "prop_value": float(prop_value), # keep exact value (UI .5 steps)
-    }
-    res = supabase.from_(TABLE).select("id").match(key).limit(1).execute()
-    rows = getattr(res, "data", []) or []
-    if os.getenv("DEBUG_DEDUP") == "1":
-        log.info("[DEDUP] key=%s matched=%s", key, rows[:1])
-    return bool(rows)
+    """Return True if a matching row already exists in player_props."""
+    try:
+        key: Dict[str, Any] = {
+            "prop_source": prop_source,
+            "player_id": int(player_id),
+            "game_id": int(game_id),
+            "prop_type": str(prop_type),
+            "prop_value": float(prop_value),
+        }
+        res = (
+            supabase.from_(TABLE)
+            .select("id")
+            .match(key)
+            .limit(1)
+            .execute()
+        )
+        rows = getattr(res, "data", []) or []
+        return bool(rows)
+    except Exception:
+        return False
+
+
+def _ensure_game_info_fk(*, game_id: int, features: Dict[str, Any]) -> None:
+    """
+    Ensure a game_info row exists for this game_id so the FK on player_props can pass.
+    Strategy:
+      A) Try upsert using what we already have in `features`
+      B) If still missing data, hit MLB schedule for game_date to enrich
+      C) Final fallback: hit the direct game feed by game_id
+    All steps are best-effort; errors are swallowed.
+    """
+    if supabase is None:
+        return
+
+    def _exists(gid: int) -> bool:
+        try:
+            ex = (
+                supabase.from_("game_info")
+                .select("game_id")
+                .eq("game_id", gid)
+                .limit(1)
+                .execute()
+            )
+            return bool((getattr(ex, "data", None) or []))
+        except Exception:
+            return False
+
+    def _utc_to_et_iso(utc_iso: Optional[str]) -> Optional[str]:
+        if not utc_iso:
+            return None
+        try:
+            dt_utc = datetime.fromisoformat(utc_iso.replace("Z", "+00:00")).astimezone(timezone.utc)
+            dt_et = dt_utc.astimezone(ZoneInfo("America/New_York"))
+            return dt_et.replace(microsecond=0).isoformat()
+        except Exception:
+            return None
+
+    # Normalize game_id
+    try:
+        gid = int(game_id)
+    except Exception:
+        return
+
+    # If it already exists, done.
+    if _exists(gid):
+        return
+
+    # ---------- A) Use what we already have in `features`
+    try:
+        game_date = (str(features.get("game_date") or "")[:10]) or None
+
+        # Determine home/away IDs from team_id/opponent_team_id + is_home
+        team_id = features.get("team_id")
+        opp_id  = features.get("opponent_team_id") or features.get("opponent_encoded")
+        is_home = features.get("is_home")
+
+        home_team_id = None
+        away_team_id = None
+        if isinstance(is_home, (bool, int)):
+            if bool(is_home):
+                home_team_id = int(team_id) if team_id is not None else None
+                away_team_id = int(opp_id) if opp_id is not None else None
+            else:
+                home_team_id = int(opp_id) if opp_id is not None else None
+                away_team_id = int(team_id) if team_id is not None else None
+
+        payload = {
+            "game_id": gid,
+            "game_date": game_date,
+            "home_team_id": home_team_id,
+            "away_team_id": away_team_id,
+            # These may already be present from prepareProp
+            "home_team_abbr": features.get("home_team_abbr"),
+            "away_team_abbr": features.get("away_team_abbr"),
+            "game_time": features.get("game_time"),
+            "starting_pitcher_id_home": features.get("starting_pitcher_id_home"),
+            "starting_pitcher_id_away": features.get("starting_pitcher_id_away"),
+        }
+        payload = {k: v for k, v in payload.items() if v is not None}
+
+        if len(payload) > 1:  # we have at least game_id + something else
+            supabase.from_("game_info").upsert(payload, on_conflict="game_id").execute()
+            if _exists(gid):
+                return
+    except Exception:
+        pass
+
+    # ---------- B) Enrich via MLB schedule for game_date (if we have a date)
+    try:
+        game_date = (str(features.get("game_date") or "")[:10]) or None
+        if game_date:
+            r = requests.get(
+                f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={game_date}",
+                timeout=10,
+            )
+            if r.ok:
+                js = r.json()
+                for day in js.get("dates", []):
+                    for g in day.get("games", []):
+                        if int(g.get("gamePk", -1)) == gid:
+                            teams = g.get("teams", {}) or {}
+                            home = (teams.get("home") or {}).get("team") or {}
+                            away = (teams.get("away") or {}).get("team") or {}
+
+                            home_id = int(home.get("id") or 0) or None
+                            away_id = int(away.get("id") or 0) or None
+                            home_abbr = home.get("abbreviation")
+                            away_abbr = away.get("abbreviation")
+
+                            if not home_abbr and home_id:
+                                info = get_team_info_by_id(home_id) or {}
+                                home_abbr = info.get("abbr")
+                            if not away_abbr and away_id:
+                                info = get_team_info_by_id(away_id) or {}
+                                away_abbr = info.get("abbr")
+
+                            payload = {
+                                "game_id": gid,
+                                "game_date": game_date,
+                                "home_team_id": home_id,
+                                "away_team_id": away_id,
+                                "home_team_abbr": home_abbr,
+                                "away_team_abbr": away_abbr,
+                                "game_time": _utc_to_et_iso(g.get("gameDate")),
+                                "starting_pitcher_id_home": ((teams.get("home") or {}).get("probablePitcher") or {}).get("id") or None,
+                                "starting_pitcher_id_away": ((teams.get("away") or {}).get("probablePitcher") or {}).get("id") or None,
+                            }
+                            payload = {k: v for k, v in payload.items() if v is not None}
+                            supabase.from_("game_info").upsert(payload, on_conflict="game_id").execute()
+                            if _exists(gid):
+                                return
+    except Exception:
+        pass
+
+    # ---------- C) Final fallback: direct game feed by game_id
+    try:
+        r = requests.get(f"https://statsapi.mlb.com/api/v1/game/{gid}/feed/live", timeout=10)
+        if not r.ok:
+            return
+        js = r.json()
+        gd = js.get("gameData", {}) or {}
+        teams = gd.get("teams", {}) or {}
+        home_id = int((teams.get("home") or {}).get("id") or 0) or None
+        away_id = int((teams.get("away") or {}).get("id") or 0) or None
+
+        home_info = get_team_info_by_id(home_id) or {}
+        away_info = get_team_info_by_id(away_id) or {}
+
+        dt = (gd.get("datetime", {}) or {}).get("dateTime")
+        official = (gd.get("datetime", {}) or {}).get("officialDate")
+        game_time_iso = _utc_to_et_iso(dt)
+        game_date_str = (str(features.get("game_date") or "")[:10]) or official or ((game_time_iso or "")[:10] or None)
+
+        payload = {
+            "game_id": gid,
+            "game_date": game_date_str,
+            "home_team_id": home_id,
+            "away_team_id": away_id,
+            "home_team_abbr": home_info.get("abbr"),
+            "away_team_abbr": away_info.get("abbr"),
+            "game_time": game_time_iso,
+        }
+        payload = {k: v for k, v in payload.items() if v is not None}
+        supabase.from_("game_info").upsert(payload, on_conflict="game_id").execute()
+    except Exception:
+        return
 
 
 @router.post("/props/add")
@@ -198,12 +332,14 @@ async def add_prop(req: Request):
         player_name = _get_player_name_by_id(player_id)
     if not player_name:
         raise HTTPException(status_code=400, detail="Could not resolve player_name")
+    
 
     # Optional context
     is_home = features.get("is_home")
     home_away = "home" if isinstance(is_home, (bool, int)) and bool(is_home) else ("away" if isinstance(is_home, (bool, int)) else None)
 
     # Duplicate check (must exactly match DB unique tuple)
+    # Duplicate check (calls helper defined above)
     if _dup_exists(
         prop_source=prop_source,
         player_id=player_id,
@@ -263,6 +399,7 @@ async def add_prop(req: Request):
         if getattr(res, "error", None):
             raise HTTPException(status_code=500, detail=f"DB insert failed: {res.error}")
         return {"saved": True, "row": row_clean}
+
     except PostgrestAPIError as e:  # pragma: no cover
         msg = getattr(e, "message", "") or ""
         code = getattr(e, "code", "") or ""
@@ -289,8 +426,7 @@ async def add_prop(req: Request):
                     raise HTTPException(status_code=500, detail=f"DB insert failed: {res2.error}")
                 return {"saved": True, "row": row_clean, "backfilled_game_info": True}
             except Exception:
-                # fall through to raise original
                 pass
 
-        # Anything else: bubble up
-        raise
+        # Anything else: bubble up as 400 so the client sees the reason
+        raise HTTPException(status_code=400, detail=text or "Insert failed")

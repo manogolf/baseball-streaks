@@ -212,53 +212,21 @@ export default function PlayerPropFormV2() {
     // require resolved player_id
     if (!playerId) return setError("Resolve a player first to get player_id.");
 
+    // require resolved player_id
+    if (!playerId) return setError("Resolve a player first to get player_id.");
+
     setLoading(true);
     try {
-      const pid = Number(playerId);
-      const prop = String(propType).toLowerCase().trim();
-
-      // --- 1) FAST PATH: use precomputed features by (prop, pid, gid) ---
-      // Resolve game_id quickly (your existing backend route)
-      const g = await getApi("/api/getGamePk", {
-        player_id: pid,
-        date: gameDate,
-      });
-      const gid = Number(g?.game_id ?? g?.gamePk ?? g?.game_pk);
-      if (!gid)
-        throw new Error("Could not resolve game_id for this player/date.");
-
-      try {
-        const fast = await requestPrediction({
-          prop_type: prop,
-          player_id: pid,
-          game_id: gid,
-        });
-        setPrediction({ probability: fast.probability });
-        setCommitToken(fast.commit_token || null);
-        return; // success, we’re done
-      } catch (e) {
-        // Only fall back on the specific “no precomputed” case; rethrow other errors
-        const msg = String(e?.message || "");
-        if (
-          !(
-            msg.includes("404:") && msg.toLowerCase().includes("no precomputed")
-          )
-        ) {
-          throw e;
-        }
-      }
-
-      // --- 2) FALLBACK: prepare on demand, then predict ---
       const { features, probability, commit_token } = await prepareThenPredict({
-        player_id: pid,
+        player_id: Number(playerId),
         team_abbr: (teamAbbr || "").toUpperCase(),
         game_date: gameDate,
-        prop_type: prop,
+        prop_type: propType,
         prop_value: Number(propValue),
         over_under: overUnder,
       });
 
-      // reflect canonicalizations from backend
+      // reflect canonicalizations from backend (optional niceties)
       if (features?.player_id) setPlayerId(String(features.player_id));
       if (features?.team) {
         setTeamAbbr(String(features.team).toUpperCase());
@@ -268,6 +236,7 @@ export default function PlayerPropFormV2() {
       setPrepPreview({
         sample: Object.fromEntries(Object.entries(features).slice(0, 12)),
       });
+
       setPrediction({ probability });
       setCommitToken(commit_token || null);
     } catch (err) {
