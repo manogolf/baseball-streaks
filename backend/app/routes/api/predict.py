@@ -285,40 +285,55 @@ def _coerce_scalar(v: Any) -> float:
     except Exception:
         return 0.0
     
+# Categorical features expected as strings in training
+STR_FEATURES = {"team", "opponent", "game_day_of_week", "time_of_day_bucket"}
+
 def _ensure_minimal_context(merged: Dict[str, Any], inp) -> Dict[str, Any]:
     """
     If the client skipped /prepareProp (or precompute row is absent),
-    fill critical categorical/time context so model pipelines with OHE won’t break.
+    fill critical categorical/time context so OHE pipelines won’t break.
+    Reads from merged features first, then inp, then MLB APIs as needed.
     """
-    # (a) TEAM abbr
-    if "team" not in merged:
-        if getattr(inp, "team_abbr", None):
+    # --- TEAM (abbr) ---
+    if not merged.get("team"):
+        # try from merged fields
+        t = merged.get("team") or merged.get("team_abbr")
+        if t:
+            merged["team"] = str(t).upper()
+        # try from inp.team_abbr
+        elif getattr(inp, "team_abbr", None):
             merged["team"] = str(inp.team_abbr).upper()
-        elif getattr(inp, "team_id", None):
-            try:
-                from scripts.shared.team_name_map import get_team_info_by_id
-                info = get_team_info_by_id(int(inp.team_id))
-                if info and info.get("abbr"):
-                    merged["team"] = info["abbr"]
-            except Exception:
-                pass
+        # map from team_id if present
+        else:
+            tid = merged.get("team_id") or getattr(inp, "team_id", None)
+            if tid is not None:
+                try:
+                    from scripts.shared.team_name_map import get_team_info_by_id
+                    info = get_team_info_by_id(int(tid)) or {}
+                    if info.get("abbr"):
+                        merged["team"] = info["abbr"]
+                except Exception:
+                    pass
 
-    # (b) From game feed, infer opponent + game_time if we know game_id
-    if ("opponent" not in merged or "game_time" not in merged) and getattr(inp, "game_id", None):
+    # --- Opponent + game_time via game_id OR (game_date + team_id) ---
+    have_opp = bool(merged.get("opponent"))
+    have_time = bool(merged.get("game_time"))
+
+    gid = merged.get("game_id") or getattr(inp, "game_id", None)
+    if (not have_opp or not have_time) and gid:
         try:
             import requests
             from datetime import datetime, timezone
             from zoneinfo import ZoneInfo
-            r = requests.get(f"https://statsapi.mlb.com/api/v1/game/{int(inp.game_id)}/feed/live", timeout=8)
+            r = requests.get(f"https://statsapi.mlb.com/api/v1/game/{int(gid)}/feed/live", timeout=8)
             if r.ok:
                 js = r.json() or {}
                 gd = js.get("gameData", {}) or {}
                 teams = gd.get("teams", {}) or {}
                 home_id = (teams.get("home") or {}).get("id")
                 away_id = (teams.get("away") or {}).get("id")
-                dt = (gd.get("datetime") or {}).get("dateTime")
 
-                # map team ids -> abbr
+                # map ids -> abbrs
                 try:
                     from scripts.shared.team_name_map import get_team_info_by_id
                     home_abbr = (get_team_info_by_id(int(home_id)) or {}).get("abbr") if home_id else None
@@ -326,25 +341,66 @@ def _ensure_minimal_context(merged: Dict[str, Any], inp) -> Dict[str, Any]:
                 except Exception:
                     home_abbr = away_abbr = None
 
-                # opponent if we already have 'team'
                 t = merged.get("team")
-                if t and home_abbr and away_abbr and "opponent" not in merged:
+                if t and not merged.get("opponent") and home_abbr and away_abbr:
                     if t.upper() == str(home_abbr).upper():
                         merged["opponent"] = away_abbr
                     elif t.upper() == str(away_abbr).upper():
                         merged["opponent"] = home_abbr
 
-                # game_time in ET
-                if dt and "game_time" not in merged:
-                    try:
-                        dt_et = datetime.fromisoformat(dt.replace("Z", "+00:00")).astimezone(ZoneInfo("America/New_York"))
-                        merged["game_time"] = dt_et.replace(microsecond=0).isoformat()
-                    except Exception:
-                        pass
+                if not merged.get("game_time"):
+                    dt = (gd.get("datetime") or {}).get("dateTime")
+                    if dt:
+                        try:
+                            dt_et = datetime.fromisoformat(dt.replace("Z", "+00:00")).astimezone(ZoneInfo("America/New_York"))
+                            merged["game_time"] = dt_et.replace(microsecond=0).isoformat()
+                        except Exception:
+                            pass
         except Exception:
             pass
 
-    # (c) Day-of-week & time-of-day
+    # fallback via schedule when we have (game_date + team_id)
+    if (not merged.get("opponent") or not merged.get("game_time")) and merged.get("game_date") and (merged.get("team_id") is not None):
+        try:
+            import requests
+            game_date = str(merged["game_date"])[:10]
+            tid = int(merged["team_id"])
+            r = requests.get(f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={game_date}", timeout=8)
+            if r.ok:
+                for day in (r.json().get("dates") or []):
+                    for g in (day.get("games") or []):
+                        home = ((g.get("teams") or {}).get("home") or {}).get("team", {}) or {}
+                        away = ((g.get("teams") or {}).get("away") or {}).get("team", {}) or {}
+                        home_id = int(home.get("id") or 0)
+                        away_id = int(away.get("id") or 0)
+                        if tid in (home_id, away_id):
+                            # set game_id + opponent + game_time if not set
+                            merged.setdefault("game_id", int(g.get("gamePk")))
+                            try:
+                                from scripts.shared.team_name_map import get_team_info_by_id
+                                home_abbr = (get_team_info_by_id(home_id) or {}).get("abbr")
+                                away_abbr = (get_team_info_by_id(away_id) or {}).get("abbr")
+                            except Exception:
+                                home_abbr = away_abbr = None
+                            t = merged.get("team")
+                            if t and not merged.get("opponent") and home_abbr and away_abbr:
+                                if t.upper() == str(home_abbr).upper():
+                                    merged["opponent"] = away_abbr
+                                elif t.upper() == str(away_abbr).upper():
+                                    merged["opponent"] = home_abbr
+                            if not merged.get("game_time") and g.get("gameDate"):
+                                from datetime import datetime, timezone
+                                from zoneinfo import ZoneInfo
+                                try:
+                                    dt_et = datetime.fromisoformat(g["gameDate"].replace("Z","+00:00")).astimezone(ZoneInfo("America/New_York"))
+                                    merged["game_time"] = dt_et.replace(microsecond=0).isoformat()
+                                except Exception:
+                                    pass
+                            break
+        except Exception:
+            pass
+
+    # Day-of-week & bucket
     if ("game_day_of_week" not in merged or "time_of_day_bucket" not in merged):
         try:
             from scripts.shared.time_utils_backend import getDayOfWeekET, getTimeOfDayBucketET
@@ -366,18 +422,21 @@ def _ensure_minimal_context(merged: Dict[str, Any], inp) -> Dict[str, Any]:
                 except Exception:
                     return "evening"
 
-        if "game_time" in merged and merged["game_time"]:
+        if merged.get("game_time"):
             merged.setdefault("game_day_of_week", getDayOfWeekET(merged["game_time"][:10]))
             merged.setdefault("time_of_day_bucket", getTimeOfDayBucketET(merged["game_time"]))
 
     return merged
 
-def _build_X(feature_names: list[str], merged: dict[str, any]):
-    row = {name: _coerce_scalar(merged.get(name, 0.0)) for name in feature_names}
-    df = pd.DataFrame([row], columns=feature_names)
-    # emit float columns so downstream imputers/transformers see the same dtype
-    df = df.astype("float64")
-    return df, row
+def _build_X(feature_names: list[str], merged: dict[str, Any]):
+    row: Dict[str, Any] = {}
+    for name in feature_names:
+        if name in merged and merged[name] is not None:
+            row[name] = merged[name]
+        else:
+            row[name] = "" if name in STR_FEATURES else 0
+    X = pd.DataFrame([row])
+    return X, row
 
 # -----------------------------
 # Routes
@@ -471,7 +530,13 @@ async def predict(req: Request) -> Dict[str, Any]:
     if isinstance(inp.features, dict):
         merged_features.update(inp.features)
 
+    # Ensure team/opponent etc. are present (fills from inp if needed)
     merged_features = _ensure_minimal_context(merged_features, inp)
+
+    # As a last resort, ensure every expected column exists
+    for name in feature_names:
+        if name not in merged_features:
+            merged_features[name] = "" if name in STR_FEATURES else 0
 
     # 3.2 Build model input matrix in the exact feature order
     X_mat, row_dict = _build_X(feature_names, merged_features)
@@ -479,17 +544,18 @@ async def predict(req: Request) -> Dict[str, Any]:
     # Normalize dtypes for sklearn pipeline (avoid int↔float SimpleImputer issues)
     # Also guard against ±inf coming from any division-based features.
     X_mat = X_mat.replace([np.inf, -np.inf], np.nan)
-    # Keep mixed dtypes: pipelines may expect string categoricals (e.g., 'team','opponent').
-    # Only coerce columns that are already numeric-like; leave object/string columns intact.
+
+    # Coerce only numeric-like columns; keep categoricals (object) as strings
     for col in X_mat.columns:
         try:
-            if pd.api.types.is_bool_dtype(X_mat[col]) or pd.api.types.is_numeric_dtype(X_mat[col]):
-                X_mat[col] = pd.to_numeric(X_mat[col], errors="coerce").fillna(0.0)
+            if pd.api.types.is_object_dtype(X_mat[col]):
+                continue  # leave strings (e.g., 'team','opponent') for OHE in the pipeline
+            X_mat[col] = pd.to_numeric(X_mat[col], errors="coerce").fillna(0.0)
         except Exception:
+            # Best effort; don't block inference on a single column
             pass
-        X_mat = X_mat.fillna(0.0)
 
-        # Persist on-the-fly features so next calls can load them quickly
+    # Persist on-the-fly features so next calls can load them quickly
     tag = os.getenv("FEATURE_SET_TAG", "v1")
     pid_for_stash = inp.player_id or merged_features.get("player_id")
     gid_for_stash = inp.game_id  or merged_features.get("game_id")
@@ -499,7 +565,9 @@ async def predict(req: Request) -> Dict[str, Any]:
             player_id=int(pid_for_stash),
             game_id=int(gid_for_stash),
             tag=tag,
-            features=row_dict,   # exactly what was fed to the model (ordered & coerced)
+            # store the exact ordered vector we fed to the model (still useful),
+            # but row_dict keeps name->value mapping for clarity
+            features=row_dict,
         )
 
     # 3.3 For debugging/telemetry (OPTIONAL): which features are effectively missing/zero
