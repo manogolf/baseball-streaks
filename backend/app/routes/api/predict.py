@@ -261,16 +261,13 @@ def _coerce_scalar(v: Any) -> float:
     except Exception:
         return 0.0
 
+def _build_X(feature_names: list[str], merged: dict[str, any]):
+    row = {name: _coerce_scalar(merged.get(name, 0.0)) for name in feature_names}
+    df = pd.DataFrame([row], columns=feature_names)
+    # emit float columns so downstream imputers/transformers see the same dtype
+    df = df.astype("float64")
+    return df, row
 
-def _vector_from_features(features: Dict[str, Any], ordered_names: List[str]) -> List[float]:
-    """Legacy helper (safe to remove if unused)."""
-    return [_coerce_scalar(features.get(name)) for name in ordered_names]
-
-
-def _build_X(feature_names: List[str], merged: Dict[str, Any]):
-    """Build a 1-row DataFrame in the model's expected feature order."""
-    row = {name: merged.get(name, 0) for name in feature_names}
-    return pd.DataFrame([row]), row
 # -----------------------------
 # Routes
 # -----------------------------
@@ -331,7 +328,7 @@ class PredictInput(BaseModel):
 async def predict(req: Request) -> Dict[str, Any]:
     payload = await req.json()
     inp = PredictInput(**payload)
-    
+
     # 1 Resolve the model FIRST (so we can pair its adjacent feature spec)
     try:
         model_path = _model_path_for(inp.prop_type)
@@ -365,6 +362,20 @@ async def predict(req: Request) -> Dict[str, Any]:
 
     # 3.2 Build model input matrix in the exact feature order
     X_mat, row_dict = _build_X(feature_names, merged_features)
+
+    # Normalize dtypes for sklearn pipeline (avoid int↔float SimpleImputer issues)
+    # Also guard against ±inf coming from any division-based features.
+    X_mat = X_mat.replace([np.inf, -np.inf], np.nan)
+    try:
+        X_mat = X_mat.astype("float64")
+    except Exception:
+        # last-resort: coerce everything numeric and fill NaNs
+        X_mat = (
+            X_mat.apply(pd.to_numeric, errors="coerce")
+                .fillna(0.0)
+                .astype("float64")
+        )
+    X_mat = X_mat.fillna(0.0)
 
     # 3.3 For debugging/telemetry (OPTIONAL): which features are effectively missing/zero
     missing_features = [name for name in feature_names if row_dict.get(name, 0) in (0, None, "")]

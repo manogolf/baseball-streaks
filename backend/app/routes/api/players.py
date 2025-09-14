@@ -1,95 +1,126 @@
 # backend/app/routes/api/players.py
+from __future__ import annotations
 
+import re
+import unicodedata
+from difflib import SequenceMatcher
+from urllib.parse import quote_plus
+from typing import Any, Dict, List, Optional
+
+import requests
 from fastapi import APIRouter, HTTPException, Query
-from typing import Optional, List, Dict, Any
-import unicodedata, difflib
 
-from app.services.supabase_queries import (
-    players_all,
-    player_lookup,
-    players_search,
-    players_by_team,
-)
-from scripts.shared.team_name_map import (
-    get_team_id_from_abbr,
-)
-from scripts.shared.prop_utils import get_latest_team_for_player
 from scripts.shared.supabase_utils import supabase
+from scripts.shared.team_name_map import get_team_id_from_abbr
+
+# Prefer the real helper if present; otherwise, safe stub.
+try:
+    from scripts.shared.prop_utils import get_latest_team_for_player
+except Exception:  # pragma: no cover
+    def get_latest_team_for_player(pid: int):
+        return None, None
 
 router = APIRouter()
 
+MLB_BASE = "https://statsapi.mlb.com/api/v1"
 
-# ---------- helpers ----------
-def _strip_accents(s: str) -> str:
-    return "".join(
-        ch for ch in unicodedata.normalize("NFKD", s)
-        if unicodedata.category(ch) != "Mn"
-    )
 
+# -----------------------------
+# Helpers
+# -----------------------------
 def _norm_name(s: str) -> str:
-    s = _strip_accents(s or "")
-    s = s.replace("’", "'").replace("‘", "'").replace(".", "")
-    s = " ".join(s.split())
-    return s.strip()
+    """Lowercase, strip accents, drop punctuation/suffixes, collapse spaces."""
+    if not s:
+        return ""
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(c for c in s if not unicodedata.combining(c)).lower()
+    s = s.replace("'", "").replace(".", "")
+    s = re.sub(r"\b(jr|sr|ii|iii|iv)\b", "", s)
+    s = re.sub(r"[^a-z ]", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
 
 def _best_match(target_norm: str, rows: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-    best, best_score = None, 0.0
+    """Pick the DB row whose normalized player_name best matches target."""
+    best = None
+    best_score = 0.0
     for r in rows:
-        nm = _norm_name(str(r.get("player_name", "")))
-        score = difflib.SequenceMatcher(None, target_norm.lower(), nm.lower()).ratio()
+        name = (r.get("player_name") or "").strip()
+        cand_norm = _norm_name(name)
+        if not cand_norm:
+            continue
+        score = SequenceMatcher(None, target_norm, cand_norm).ratio()
         if score > best_score:
-            best, best_score = r, score
-    return best if best_score >= 0.75 else None  # tune threshold if needed
+            best_score = score
+            best = r
+    # Require a reasonable similarity
+    return best if best_score >= 0.78 else None
 
 
-# ---------- routes ----------
-@router.get("/players")
-def players_list_all():
-    return players_all()
+def _mlb_search_people_by_name(name: str) -> List[Dict[str, Any]]:
+    """Best-effort MLB name search; returns list of people dicts."""
+    q = quote_plus(name.strip())
+    # Primary: /people?search=
+    try:
+        r = requests.get(f"{MLB_BASE}/people?search={q}&sportId=1", timeout=8)
+        if r.ok:
+            js = r.json() or {}
+            ppl = js.get("people") or []
+            if isinstance(ppl, list) and ppl:
+                return ppl
+    except Exception:
+        pass
+    # Fallback: /people/search?name=
+    try:
+        r2 = requests.get(f"{MLB_BASE}/people/search?name={q}&sportId=1", timeout=8)
+        if r2.ok:
+            js2 = r2.json() or {}
+            ppl = js2.get("people") or js2.get("searchResults") or []
+            if isinstance(ppl, list):
+                return ppl
+    except Exception:
+        pass
+    return []
 
-@router.get("/players/lookup")
-def players_lookup_route(
-    player_id: str | None = Query(None),
-    player_name: str | None = Query(None),
-):
-    if not player_id and not player_name:
-        raise HTTPException(status_code=400, detail="Provide player_id or player_name")
-    row = player_lookup(player_id=player_id, player_name=player_name)
-    if not row:
-        raise HTTPException(status_code=404, detail="player not found")
-    return {"ok": True, "data": row}
 
-@router.get("/players/search")
-def players_search_route(
-    q: str = Query(..., min_length=1, max_length=64),
-    limit: int = Query(10, ge=1, le=50),
-):
-    return {"ok": True, "data": players_search(q, limit)}
+def _mlb_current_team_id(player_id: int) -> Optional[int]:
+    """Hydrate current team for a player_id via MLB API."""
+    try:
+        r = requests.get(f"{MLB_BASE}/people/{int(player_id)}?hydrate=currentTeam", timeout=8)
+        if not r.ok:
+            return None
+        js = r.json() or {}
+        people = js.get("people") or []
+        if not people:
+            return None
+        cur = (people[0].get("currentTeam") or {})
+        tid = cur.get("id")
+        return int(tid) if tid is not None else None
+    except Exception:
+        return None
 
-@router.get("/players/by_team")
-def players_by_team_route(
-    team_id: int | None = Query(None, ge=1),
-    team: str | None = Query(None),
-):
-    data = players_by_team(team_id=team_id, team=team)
-    return {"ok": True, "data": data}
 
-# Resolve by NAME → {player_id, team_id}
+# -----------------------------
+# Route: Resolve by NAME → {player_id, team_id}
+# -----------------------------
 @router.get("/players/resolve")
 def resolve_player(
     name: str = Query(..., min_length=2),
     date: Optional[str] = None,  # accepted for compatibility; not used
 ):
     """
-    Resolve by NAME ONLY (case/diacritic tolerant).
-    Reads from public.player_ids and returns the most recent team (by updated_at).
+    Resolve a player by NAME (case/diacritic tolerant).
+    1) Try public.player_ids (DB-first)
+    2) Fallback to MLB people search + currentTeam
+    Returns: { player_id, name, team_id }.
     """
-    raw = name.strip()
+    raw = (name or "").strip()
     norm = _norm_name(raw)
     if not norm:
-        raise HTTPException(400, "empty name")
+        raise HTTPException(status_code=400, detail="empty name")
 
-    # If a numeric string sneaks in, treat it as an id shortcut
+    # Numeric fast-path: treat as player_id and fetch team
     if raw.isdigit():
         pid = int(raw)
         team_id = None
@@ -102,6 +133,7 @@ def resolve_player(
         if team_id is None:
             raise HTTPException(status_code=404, detail="Team not found for player")
         return {"player_id": pid, "name": raw, "team_id": team_id}
+
     # 1) Broad ILIKE on raw (fast path)
     rows: List[Dict[str, Any]] = []
     try:
@@ -116,46 +148,63 @@ def resolve_player(
         rows = getattr(res, "data", []) or []
     except Exception:
         rows = []
-    
-    # 2) If empty, broaden search in accent-friendly way:
-    tokens = [t for t in norm.split(" ") if t]
 
-    # 2a) try FIRST token only (avoids the accent on the last name)
-    if not rows and tokens:
-        try:
-            res2 = (
-                supabase.from_("player_ids")
-                .select("player_id, player_name, team, team_id, updated_at")
-                .ilike("player_name", f"%{tokens[0]}%")
-                .order("updated_at", desc=True)
-                .limit(100)
-                .execute()
-            )
-            rows = getattr(res2, "data", []) or []
-        except Exception:
-            rows = []
+    # 2) If empty, broaden search in accent-friendly way via tokens
+    if not rows:
+        tokens = [t for t in norm.split(" ") if t]
+        # First token
+        if tokens:
+            try:
+                res2 = (
+                    supabase.from_("player_ids")
+                    .select("player_id, player_name, team, team_id, updated_at")
+                    .ilike("player_name", f"%{tokens[0]}%")
+                    .order("updated_at", desc=True)
+                    .limit(100)
+                    .execute()
+                )
+                rows = getattr(res2, "data", []) or []
+            except Exception:
+                rows = []
+        # Last token
+        if not rows and len(tokens) > 1:
+            try:
+                res3 = (
+                    supabase.from_("player_ids")
+                    .select("player_id, player_name, team, team_id, updated_at")
+                    .ilike("player_name", f"%{tokens[-1]}%")
+                    .order("updated_at", desc=True)
+                    .limit(100)
+                    .execute()
+                )
+                rows = getattr(res3, "data", []) or []
+            except Exception:
+                rows = []
 
-    # 2b) if still empty and we have a last token, try that alone
-    if not rows and len(tokens) > 1:
-        try:
-            res3 = (
-                supabase.from_("player_ids")
-                .select("player_id, player_name, team, team_id, updated_at")
-                .ilike("player_name", f"%{tokens[-1]}%")
-                .order("updated_at", desc=True)
-                .limit(100)
-                .execute()
-            )
-            rows = getattr(res3, "data", []) or []
-        except Exception:
-            rows = []
-
-    # 3) Pick best by normalized fuzzy ratio
+    # 3) Pick best DB candidate by normalized fuzzy ratio
     cand = _best_match(norm, rows) if rows else None
     if not cand:
-        raise HTTPException(status_code=404, detail="Player not found")
+        # ---- MLB FALLBACK: not in DB; try StatsAPI ----
+        ppl = _mlb_search_people_by_name(raw)
+        if not ppl:
+            raise HTTPException(status_code=404, detail="Player not found")
+        person = ppl[0]
+        try:
+            pid = int(person.get("id"))
+        except Exception:
+            raise HTTPException(status_code=404, detail="Player not found")
+        team_id = _mlb_current_team_id(pid)
+        if team_id is None:
+            raise HTTPException(status_code=404, detail="Team not found for player")
+        return {
+            "player_id": pid,
+            "name": person.get("fullName") or raw,
+            "team_id": int(team_id),
+        }
 
+    # ----- DB candidate path -----
     pid = int(cand["player_id"])
+
     # Prefer a definitive TEAM ID; fall back through several sources
     team_id: Optional[int] = None
     try:
