@@ -1,11 +1,13 @@
 # backend/app/routes/api/predict.py
 from __future__ import annotations
 
+import os, json, joblib
+import math
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 from pathlib import Path
-import os, json, joblib
 from app.security.commit_token import mint_commit_token, verify_commit_token
 from app.config import COMMIT_TOKEN_SECRET, COMMIT_TOKEN_TTL
 
@@ -209,6 +211,32 @@ def _features_path_adjacent_to_model(model_path: Path, prop: str) -> Optional[Pa
             return sorted(cands)[-1]
     return None
 
+def _poisson_over_prob(mu: float, line: float) -> float:
+    """
+    Convert a Poisson mean (mu) into P(X > line) for sportsbook-style lines.
+    For half lines (n+0.5), this is P(X >= n+1).
+    For integer lines (n), this is P(X >= n+1).
+    """
+    if mu <= 0 or not math.isfinite(mu):
+        return 0.0
+
+    # threshold k = smallest integer strictly greater than line
+    if abs(line - round(line)) < 1e-9:
+        k = int(round(line)) + 1
+    else:
+        k = int(math.floor(line)) + 1
+    k = max(1, k)
+
+    # P(X >= k) = 1 - P(X <= k-1) with X~Poisson(mu)
+    # compute CDF up to k-1 via stable iterative terms
+    term = math.exp(-mu)  # i = 0
+    cdf = term
+    for i in range(1, k):
+        term *= mu / i
+        cdf += term
+    p = 1.0 - cdf
+    return max(0.0, min(1.0, p))
+
 # -----------------------------
 # API models
 # -----------------------------
@@ -380,26 +408,31 @@ async def predict(req: Request) -> Dict[str, Any]:
     if isinstance(inp.features, dict):
         merged_features.update(inp.features)
 
-    # 4 Build zero-filled vector for inference (ordered exactly like training)
-    missing_features = [name for name in feature_names if name not in merged_features]
-    model_features = {name: 0 for name in feature_names}
-    model_features.update(merged_features)
-    X = [_vector_from_features(model_features, feature_names)]
-
-    # 5 Load model & predict
+    # 4 Resolve/load model  (unchanged right above)
     try:
         model = joblib.load(str(model_path))
     except Exception as e:
         raise HTTPException(500, f"Failed to load model: {e}")
 
+    # 5 Predict
     try:
-        if hasattr(model, "predict_proba"):
+        model_name = model_path.name.lower()
+        is_poisson = "poisson" in model_name
+
+        if hasattr(model, "predict_proba") and not is_poisson:
             proba = float(model.predict_proba(X)[0][1])
-        elif hasattr(model, "predict"):
-            y = model.predict(X)
-            proba = float(y[0]) if isinstance(y, (list, tuple)) else float(y)
         else:
-            raise AttributeError("Model lacks predict_proba/predict")
+            y = model.predict(X)
+            val = float(y[0]) if isinstance(y, (list, tuple)) else float(y)
+            if is_poisson:
+                line = float(inp.prop_value) if inp.prop_value is not None else 0.5
+                proba = _poisson_over_prob(max(0.0, val), line)
+            else:
+                # fallback for regressors that directly emit a prob
+                proba = val
+
+        # sanity clamp
+        proba = max(0.0, min(1.0, proba))
     except Exception as e:
         raise HTTPException(500, f"Inference failed: {e}")
 

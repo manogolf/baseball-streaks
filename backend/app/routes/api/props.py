@@ -326,13 +326,23 @@ async def add_prop(req: Request):
     if not team_abbr:
         raise HTTPException(status_code=400, detail="Could not determine team (abbr) to insert")
 
-    # Ensure player_name (NOT NULL)
+        # Ensure player_name (NOT NULL)
     player_name = features.get("player_name")
     if not player_name and player_id:
         player_name = _get_player_name_by_id(player_id)
+    if not player_name and player_id:
+        # last-ditch: pull from MLB API so users aren't blocked
+        try:
+            r = requests.get(f"https://statsapi.mlb.com/api/v1/people/{int(player_id)}", timeout=5)
+            if r.ok:
+                js = r.json()
+                people = js.get("people") or []
+                if people:
+                    player_name = (people[0] or {}).get("fullName") or None
+        except Exception:
+            pass
     if not player_name:
         raise HTTPException(status_code=400, detail="Could not resolve player_name")
-    
 
     # Optional context
     is_home = features.get("is_home")

@@ -34,6 +34,7 @@ async function postApi(path, body) {
   return res.json();
 }
 
+// Optional; not used in the current flow (prepareThenPredict is used instead)
 async function requestPrediction({ prop_type, player_id, game_id }) {
   return postApi("/api/predict", {
     prop_type: String(prop_type).toLowerCase().trim(),
@@ -46,8 +47,9 @@ async function requestPrediction({ prop_type, player_id, game_id }) {
 // ----- prepare → predict (snake_case + team_abbr uppercased) -----
 async function prepareThenPredict({
   player_id, // number|string (required)
-  team_id, // number|undefined (optional)
-  team_abbr, // string|undefined (optional; sent uppercased)
+  player_name, // string|undefined (optional; passes through)
+  team_id, // number|undefined (preferred)
+  team_abbr, // string|undefined (fallback; will be uppercased)
   game_date, // "YYYY-MM-DD"
   prop_type, // e.g. "hits"
   prop_value, // number or numeric string
@@ -55,8 +57,9 @@ async function prepareThenPredict({
 }) {
   const prepareBody = {
     player_id: Number(player_id),
+    ...(player_name ? { player_name: String(player_name) } : {}),
     game_date,
-    prop_type,
+    prop_type: String(prop_type).toLowerCase().trim(),
     prop_value: Number(prop_value),
     over_under,
   };
@@ -71,7 +74,10 @@ async function prepareThenPredict({
   const features = prep.features;
 
   // 2) predict
-  const pred = await postApi("/api/predict", { prop_type, features });
+  const pred = await postApi("/api/predict", {
+    prop_type: prepareBody.prop_type,
+    features,
+  });
 
   return {
     features,
@@ -80,8 +86,6 @@ async function prepareThenPredict({
     model: pred.model,
   };
 }
-
-const pct = (p) => (p == null ? "—" : `${(p * 100).toFixed(1)}%`);
 
 const PROP_TYPES = [
   "doubles",
@@ -117,7 +121,7 @@ export default function PlayerPropFormV2() {
   // user inputs
   const [playerName, setPlayerName] = useState("");
   const [teamAbbr, setTeamAbbr] = useState("");
-  const [gameDate, setGameDate] = useState(todayInET);
+  const [gameDate, setGameDate] = useState(() => todayInET());
   const [propType, setPropType] = useState("hits");
   const [overUnder, setOverUnder] = useState("under");
   const [propValue, setPropValue] = useState("0.5");
@@ -138,6 +142,14 @@ export default function PlayerPropFormV2() {
   const lastReqId = useRef(0);
   const [teamTouched, setTeamTouched] = useState(false);
   const [lastResolvedPlayerId, setLastResolvedPlayerId] = useState("");
+
+  // Invalidate stale prediction/token whenever inputs that affect the model change
+  useEffect(() => {
+    setPrediction(null);
+    setCommitToken(null);
+    setPrepPreview(null);
+    setError("");
+  }, [playerId, teamAbbr, gameDate, propType, propValue, overUnder]);
 
   useEffect(() => {
     console.info("[Props V2] mounted");
@@ -170,8 +182,7 @@ export default function PlayerPropFormV2() {
       if (r?.player_id) {
         const newId = String(r.player_id);
         if (newId !== lastResolvedPlayerId && !teamTouched) {
-          // drop stale team if user hasn’t touched it
-          setTeamAbbr("");
+          setTeamAbbr(""); // drop stale team if user hasn’t touched it
         }
         setPlayerId(newId);
         setLastResolvedPlayerId(newId);
@@ -212,13 +223,11 @@ export default function PlayerPropFormV2() {
     // require resolved player_id
     if (!playerId) return setError("Resolve a player first to get player_id.");
 
-    // require resolved player_id
-    if (!playerId) return setError("Resolve a player first to get player_id.");
-
     setLoading(true);
     try {
       const { features, probability, commit_token } = await prepareThenPredict({
         player_id: Number(playerId),
+        player_name: playerName || undefined,
         team_abbr: (teamAbbr || "").toUpperCase(),
         game_date: gameDate,
         prop_type: propType,
@@ -275,6 +284,31 @@ export default function PlayerPropFormV2() {
       setSaving(false);
     }
   }
+
+  // ---- derived UI helpers (just before return) ----
+  const pctClamped = (p) =>
+    `${(Math.max(0, Math.min(1, Number(p) || 0)) * 100).toFixed(1)}%`;
+
+  const addDisabled =
+    !commitToken ||
+    loading ||
+    saving ||
+    prediction?.saved ||
+    prediction?.duplicate;
+
+  const addLabel = saving
+    ? "Saving…"
+    : prediction?.duplicate
+    ? "Already saved"
+    : prediction?.saved
+    ? "Saved ✓"
+    : !commitToken
+    ? "Predict first"
+    : "➕ Add Prop";
+
+  const addTitle = !commitToken
+    ? "Run Predict to generate a commit token"
+    : undefined;
 
   return (
     <form
@@ -446,50 +480,30 @@ export default function PlayerPropFormV2() {
         <button
           type="button"
           onClick={handleSaveProp}
-          disabled={
-            !commitToken ||
-            loading ||
-            saving ||
-            prediction?.saved ||
-            prediction?.duplicate
-          }
+          disabled={addDisabled}
+          title={addTitle}
           className="flex-1 md:flex-none px-4 py-2 bg-white border border-green-500 text-black rounded-md hover:bg-green-100 disabled:opacity-50"
         >
-          {saving
-            ? "Saving…"
-            : prediction?.duplicate
-            ? "Already saved"
-            : prediction?.saved
-            ? "Saved ✓"
-            : "➕ Add Prop"}
+          {addLabel}
         </button>
       </div>
 
-      {/* Prediction summary */}
+      {/* Prediction summary (no second Add button) */}
       {prediction && (
         <div className="p-3 rounded border space-y-2">
           <div className="font-medium">
-            🎯 Model (Probability of Over): {pct(prediction.probability)}
+            🎯 Model (Probability of Over): {pctClamped(prediction.probability)}
           </div>
 
-          {!prediction.saved ? (
-            <div className="text-xs text-gray-600">
-              Not saved yet. Click Add Prop to store it.
-            </div>
-          ) : prediction.duplicate ? (
+          {prediction.duplicate ? (
             <div className="text-xs text-amber-700">Already saved.</div>
-          ) : (
+          ) : prediction.saved ? (
             <div className="text-xs text-green-700">Saved ✓</div>
+          ) : (
+            <div className="text-xs text-gray-600">
+              Not saved yet. Click “Add Prop”.
+            </div>
           )}
-
-          <button
-            type="button"
-            disabled={!commitToken || prediction?.saved}
-            onClick={handleSaveProp}
-            className="px-3 py-2 rounded bg-indigo-600 text-black disabled:opacity-50"
-          >
-            {prediction?.saved ? "Saved" : "Add Prop"}
-          </button>
         </div>
       )}
     </form>
