@@ -390,12 +390,13 @@ async def add_prop(req: Request):
 
     # Insert (upsert against the DB unique columns)
     try:
-        # Preflight: ensure game_info exists so the FK passes
+        # Preflight: try to ensure game_info exists so the FK passes
         try:
             _ensure_game_info_fk(game_id=game_id, features=features)
         except Exception:
             pass
 
+        # 1st attempt
         res = (
             supabase.from_(TABLE)
             .upsert(
@@ -404,13 +405,39 @@ async def add_prop(req: Request):
             )
             .execute()
         )
-        if getattr(res, "error", None):
-            raise HTTPException(status_code=500, detail=f"DB insert failed: {res.error}")
+
+        # Some client libs put the DB error into res.error (no exception raised)
+        res_err = getattr(res, "error", None)
+        if res_err:
+            err_text = str(res_err)
+            # If it’s an FK failure, try to backfill game_info and retry once
+            if "player_props_game_id_fkey" in err_text or "foreign key constraint" in err_text or "23503" in err_text.lower():
+                try:
+                    _ensure_game_info_fk(game_id=game_id, features=features)
+                    res2 = (
+                        supabase.from_(TABLE)
+                        .upsert(
+                            row_clean,
+                            on_conflict="prop_source,player_id,game_id,prop_type,prop_value",
+                        )
+                        .execute()
+                    )
+                    if getattr(res2, "error", None):
+                        raise HTTPException(status_code=500, detail=f"DB insert failed: {res2.error}")
+                    return {"saved": True, "row": row_clean, "backfilled_game_info": True}
+                except Exception:
+                    # fall through to raise original
+                    raise HTTPException(status_code=400, detail=err_text)
+            # Not an FK error → bubble up
+            raise HTTPException(status_code=500, detail=f"DB insert failed: {res_err}")
+
+        # success path
         return {"saved": True, "row": row_clean}
 
     except PostgrestAPIError as e:  # pragma: no cover
+        # Some client libs raise instead of setting res.error
         msg = getattr(e, "message", "") or ""
-        code = getattr(e, "code", "") or ""
+        code = (getattr(e, "code", "") or "")  # may be '23503' for FK
         details = getattr(e, "details", "") or ""
         text = f"{msg} {details}".strip()
 
@@ -418,8 +445,8 @@ async def add_prop(req: Request):
         if "duplicate" in text.lower() or "unique" in text.lower():
             return {"saved": False, "duplicate": True}
 
-        # FK to game_info missing? Try to backfill once, then retry insert.
-        if code == "23503" or "player_props_game_id_fkey" in text:
+        # FK to game_info missing? Backfill and retry once.
+        if code == "23503" or "player_props_game_id_fkey" in text or "foreign key" in text.lower():
             try:
                 _ensure_game_info_fk(game_id=game_id, features=features)
                 res2 = (
@@ -436,5 +463,5 @@ async def add_prop(req: Request):
             except Exception:
                 pass
 
-        # Anything else: bubble up as 400 so the client sees the reason
+        # Anything else: surface a clear message
         raise HTTPException(status_code=400, detail=text or "Insert failed")
