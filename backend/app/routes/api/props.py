@@ -85,10 +85,12 @@ def _dup_exists(
 def _ensure_game_info_fk(*, game_id: int, features: Dict[str, Any]) -> None:
     """
     Ensure a game_info row exists for this game_id so the FK on player_props can pass.
+
     Strategy:
       A) Try upsert using what we already have in `features`
-      B) If still missing data, hit MLB schedule for game_date to enrich
+      B) If still missing, hit MLB schedule for game_date to enrich
       C) Final fallback: hit the direct game feed by game_id
+
     All steps are best-effort; errors are swallowed.
     """
     if supabase is None:
@@ -117,7 +119,6 @@ def _ensure_game_info_fk(*, game_id: int, features: Dict[str, Any]) -> None:
         except Exception:
             return None
 
-    # Normalize game_id
     try:
         gid = int(game_id)
     except Exception:
@@ -130,20 +131,17 @@ def _ensure_game_info_fk(*, game_id: int, features: Dict[str, Any]) -> None:
     # ---------- A) Use what we already have in `features`
     try:
         game_date = (str(features.get("game_date") or "")[:10]) or None
-
-        # Determine home/away IDs from team_id/opponent_team_id + is_home
         team_id = features.get("team_id")
         opp_id  = features.get("opponent_team_id") or features.get("opponent_encoded")
         is_home = features.get("is_home")
 
-        home_team_id = None
-        away_team_id = None
+        home_team_id = away_team_id = None
         if isinstance(is_home, (bool, int)):
             if bool(is_home):
                 home_team_id = int(team_id) if team_id is not None else None
-                away_team_id = int(opp_id) if opp_id is not None else None
+                away_team_id = int(opp_id)  if opp_id  is not None else None
             else:
-                home_team_id = int(opp_id) if opp_id is not None else None
+                home_team_id = int(opp_id)  if opp_id  is not None else None
                 away_team_id = int(team_id) if team_id is not None else None
 
         payload = {
@@ -151,7 +149,6 @@ def _ensure_game_info_fk(*, game_id: int, features: Dict[str, Any]) -> None:
             "game_date": game_date,
             "home_team_id": home_team_id,
             "away_team_id": away_team_id,
-            # These may already be present from prepareProp
             "home_team_abbr": features.get("home_team_abbr"),
             "away_team_abbr": features.get("away_team_abbr"),
             "game_time": features.get("game_time"),
@@ -160,7 +157,8 @@ def _ensure_game_info_fk(*, game_id: int, features: Dict[str, Any]) -> None:
         }
         payload = {k: v for k, v in payload.items() if v is not None}
 
-        if len(payload) > 1:  # we have at least game_id + something else
+        # Upsert if we have at least game_id + something useful
+        if len(payload) > 1:
             supabase.from_("game_info").upsert(payload, on_conflict="game_id").execute()
             if _exists(gid):
                 return
