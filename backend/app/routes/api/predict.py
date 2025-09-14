@@ -242,6 +242,32 @@ def _fetch_precomputed_features(prop_type: str, player_id: int | str, game_id: i
         return feats if isinstance(feats, dict) else None
     except Exception:
         return None
+    
+def _stash_precomputed_features(
+    *, prop_type: str, player_id: int, game_id: int, tag: str, features: Dict[str, Any]
+) -> None:
+    """Best-effort upsert so ad-hoc predictions create a precomputed feature row."""
+    if supabase is None:
+        return
+    try:
+        row = {
+            "prop_type": str(prop_type),
+            "player_id": int(player_id),
+            "game_id": int(game_id),
+            "feature_set_tag": str(tag or "v1"),
+            # support either column name, depending on your schema
+            "features": features,
+            "features_json": features,
+            "source": "adhoc_predict",
+        }
+        supabase.from_("prop_features_precomputed").upsert(
+            row,
+            on_conflict="prop_type,player_id,game_id,feature_set_tag",
+        ).execute()
+    except Exception:
+        # never block inference on bookkeeping
+        pass
+
 
 
 def _coerce_scalar(v: Any) -> float:
@@ -376,6 +402,19 @@ async def predict(req: Request) -> Dict[str, Any]:
                 .astype("float64")
         )
     X_mat = X_mat.fillna(0.0)
+
+        # Persist on-the-fly features so next calls can load them quickly
+    tag = os.getenv("FEATURE_SET_TAG", "v1")
+    pid_for_stash = inp.player_id or merged_features.get("player_id")
+    gid_for_stash = inp.game_id  or merged_features.get("game_id")
+    if pid_for_stash and gid_for_stash:
+        _stash_precomputed_features(
+            prop_type=inp.prop_type,
+            player_id=int(pid_for_stash),
+            game_id=int(gid_for_stash),
+            tag=tag,
+            features=row_dict,   # exactly what was fed to the model (ordered & coerced)
+        )
 
     # 3.3 For debugging/telemetry (OPTIONAL): which features are effectively missing/zero
     missing_features = [name for name in feature_names if row_dict.get(name, 0) in (0, None, "")]
