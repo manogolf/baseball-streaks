@@ -671,20 +671,32 @@ async def predict(req: Request) -> Dict[str, Any]:
         model_name = model_path.name.lower()
         is_poisson = "poisson" in model_name
 
+        COUNT_PROPS = {
+            "singles","hits","total_bases","hits_runs_rbis","runs_rbis","rbis",
+            "runs_scored","home_runs","doubles","triples","walks"
+        }
+
         if hasattr(model, "predict_proba") and not is_poisson:
             proba = float(model.predict_proba(X_mat)[0][1])
         else:
-            y = model.predict(X_mat)
-            val = float(y[0]) if isinstance(y, (list, tuple)) else float(y)
-            if is_poisson:
-                line = float(inp.prop_value) if inp.prop_value is not None else 0.5
-                proba = _poisson_over_prob(max(0.0, val), line)
+            yhat = model.predict(X_mat)
+            val = float(yhat[0]) if isinstance(yhat, (list, tuple, np.ndarray)) else float(yhat)
+
+            # Use Poisson tail for count-like props or explicitly Poisson models
+            if is_poisson or inp.prop_type in COUNT_PROPS:
+                line = float(
+                    inp.prop_value
+                    if inp.prop_value is not None
+                    else (merged_features.get("line") or 0.5)
+                )
+                mu = max(0.0, val)  # regressor emits expected count
+                proba = _poisson_over_prob(mu, line)
             else:
-                proba = val
+                # Best-effort mapping for non-proba regressors: squash with sigmoid if outside [0,1]
+                proba = 1.0 / (1.0 + math.exp(-val)) if (val < 0 or val > 1) else val
 
-        # clamp once, after proba is computed
+        # final clamp (avoid 0.0 / 1.0)
         proba = float(max(0.001, min(0.999, proba)))
-
     except Exception as e:
         raise HTTPException(500, f"Inference failed: {e}")
 
