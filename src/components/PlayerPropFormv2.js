@@ -18,7 +18,10 @@ async function getApi(path, params = {}) {
   Object.entries(params).forEach(([k, v]) => {
     if (v != null && v !== "") url.searchParams.set(k, v);
   });
-  const res = await fetch(url.toString(), { credentials: "include" });
+  const res = await fetch(url.toString(), {
+    mode: "cors",
+    credentials: "omit",
+  });
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
   return res.json();
 }
@@ -27,7 +30,8 @@ async function postApi(path, body) {
   const res = await fetch(BASE_API + path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    credentials: "include",
+    mode: "cors",
+    credentials: "omit",
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
