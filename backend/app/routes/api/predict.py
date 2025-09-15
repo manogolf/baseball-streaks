@@ -584,6 +584,31 @@ async def predict(req: Request) -> Dict[str, Any]:
     # Ensure team/opponent/etc. are present (fills from inp/MLB if needed)
     merged_features = _ensure_minimal_context(merged_features, inp)
 
+        # ---- hard guarantee for team/opponent using IDs if still absent ----
+    try:
+        from scripts.shared.team_name_map import get_team_info_by_id
+    except Exception:
+        get_team_info_by_id = lambda _id: None  # fallback no-op
+
+    if not merged_features.get("team"):
+        tid = merged_features.get("team_id") or getattr(inp, "team_id", None)
+        if tid is not None:
+            info = get_team_info_by_id(int(tid)) or {}
+            if info.get("abbr"):
+                merged_features["team"] = str(info["abbr"]).upper()
+
+    if not merged_features.get("opponent"):
+        oid = (
+            merged_features.get("opponent_team_id")
+            or merged_features.get("opponent_encoded")
+            or getattr(inp, "opponent_team_id", None)
+        )
+        if oid is not None:
+            info = get_team_info_by_id(int(oid)) or {}
+            if info.get("abbr"):
+                merged_features["opponent"] = str(info["abbr"]).upper()
+
+
     # As a last resort, ensure every expected column exists
     # (use existing STR_FEATURES if defined; otherwise default set)
     DEFAULT_STR_FEATURES = {"team", "opponent", "game_day_of_week", "time_of_day_bucket", "home_away"}
@@ -632,7 +657,7 @@ async def predict(req: Request) -> Dict[str, Any]:
         )
 
     # 3.3 For debugging/telemetry
-    missing_features = [n for n in feature_names if merged_features.get(n) in (None, "")]
+    missing_features = [n for n in feature_names if (n not in merged_features) or (merged_features.get(n) in (None, ""))]
     missing_count = len(missing_features)
 
     # 4 Resolve/load model (unchanged)
@@ -655,8 +680,11 @@ async def predict(req: Request) -> Dict[str, Any]:
                 line = float(inp.prop_value) if inp.prop_value is not None else 0.5
                 proba = _poisson_over_prob(max(0.0, val), line)
             else:
-                # fallback for regressors that directly emit a prob
                 proba = val
+
+        # clamp once, after proba is computed
+        proba = float(max(0.001, min(0.999, proba)))
+
     except Exception as e:
         raise HTTPException(500, f"Inference failed: {e}")
 
