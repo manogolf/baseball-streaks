@@ -18,11 +18,38 @@ router = APIRouter()
 # ---- helpers -----------------------------------------------------------------
 
 def _get_db_url() -> str:
-    """Resolve DB URL (NHL)."""
-    url = os.getenv("NHL_DB_URL") or os.getenv("SUPABASE_DB_URL")
-    if not url:
-        raise HTTPException(status_code=500, detail="missing NHL_DB_URL (or SUPABASE_DB_URL)")
-    return url
+    """
+    Resolve a Postgres URL from existing envs and normalize it for psycopg.
+    Prefers DATABASE_URL; falls back to SUPABASE_DB_URL or POSTGRES_URL.
+    Accepts SQLAlchemy-style schemes like postgresql+psycopg:// and normalizes to postgresql://
+    """
+def _get_db_url() -> str:
+    """
+    Resolve Postgres URL from existing envs.
+    Prefer DATABASE_URL; fall back to a couple of common aliases.
+    Normalize scheme for psycopg if needed.
+    """
+    candidates = [
+        "DATABASE_URL",        # what you already have set
+        "POSTGRES_URL",        # optional alias
+        "PGDATABASE_URL",      # optional alias
+    ]
+    for name in candidates:
+        raw = os.getenv(name)
+        if not raw:
+            continue
+        url = raw.strip()
+        # Normalize sqlalchemy-style / legacy schemes to psycopg-friendly
+        if url.startswith("postgresql+"):
+            url = "postgresql://" + url.split("postgresql+", 1)[1]
+        elif url.startswith("postgres://"):
+            url = "postgresql://" + url[len("postgres://"):]
+        return url
+
+    raise HTTPException(
+        status_code=500,
+        detail="DB URL not found (expected DATABASE_URL or POSTGRES_URL/PGDATABASE_URL)."
+    )
 
 def _safe_eq(a: str | None, b: str | None) -> bool:
     a = (a or "").strip()
