@@ -51,13 +51,25 @@ def _safe_eq(a: str | None, b: str | None) -> bool:
 
 def _copy_to_csv(cur, sql: str, out_path: Path) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    # psycopg v3 cursor has .copy(); psycopg2 uses .copy_expert()
-    if _PSYCOPG_IS_V3 and hasattr(cur, "copy"):
+
+    # Ensure generous timeouts so COPY isn’t killed prematurely
+    cur.execute("SET statement_timeout = '10min';")
+    cur.execute("SET lock_timeout = '30s';")
+    cur.execute("SET idle_in_transaction_session_timeout = '5min';")
+
+    if _PSYCOPG_IS_V3:
+        # psycopg3: stream chunks explicitly
         with open(out_path, "wb") as f:
-            cur.copy(sql, f)  # v3
+            with cur.copy(sql) as cp:            # server-side COPY TO STDOUT
+                while True:
+                    chunk = cp.read()            # returns bytes; empty when done
+                    if not chunk:
+                        break
+                    f.write(chunk)
     else:
+        # psycopg2: classic copy_expert writes directly to file
         with open(out_path, "wb") as f:
-            cur.copy_expert(sql, f)  # v2
+            cur.copy_expert(sql, f)
 
 # ---- endpoint ----------------------------------------------------------------
 
