@@ -3,7 +3,7 @@ import os, hmac
 import io
 import datetime as dt
 from datetime import date
-from fastapi import APIRouter, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Header, HTTPException, Query, Request, Body
 from pathlib import Path
 
 try:
@@ -46,51 +46,50 @@ def _copy_to_csv(conn, sql: str, out_path: Path) -> None:
 @router.post("/refresh-export")
 def refresh_export(
     request: Request,
+    # headers (may be stripped by proxy)
     x_auth: str | None = Header(None, convert_underscores=False),
     authorization: str | None = Header(None),
+    # new: accept token via query or JSON body as fallback
+    token_q: str | None = Query(None, alias="token"),
+    token_body: dict | None = Body(None),
     debug: str | None = Query(None),
 ):
-    # normalize debug
-    dbg = (debug or "").strip().lower()
-    dbg2 = dbg in {"2", "verbose"}
-
     env = (os.getenv("EXPORT_TOKEN") or "").strip()
 
-    # prefer X-Auth, else Authorization: Bearer <token>
+    # collect token from header, query, or body
     token = None
     if x_auth:
         token = x_auth.strip()
     elif authorization and authorization.lower().startswith("bearer "):
         token = authorization[7:].strip()
+    elif token_q:
+        token = token_q.strip()
+    elif isinstance(token_body, dict) and "token" in token_body and token_body["token"]:
+        token = str(token_body["token"]).strip()
 
-    # debug=2 -> echo headers as seen by FastAPI (no secrets)
-    if dbg2:
+    dbg = (debug or "").strip().lower()
+    if dbg in {"2", "verbose"}:
         return {
             "env_set": bool(env),
-            "env_len": len(env),
-            "received_headers": {
-                "authorization": authorization,
-                "x-auth": x_auth,
-                "all": {k.lower(): v for k, v in request.headers.items()},
+            "received_headers": {k.lower(): v for k, v in request.headers.items()},
+            "token_sources": {
+                "x-auth": bool(x_auth),
+                "authorization": bool(authorization),
+                "query_param": bool(token_q),
+                "json_body": isinstance(token_body, dict) and "token" in token_body,
             },
         }
-
-    # debug=true/1 -> summary (no secrets)
-    if dbg in {"true", "1", "yes"}:
+    if dbg in {"1", "true", "yes"}:
         return {
             "env_set": bool(env),
-            "env_len": len(env),
-            "has_x_auth": x_auth is not None,
-            "has_authorization": authorization is not None,
-            "token_len": len(token or ""),
+            "token_present": bool(token),
             "equal": bool(token) and hmac.compare_digest(token, env),
         }
 
-    # normal auth path
     if not env or not token or not hmac.compare_digest(token, env):
         raise HTTPException(status_code=401, detail="unauthorized")
 
-    # simple write to prove disk access
+    # simple write to prove disk path
     out_dir = Path("/var/data/proppadia/nhl/exports") / date.today().isoformat()
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "ping.txt").write_text("ok\n", encoding="utf-8")
