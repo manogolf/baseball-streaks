@@ -1,11 +1,11 @@
 # backend/routes/admin.py
-import os, hmac
+import subprocess, tempfile, os, hmac
 import io
 import datetime as dt
 from datetime import date
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Body
 from pathlib import Path
-
+from fastapi.responses import StreamingResponse
 try:
     import psycopg
 except ImportError:  # fall back if using psycopg2
@@ -94,3 +94,46 @@ def refresh_export(
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "ping.txt").write_text("ok\n", encoding="utf-8")
     return {"ok": True, "wrote": str(out_dir / "ping.txt")}
+
+@router.get("/download-disk-backup")
+def download_disk_backup(token: str):
+    # simple auth via query param (headers were being stripped)
+    if token != os.getenv("EXPORT_TOKEN"):
+        raise HTTPException(status_code=401, detail="unauthorized")
+
+    # the current mount you want to back up
+    src = Path("/var/data/models")
+    if not src.exists():
+        raise HTTPException(status_code=404, detail=f"source path not found: {src}")
+
+    # build tar.gz in a temp file and stream it
+    tmpf = tempfile.NamedTemporaryFile(delete=False, suffix=".tgz")
+    tmpf.close()  # we'll let tar write to it by path
+    try:
+        # tar -C /var/data/models -czf /tmp/tmpXYZ.tgz .
+        subprocess.run(
+            ["tar", "-C", str(src), "-czf", tmpf.name, "."],
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        os.unlink(tmpf.name)
+        raise HTTPException(status_code=500, detail=f"tar failed: {e}")
+
+    def stream_and_cleanup():
+        try:
+            with open(tmpf.name, "rb") as f:
+                for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                    yield chunk
+        finally:
+            try:
+                os.unlink(tmpf.name)
+            except Exception:
+                pass
+
+    return StreamingResponse(
+        stream_and_cleanup(),
+        media_type="application/gzip",
+        headers={
+            "Content-Disposition": 'attachment; filename="proppadia_models_backup.tgz"'
+        },
+    )
