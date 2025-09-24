@@ -1,7 +1,8 @@
 # backend/routes/admin.py
-import os
+import os, hmac
 import io
 import datetime as dt
+from datetime import date
 from fastapi import APIRouter, Header, HTTPException, Query
 from pathlib import Path
 
@@ -10,8 +11,8 @@ try:
 except ImportError:  # fall back if using psycopg2
     import psycopg2 as psycopg  # type: ignore
 
-router = APIRouter()
 
+router = APIRouter()
 VALID_SPORTS = {"nhl"}  # add "mlb", "nba" later
 
 def _get_db_url(sport: str) -> str:
@@ -43,66 +44,29 @@ def _copy_to_csv(conn, sql: str, out_path: Path) -> None:
 
 @router.post("/refresh-export")
 def refresh_export(
-    sport: str = Query("nhl"),
     x_auth: str | None = Header(None, convert_underscores=False),
+    debug: bool = Query(False),
 ):
-    token = os.getenv("EXPORT_TOKEN")
-    if not token or x_auth != token:
+    env = os.getenv("EXPORT_TOKEN")
+    # optional: trim accidental spaces/newlines
+    x = (x_auth or "").strip()
+    e = (env or "").strip()
+
+    if debug:
+        # returns only lengths & equality, never the secret
+        return {
+            "has_header": x_auth is not None,
+            "header_len": len(x),
+            "env_set": env is not None,
+            "env_len": len(e),
+            "equal": hmac.compare_digest(x, e),
+        }
+
+    if not e or not hmac.compare_digest(x, e):
         raise HTTPException(status_code=401, detail="unauthorized")
 
-    sport = sport.lower()
-    if sport not in VALID_SPORTS:
-        raise HTTPException(status_code=400, detail=f"unsupported sport: {sport}")
-
-    db_url = _get_db_url(sport)
-    today = dt.datetime.utcnow().date().isoformat()
-    root = Path("/var/data/proppadia") / sport / "exports" / today
-    sog_csv = root / "train_nhl_sog_v2.csv"
-    goalie_csv = root / "train_goalie_saves_v2.csv"
-
-    # resolve refresh.sql path (repo root / scripts/refresh.sql or backend/../scripts/refresh.sql)
-    here = Path(__file__).resolve()
-    refresh_sql_path = (here.parent.parent.parent / "scripts" / "refresh.sql").resolve()
-    if not refresh_sql_path.exists():
-        # try when scripts/ is at repo root and app-dir=backend
-        refresh_sql_path = (here.parent.parent / "scripts" / "refresh.sql").resolve()
-    if not refresh_sql_path.exists():
-        raise HTTPException(status_code=500, detail="scripts/refresh.sql not found")
-
-    # connect and run
-    using_psycopg3 = hasattr(psycopg, "connect") and "psycopg" in psycopg.__name__ and not psycopg.__name__.endswith("2")
-    try:
-        if using_psycopg3:
-            with psycopg.connect(db_url, autocommit=True) as conn:
-                _run_sql(conn, refresh_sql_path.read_text(encoding="utf-8"))
-                _copy_to_csv(conn,
-                    "COPY (SELECT * FROM nhl.export_training_nhl_sog_v2 ORDER BY game_date, player_id) "
-                    "TO STDOUT WITH CSV HEADER",
-                    sog_csv)
-                _copy_to_csv(conn,
-                    "COPY (SELECT * FROM nhl.export_training_goalie_saves_v2 ORDER BY game_date, player_id) "
-                    "TO STDOUT WITH CSV HEADER",
-                    goalie_csv)
-        else:
-            conn = psycopg.connect(db_url)  # psycopg2.connect
-            conn.autocommit = True
-            try:
-                _run_sql(conn, refresh_sql_path.read_text(encoding="utf-8"))
-                _copy_to_csv(conn,
-                    "COPY (SELECT * FROM nhl.export_training_nhl_sog_v2 ORDER BY game_date, player_id) "
-                    "TO STDOUT WITH CSV HEADER",
-                    sog_csv)
-                _copy_to_csv(conn,
-                    "COPY (SELECT * FROM nhl.export_training_goalie_saves_v2 ORDER BY game_date, player_id) "
-                    "TO STDOUT WITH CSV HEADER",
-                    goalie_csv)
-            finally:
-                conn.close()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"export failed: {e}")
-
-    return {
-        "ok": True,
-        "sport": sport,
-        "paths": [str(sog_csv), str(goalie_csv)],
-    }
+    # (keep the simple ping write for now)
+    out_dir = Path("/var/data/proppadia/nhl/exports") / date.today().isoformat()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "ping.txt").write_text("ok\n", encoding="utf-8")
+    return {"ok": True, "wrote": str(out_dir / "ping.txt")}
