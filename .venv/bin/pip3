@@ -1,4 +1,4 @@
-#!/Users/jerrystrain/Projects/baseball-streaks/.venv/bin/python3.13
+#!/Users/jerrystrain/Projects/Proppadia/mlb/.venv/bin/python3.11
 # -*- coding: utf-8 -*-
 import re
 import sys
