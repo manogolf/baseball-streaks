@@ -1,139 +1,104 @@
-# backend/routes/admin.py
-import subprocess, tempfile, os, hmac
-import io
-import datetime as dt
+# backend/app/routes/admin.py
+import os
+import hmac
 from datetime import date
-from fastapi import APIRouter, Header, HTTPException, Query, Request, Body
 from pathlib import Path
-from fastapi.responses import StreamingResponse
-try:
-    import psycopg
-except ImportError:  # fall back if using psycopg2
-    import psycopg2 as psycopg  # type: ignore
+from fastapi import APIRouter, HTTPException, Query, Body
 
+# prefer psycopg v3; fall back to psycopg2 if needed
+try:
+    import psycopg  # type: ignore
+    _PSYCOPG_IS_V3 = True
+except Exception:  # pragma: no cover
+    import psycopg2 as psycopg  # type: ignore
+    _PSYCOPG_IS_V3 = False
 
 router = APIRouter()
 
-VALID_SPORTS = {"nhl"}  # add "mlb", "nba" later
+# ---- helpers -----------------------------------------------------------------
 
-def _get_db_url(sport: str) -> str:
-    if sport == "nhl":
-        url = os.getenv("NHL_DB_URL") or os.getenv("SUPABASE_DB_URL")
-    else:
-        url = os.getenv(f"{sport.upper()}_DB_URL")
+def _get_db_url() -> str:
+    """Resolve DB URL (NHL)."""
+    url = os.getenv("NHL_DB_URL") or os.getenv("SUPABASE_DB_URL")
     if not url:
-        raise HTTPException(status_code=500, detail=f"DB URL missing for sport={sport}")
+        raise HTTPException(status_code=500, detail="missing NHL_DB_URL (or SUPABASE_DB_URL)")
     return url
 
-def _run_sql(conn, sql_text: str) -> None:
-    with conn.cursor() as cur:
-        cur.execute("SET statement_timeout = '10min';")
-        cur.execute("SET lock_timeout = '30s';")
-        cur.execute("SET idle_in_transaction_session_timeout = '5min';")
-        cur.execute(sql_text)
+def _safe_eq(a: str | None, b: str | None) -> bool:
+    a = (a or "").strip()
+    b = (b or "").strip()
+    return bool(a and b and hmac.compare_digest(a, b))
 
-def _copy_to_csv(conn, sql: str, out_path: Path) -> None:
+def _copy_to_csv(cur, sql: str, out_path: Path) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    with conn.cursor() as cur:
-        # psycopg (v3) uses copy; psycopg2 uses copy_expert — try both
-        try:
-            with open(out_path, "wb") as f:
-                cur.copy(sql, f)  # psycopg v3
-        except Exception:
-            with open(out_path, "wb") as f:
-                cur.copy_expert(sql, f)  # psycopg2
+    # psycopg v3 cursor has .copy(); psycopg2 uses .copy_expert()
+    if _PSYCOPG_IS_V3 and hasattr(cur, "copy"):
+        with open(out_path, "wb") as f:
+            cur.copy(sql, f)  # v3
+    else:
+        with open(out_path, "wb") as f:
+            cur.copy_expert(sql, f)  # v2
+
+# ---- endpoint ----------------------------------------------------------------
 
 @router.post("/refresh-export")
 def refresh_export(
-    request: Request,
-    # headers (may be stripped by proxy)
-    x_auth: str | None = Header(None, convert_underscores=False),
-    authorization: str | None = Header(None),
-    # new: accept token via query or JSON body as fallback
-    token_q: str | None = Query(None, alias="token"),
-    token_body: dict | None = Body(None),
-    debug: str | None = Query(None),
+    token: str | None = Query(None),                 # auth via query param
+    token_body: dict | None = Body(None),           # ...or JSON: {"token":"..."}
 ):
-    env = (os.getenv("EXPORT_TOKEN") or "").strip()
-
-    # collect token from header, query, or body
-    token = None
-    if x_auth:
-        token = x_auth.strip()
-    elif authorization and authorization.lower().startswith("bearer "):
-        token = authorization[7:].strip()
-    elif token_q:
-        token = token_q.strip()
-    elif isinstance(token_body, dict) and "token" in token_body and token_body["token"]:
-        token = str(token_body["token"]).strip()
-
-    dbg = (debug or "").strip().lower()
-    if dbg in {"2", "verbose"}:
-        return {
-            "env_set": bool(env),
-            "received_headers": {k.lower(): v for k, v in request.headers.items()},
-            "token_sources": {
-                "x-auth": bool(x_auth),
-                "authorization": bool(authorization),
-                "query_param": bool(token_q),
-                "json_body": isinstance(token_body, dict) and "token" in token_body,
-            },
-        }
-    if dbg in {"1", "true", "yes"}:
-        return {
-            "env_set": bool(env),
-            "token_present": bool(token),
-            "equal": bool(token) and hmac.compare_digest(token, env),
-        }
-
-    if not env or not token or not hmac.compare_digest(token, env):
+    # ---- auth (query or body) ----
+    given = token or (isinstance(token_body, dict) and token_body.get("token"))
+    if not _safe_eq(given, os.getenv("EXPORT_TOKEN")):
         raise HTTPException(status_code=401, detail="unauthorized")
 
-    # simple write to prove disk path
-    out_dir = Path("/var/data/proppadia/nhl/exports") / date.today().isoformat()
+    # ---- resolve output dir ----
+    root = Path(os.getenv("EXPORT_ROOT", "/var/data/proppadia"))
+    out_dir = root / "nhl" / "exports" / date.today().isoformat()
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "ping.txt").write_text("ok\n", encoding="utf-8")
-    return {"ok": True, "wrote": str(out_dir / "ping.txt")}
 
-@router.get("/download-disk-backup")
-def download_disk_backup(token: str):
-    # simple auth via query param (headers were being stripped)
-    if token != os.getenv("EXPORT_TOKEN"):
-        raise HTTPException(status_code=401, detail="unauthorized")
+    # ---- export CSVs from DB ----
+    db_url = _get_db_url()
+    sog_path = out_dir / "train_nhl_sog_v2.csv"
+    gsv_path = out_dir / "train_goalie_saves_v2.csv"
 
-    # the current mount you want to back up
-    src = Path("/var/data/models")
-    if not src.exists():
-        raise HTTPException(status_code=404, detail=f"source path not found: {src}")
+    if _PSYCOPG_IS_V3:
+        with psycopg.connect(db_url, autocommit=True) as conn:
+            with conn.cursor() as cur:
+                _copy_to_csv(
+                    cur,
+                    "COPY (SELECT * FROM nhl.export_training_nhl_sog_v2 ORDER BY game_date, player_id) "
+                    "TO STDOUT WITH CSV HEADER",
+                    sog_path,
+                )
+                _copy_to_csv(
+                    cur,
+                    "COPY (SELECT * FROM nhl.export_training_goalie_saves_v2 ORDER BY game_date, player_id) "
+                    "TO STDOUT WITH CSV HEADER",
+                    gsv_path,
+                )
+    else:
+        with psycopg.connect(db_url) as conn:
+            conn.autocommit = True
+            with conn.cursor() as cur:
+                _copy_to_csv(
+                    cur,
+                    "COPY (SELECT * FROM nhl.export_training_nhl_sog_v2 ORDER BY game_date, player_id) "
+                    "TO STDOUT WITH CSV HEADER",
+                    sog_path,
+                )
+                _copy_to_csv(
+                    cur,
+                    "COPY (SELECT * FROM nhl.export_training_goalie_saves_v2 ORDER BY game_date, player_id) "
+                    "TO STDOUT WITH CSV HEADER",
+                    gsv_path,
+                )
 
-    # build tar.gz in a temp file and stream it
-    tmpf = tempfile.NamedTemporaryFile(delete=False, suffix=".tgz")
-    tmpf.close()  # we'll let tar write to it by path
-    try:
-        # tar -C /var/data/models -czf /tmp/tmpXYZ.tgz .
-        subprocess.run(
-            ["tar", "-C", str(src), "-czf", tmpf.name, "."],
-            check=True,
-        )
-    except subprocess.CalledProcessError as e:
-        os.unlink(tmpf.name)
-        raise HTTPException(status_code=500, detail=f"tar failed: {e}")
-
-    def stream_and_cleanup():
-        try:
-            with open(tmpf.name, "rb") as f:
-                for chunk in iter(lambda: f.read(1024 * 1024), b""):
-                    yield chunk
-        finally:
-            try:
-                os.unlink(tmpf.name)
-            except Exception:
-                pass
-
-    return StreamingResponse(
-        stream_and_cleanup(),
-        media_type="application/gzip",
-        headers={
-            "Content-Disposition": 'attachment; filename="proppadia_models_backup.tgz"'
-        },
-    )
+    # ---- respond ----
+    return {
+        "ok": True,
+        "out_dir": str(out_dir),
+        "files": [
+            {"name": sog_path.name, "bytes": sog_path.stat().st_size},
+            {"name": gsv_path.name, "bytes": gsv_path.stat().st_size},
+        ],
+    }
