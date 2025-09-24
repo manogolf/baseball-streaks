@@ -17,31 +17,24 @@ router = APIRouter()
 
 # ---- helpers -----------------------------------------------------------------
 
+import os, re
+from fastapi import HTTPException
+
 def _get_db_url() -> str:
     """
-    Resolve a Postgres URL from existing envs and normalize it for psycopg.
-    Prefers DATABASE_URL; falls back to SUPABASE_DB_URL or POSTGRES_URL.
-    Accepts SQLAlchemy-style schemes like postgresql+psycopg:// and normalizes to postgresql://
+    Use existing DATABASE_URL (preferred) or common aliases.
+    Normalize to psycopg-friendly scheme.
     """
-def _get_db_url() -> str:
-    """
-    Resolve Postgres URL from existing envs.
-    Prefer DATABASE_URL; fall back to a couple of common aliases.
-    Normalize scheme for psycopg if needed.
-    """
-    candidates = [
-        "DATABASE_URL",        # what you already have set
-        "POSTGRES_URL",        # optional alias
-        "PGDATABASE_URL",      # optional alias
-    ]
-    for name in candidates:
+    for name in ("DATABASE_URL", "POSTGRES_URL", "PGDATABASE_URL"):
         raw = os.getenv(name)
         if not raw:
             continue
         url = raw.strip()
-        # Normalize sqlalchemy-style / legacy schemes to psycopg-friendly
+
+        # Normalize SQLAlchemy-style ("postgresql+psycopg://") to "postgresql://"
         if url.startswith("postgresql+"):
-            url = "postgresql://" + url.split("postgresql+", 1)[1]
+            url = re.sub(r"^postgresql\+[^:]+://", "postgresql://", url, count=1)
+        # Legacy "postgres://" → "postgresql://"
         elif url.startswith("postgres://"):
             url = "postgresql://" + url[len("postgres://"):]
         return url
