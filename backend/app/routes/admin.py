@@ -3,7 +3,7 @@ import os, hmac
 import io
 import datetime as dt
 from datetime import date
-from fastapi import APIRouter, Header, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query, Request
 from pathlib import Path
 
 try:
@@ -13,6 +13,7 @@ except ImportError:  # fall back if using psycopg2
 
 
 router = APIRouter()
+
 VALID_SPORTS = {"nhl"}  # add "mlb", "nba" later
 
 def _get_db_url(sport: str) -> str:
@@ -44,28 +45,52 @@ def _copy_to_csv(conn, sql: str, out_path: Path) -> None:
 
 @router.post("/refresh-export")
 def refresh_export(
+    request: Request,
     x_auth: str | None = Header(None, convert_underscores=False),
-    debug: bool = Query(False),
+    authorization: str | None = Header(None),
+    debug: str | None = Query(None),
 ):
-    env = os.getenv("EXPORT_TOKEN")
-    # optional: trim accidental spaces/newlines
-    x = (x_auth or "").strip()
-    e = (env or "").strip()
+    # normalize debug
+    dbg = (debug or "").strip().lower()
+    dbg2 = dbg in {"2", "verbose"}
 
-    if debug:
-        # returns only lengths & equality, never the secret
+    env = (os.getenv("EXPORT_TOKEN") or "").strip()
+
+    # prefer X-Auth, else Authorization: Bearer <token>
+    token = None
+    if x_auth:
+        token = x_auth.strip()
+    elif authorization and authorization.lower().startswith("bearer "):
+        token = authorization[7:].strip()
+
+    # debug=2 -> echo headers as seen by FastAPI (no secrets)
+    if dbg2:
         return {
-            "has_header": x_auth is not None,
-            "header_len": len(x),
-            "env_set": env is not None,
-            "env_len": len(e),
-            "equal": hmac.compare_digest(x, e),
+            "env_set": bool(env),
+            "env_len": len(env),
+            "received_headers": {
+                "authorization": authorization,
+                "x-auth": x_auth,
+                "all": {k.lower(): v for k, v in request.headers.items()},
+            },
         }
 
-    if not e or not hmac.compare_digest(x, e):
+    # debug=true/1 -> summary (no secrets)
+    if dbg in {"true", "1", "yes"}:
+        return {
+            "env_set": bool(env),
+            "env_len": len(env),
+            "has_x_auth": x_auth is not None,
+            "has_authorization": authorization is not None,
+            "token_len": len(token or ""),
+            "equal": bool(token) and hmac.compare_digest(token, env),
+        }
+
+    # normal auth path
+    if not env or not token or not hmac.compare_digest(token, env):
         raise HTTPException(status_code=401, detail="unauthorized")
 
-    # (keep the simple ping write for now)
+    # simple write to prove disk access
     out_dir = Path("/var/data/proppadia/nhl/exports") / date.today().isoformat()
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "ping.txt").write_text("ok\n", encoding="utf-8")
