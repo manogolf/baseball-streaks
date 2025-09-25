@@ -3,6 +3,8 @@ import os, re, hmac, shutil
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Iterable
+import requests
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Body
 from fastapi.responses import FileResponse, JSONResponse
@@ -103,6 +105,160 @@ def db_ping(token: str | None = Query(None), token_body: dict | None = Body(None
                 cur.execute("select now()")
                 now = cur.fetchone()[0]
     return {"ok": True, "now": str(now)}
+
+
+def _exec_many(cur, sql: str, rows: list[tuple[Any, ...]]):
+    if not rows: return
+    cur.executemany(sql, rows)
+
+@router.post("/ingest-schedule")
+def ingest_schedule(
+    token: str,
+    date_str: str = Query(..., description="YYYY-MM-DD"),
+    provider: str = Query("nhl"),
+):
+    """
+    Ingest NHL schedule for a specific date:
+      - upsert teams (abbr/name/city if new)
+      - insert/upsert games (game_date/home/away/status)
+      - map game_external_ids (provider='nhl', provider_game_id=gamePk)
+    """
+    _require_auth(token)
+    url = _get_db_url()
+
+    # 1) fetch schedule
+    resp = requests.get(
+        "https://statsapi.web.nhl.com/api/v1/schedule",
+        params={"date": date_str, "expand": "schedule.teams,schedule.linescore"},
+        timeout=20,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    games_api = []
+    for d in data.get("dates", []):
+        for g in d.get("games", []):
+            game_pk = str(g.get("gamePk"))
+            gd = g.get("gameDate")  # ISO
+            status = (g.get("status", {}) or {}).get("abstractGameState", "scheduled").lower()
+            # teams
+            home = (g.get("teams", {}) or {}).get("home", {}) or {}
+            away = (g.get("teams", {}) or {}).get("away", {}) or {}
+            ht = home.get("team", {}) or {}
+            at = away.get("team", {}) or {}
+            games_api.append({
+                "game_pk": game_pk,
+                "game_date": date_str,
+                "status": "final" if status == "final" else ("live" if status == "live" else "scheduled"),
+                "home_id": int(ht.get("id")),
+                "home_abbr": ht.get("abbreviation") or ht.get("triCode") or ht.get("name"),
+                "home_name": ht.get("name"),
+                "away_id": int(at.get("id")),
+                "away_abbr": at.get("abbreviation") or at.get("triCode") or at.get("name"),
+                "away_name": at.get("name"),
+            })
+
+    if not games_api:
+        return {"ok": True, "date": date_str, "found": 0, "inserted": 0, "mapped": 0}
+
+    # 2) upsert teams + games + external ids
+    if _PSYCOPG_IS_V3:
+        with psycopg.connect(url, autocommit=True) as conn, conn.cursor() as cur:
+            # teams
+            team_rows = []
+            for g in games_api:
+                team_rows.append((g["home_id"], g["home_abbr"], g["home_name"]))
+                team_rows.append((g["away_id"], g["away_abbr"], g["away_name"]))
+            _exec_many(cur, """
+                INSERT INTO nhl.teams (team_id, abbr, name, active)
+                VALUES (%s, %s, %s, true)
+                ON CONFLICT (team_id) DO UPDATE
+                  SET abbr = EXCLUDED.abbr,
+                      name = EXCLUDED.name;
+            """, team_rows)
+
+            # games (use NHL gamePk as our game_id if your schema allows bigints matching provider ids;
+            # if not, you can generate your own game_id here. Your schema uses bigint keys already.)
+            game_rows = []
+            for g in games_api:
+                game_rows.append((
+                    int(g["game_pk"]),
+                    date_str,
+                    g["home_id"],
+                    g["away_id"],
+                    g["status"],
+                ))
+            _exec_many(cur, """
+                INSERT INTO nhl.games (game_id, game_date, home_team_id, away_team_id, status)
+                VALUES (%s, %s::date, %s, %s, %s)
+                ON CONFLICT (game_id) DO UPDATE
+                  SET game_date = EXCLUDED.game_date,
+                      home_team_id = EXCLUDED.home_team_id,
+                      away_team_id = EXCLUDED.away_team_id,
+                      status = EXCLUDED.status;
+            """, game_rows)
+
+            # external id mapping
+            map_rows = []
+            for g in games_api:
+                map_rows.append((int(g["game_pk"]), provider, g["game_pk"]))
+            _exec_many(cur, """
+                INSERT INTO nhl.game_external_ids (game_id, provider, provider_game_id)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (game_id, provider) DO UPDATE
+                  SET provider_game_id = EXCLUDED.provider_game_id;
+            """, map_rows)
+    else:
+        with psycopg.connect(url) as conn:
+            conn.autocommit = True
+            with conn.cursor() as cur:
+                team_rows = []
+                for g in games_api:
+                    team_rows.append((g["home_id"], g["home_abbr"], g["home_name"]))
+                    team_rows.append((g["away_id"], g["away_abbr"], g["away_name"]))
+                _exec_many(cur, """
+                    INSERT INTO nhl.teams (team_id, abbr, name, active)
+                    VALUES (%s, %s, %s, true)
+                    ON CONFLICT (team_id) DO UPDATE
+                      SET abbr = EXCLUDED.abbr,
+                          name = EXCLUDED.name;
+                """, team_rows)
+
+                game_rows = []
+                for g in games_api:
+                    game_rows.append((
+                        int(g["game_pk"]),
+                        date_str,
+                        g["home_id"],
+                        g["away_id"],
+                        g["status"],
+                    ))
+                _exec_many(cur, """
+                    INSERT INTO nhl.games (game_id, game_date, home_team_id, away_team_id, status)
+                    VALUES (%s, %s::date, %s, %s, %s)
+                    ON CONFLICT (game_id) DO UPDATE
+                      SET game_date = EXCLUDED.game_date,
+                          home_team_id = EXCLUDED.home_team_id,
+                          away_team_id = EXCLUDED.away_team_id,
+                          status = EXCLUDED.status;
+                """, game_rows)
+
+                map_rows = []
+                for g in games_api:
+                    map_rows.append((int(g["game_pk"]), provider, g["game_pk"]))
+                _exec_many(cur, """
+                    INSERT INTO nhl.game_external_ids (game_id, provider, provider_game_id)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (game_id, provider) DO UPDATE
+                      SET provider_game_id = EXCLUDED.provider_game_id;
+                """, map_rows)
+
+    return {
+        "ok": True,
+        "date": date_str,
+        "found": len(games_api),
+        "inserted_or_updated": len(games_api),
+        "mapped": len(games_api),
+    }
 
 @router.post("/refresh-ready")
 def refresh_ready(token: str | None = Query(None), token_body: dict | None = Body(None)):
