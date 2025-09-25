@@ -116,31 +116,28 @@ def ingest_schedule(
     token: str,
     date_str: str = Query(..., description="YYYY-MM-DD"),
     provider: str = Query("nhl"),
+    raw: dict | None = Body(None),   # << NEW: optional pre-fetched JSON
 ):
-    """
-    Ingest NHL schedule for a specific date:
-      - upsert teams (abbr/name/city if new)
-      - insert/upsert games (game_date/home/away/status)
-      - map game_external_ids (provider='nhl', provider_game_id=gamePk)
-    """
     _require_auth(token)
     url = _get_db_url()
 
-    # 1) fetch schedule
-    resp = requests.get(
-        "https://statsapi.web.nhl.com/api/v1/schedule",
-        params={"date": date_str, "expand": "schedule.teams,schedule.linescore"},
-        timeout=20,
-    )
-    resp.raise_for_status()
-    data = resp.json()
+    # 1) get schedule data
+    if isinstance(raw, dict) and "dates" in raw:
+        data = raw
+    else:
+        resp = requests.get(
+            "https://statsapi.web.nhl.com/api/v1/schedule",
+            params={"date": date_str, "expand": "schedule.teams,schedule.linescore"},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
     games_api = []
     for d in data.get("dates", []):
         for g in d.get("games", []):
             game_pk = str(g.get("gamePk"))
-            gd = g.get("gameDate")  # ISO
             status = (g.get("status", {}) or {}).get("abstractGameState", "scheduled").lower()
-            # teams
             home = (g.get("teams", {}) or {}).get("home", {}) or {}
             away = (g.get("teams", {}) or {}).get("away", {}) or {}
             ht = home.get("team", {}) or {}
@@ -158,7 +155,7 @@ def ingest_schedule(
             })
 
     if not games_api:
-        return {"ok": True, "date": date_str, "found": 0, "inserted": 0, "mapped": 0}
+        return {"ok": True, "date": date_str, "found": 0, "inserted_or_updated": 0, "mapped": 0}
 
     # 2) upsert teams + games + external ids
     if _PSYCOPG_IS_V3:
