@@ -257,6 +257,126 @@ def ingest_schedule(
         "mapped": len(games_api),
     }
 
+@router.post("/ingest-logs")
+def ingest_logs(
+    token: str = Query(...),
+    provider: str = Query("nhl"),
+    raw: dict | None = Body(None),
+):
+    _require_auth(token)
+    url = _get_db_url()
+
+    if not isinstance(raw, dict):
+        raise HTTPException(status_code=400, detail="JSON body required")
+
+    # Expect: {"gamePk": 2025010018, "skaters":[...], "goalies":[...]}
+    try:
+        game_pk = int(raw["gamePk"])
+    except Exception:
+        raise HTTPException(status_code=400, detail="missing/invalid gamePk")
+
+    skaters = raw.get("skaters", []) or []
+    goalies = raw.get("goalies", []) or []
+
+    # minimal expected fields per row:
+    # skater: {player_id, team_id, opponent_id, is_home, shots_on_goal, shot_attempts, toi_minutes, game_date}
+    # goalie: {player_id, team_id, opponent_id, is_home, saves, shots_faced, goals_allowed, toi_minutes, game_date}
+
+    if _PSYCOPG_IS_V3:
+        with psycopg.connect(url, autocommit=True) as conn, conn.cursor() as cur:
+            # insert skaters
+            if skaters:
+                cur.executemany("""
+                    INSERT INTO nhl.skater_game_logs_raw
+                      (player_id, game_id, team_id, opponent_id, is_home,
+                       shots_on_goal, shot_attempts, toi_minutes, game_date)
+                    VALUES
+                      (%(player_id)s, %(game_id)s, %(team_id)s, %(opponent_id)s, %(is_home)s,
+                       %(shots_on_goal)s, %(shot_attempts)s, %(toi_minutes)s, %(game_date)s::date)
+                    ON CONFLICT (player_id, game_id) DO UPDATE
+                      SET team_id=EXCLUDED.team_id,
+                          opponent_id=EXCLUDED.opponent_id,
+                          is_home=EXCLUDED.is_home,
+                          shots_on_goal=EXCLUDED.shots_on_goal,
+                          shot_attempts=EXCLUDED.shot_attempts,
+                          toi_minutes=EXCLUDED.toi_minutes,
+                          game_date=EXCLUDED.game_date;
+                """, [{**r, "game_id": game_pk} for r in skaters])
+
+            # insert goalies
+            if goalies:
+                cur.executemany("""
+                    INSERT INTO nhl.goalie_game_logs_raw
+                      (player_id, game_id, team_id, opponent_id, is_home,
+                       saves, shots_faced, goals_allowed, toi_minutes, game_date)
+                    VALUES
+                      (%(player_id)s, %(game_id)s, %(team_id)s, %(opponent_id)s, %(is_home)s,
+                       %(saves)s, %(shots_faced)s, %(goals_allowed)s, %(toi_minutes)s, %(game_date)s::date)
+                    ON CONFLICT (player_id, game_id) DO UPDATE
+                      SET team_id=EXCLUDED.team_id,
+                          opponent_id=EXCLUDED.opponent_id,
+                          is_home=EXCLUDED.is_home,
+                          saves=EXCLUDED.saves,
+                          shots_faced=EXCLUDED.shots_faced,
+                          goals_allowed=EXCLUDED.goals_allowed,
+                          toi_minutes=EXCLUDED.toi_minutes,
+                          game_date=EXCLUDED.game_date;
+                """, [{**r, "game_id": game_pk} for r in goalies])
+
+            # mark game final if we got any logs
+            if skaters or goalies:
+                cur.execute("""
+                    UPDATE nhl.games SET status='final'
+                    WHERE game_id = %s
+                """, (game_pk,))
+
+    else:
+        with psycopg.connect(url) as conn:
+            conn.autocommit = True
+            with conn.cursor() as cur:
+                if skaters:
+                    cur.executemany("""
+                        INSERT INTO nhl.skater_game_logs_raw
+                          (player_id, game_id, team_id, opponent_id, is_home,
+                           shots_on_goal, shot_attempts, toi_minutes, game_date)
+                        VALUES
+                          (%(player_id)s, %(game_id)s, %(team_id)s, %(opponent_id)s, %(is_home)s,
+                           %(shots_on_goal)s, %(shot_attempts)s, %(toi_minutes)s, %(game_date)s::date)
+                        ON CONFLICT (player_id, game_id) DO UPDATE
+                          SET team_id=EXCLUDED.team_id,
+                              opponent_id=EXCLUDED.opponent_id,
+                              is_home=EXCLUDED.is_home,
+                              shots_on_goal=EXCLUDED.shots_on_goal,
+                              shot_attempts=EXCLUDED.shot_attempts,
+                              toi_minutes=EXCLUDED.toi_minutes,
+                              game_date=EXCLUDED.game_date;
+                    """, [{**r, "game_id": game_pk} for r in skaters])
+
+                if goalies:
+                    cur.executemany("""
+                        INSERT INTO nhl.goalie_game_logs_raw
+                          (player_id, game_id, team_id, opponent_id, is_home,
+                           saves, shots_faced, goals_allowed, toi_minutes, game_date)
+                        VALUES
+                          (%(player_id)s, %(game_id)s, %(team_id)s, %(opponent_id)s, %(is_home)s,
+                           %(saves)s, %(shots_faced)s, %(goals_allowed)s, %(toi_minutes)s, %(game_date)s::date)
+                        ON CONFLICT (player_id, game_id) DO UPDATE
+                          SET team_id=EXCLUDED.team_id,
+                              opponent_id=EXCLUDED.opponent_id,
+                              is_home=EXCLUDED.is_home,
+                              saves=EXCLUDED.saves,
+                              shots_faced=EXCLUDED.shots_faced,
+                              goals_allowed=EXCLUDED.goals_allowed,
+                              toi_minutes=EXCLUDED.toi_minutes,
+                              game_date=EXCLUDED.game_date;
+                    """, [{**r, "game_id": game_pk} for r in goalies])
+
+                if skaters or goalies:
+                    cur.execute("UPDATE nhl.games SET status='final' WHERE game_id=%s", (game_pk,))
+
+    return {"ok": True, "game_id": game_pk, "skaters": len(skaters), "goalies": len(goalies)}
+
+
 @router.post("/refresh-ready")
 def refresh_ready(token: str | None = Query(None), token_body: dict | None = Body(None)):
     """
