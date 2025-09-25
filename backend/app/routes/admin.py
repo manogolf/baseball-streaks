@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Iterable
 import requests
 from typing import Any
-
 from fastapi import APIRouter, HTTPException, Query, Body
 from fastapi.responses import FileResponse, JSONResponse
 
@@ -376,6 +375,34 @@ def ingest_logs(
 
     return {"ok": True, "game_id": game_pk, "skaters": len(skaters), "goalies": len(goalies)}
 
+@router.get("/version")
+def version():
+    """
+    Minimal deploy sanity:
+      - build commit (if Render provides it)
+      - server time
+      - important env flags present
+      - disk mount and free space
+    """
+    # Render sets these sometimes; fallbacks are fine
+    commit = os.getenv("RENDER_GIT_COMMIT") or os.getenv("RENDER_GIT_BRANCH") or "unknown"
+    mount = "/var/data"
+    total, used, free = shutil.disk_usage(mount)
+    return {
+        "ok": True,
+        "ts": datetime.utcnow().isoformat() + "Z",
+        "commit": commit,
+        "env": {
+            "EXPORT_TOKEN_set": bool(os.getenv("EXPORT_TOKEN")),
+            "SUPABASE_URL_set": bool(os.getenv("SUPABASE_URL")),
+            "SUPABASE_DB_URL_set": bool(os.getenv("SUPABASE_DB_URL")),
+        },
+        "disk": {
+            "mount": mount,
+            "total_gb": round(total / 1e9, 2),
+            "free_gb": round(free / 1e9, 2),
+        },
+    }
 
 @router.post("/refresh-ready")
 def refresh_ready(token: str | None = Query(None), token_body: dict | None = Body(None)):
